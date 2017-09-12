@@ -306,6 +306,28 @@ class FeatureDataReader(object):
                             
         return sorted(failures, key=lambda x: x[0])
 
+    def readAllCyclesForFailedZone(self,run,fail_cycle,zone):
+        """Read data from all simulation cycles in a run of a single failed mesh zone
+
+        Args:
+            run: simulation run #
+            fail_cycle: the cycle that the zone failed
+            zone: mesh zone id
+
+        Returns:
+            2D numpy array of shape (# of cycles X # of features)
+        """
+        numFeats = len(self.readMetaData(0)['features'])
+
+        with open('%s/timeSeries/failure_r%04d_z%06d.npy' %
+              (self.dataDir,run,zone), 'rb') as fin:
+            # assumes contiguous cycles starting at 0
+            # failure cycle is the last cycle of that time series
+            data = np.fromfile(fin, dtype=np.float32, count=(fail_cycle+1)*numFeats)
+            data = np.reshape(data, (fail_cycle+1,numFeats))
+
+            return data
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
