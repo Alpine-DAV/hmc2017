@@ -59,8 +59,8 @@ def get_reader(data_dir):
         reader = data_readers[data_dir]
     else:
         num_partitions = get_num_partitions(data_dir)
-        reader = FeatureDataReader(data_dir, num_partitions)
-        print "Creating reader for data directory: %s (%d partitions)" % (data_dir, num_partitions)
+        reader = FeatureDataReader(data_dir)
+        print "Creating reader for data directory: %s" % (data_dir)
         data_readers[data_dir] = reader
 
     return reader
@@ -85,7 +85,7 @@ def get_feature_names(data_dir):
   global feature_name_cache
   if feature_name_cache is None:
     reader = get_reader(data_dir)
-    feature_name_cache = reader.getMetricNames()
+    feature_name_cache = reader.getFeatureNames()
 
   return feature_name_cache
 
@@ -198,7 +198,8 @@ def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, dec
       return learning_data_cache[key] 
 
     # read failure data
-    [failures,failed_cycles] = get_failures(data_dir)
+    failures = reader.getAllFailures()
+    failed_cycles = [f[1] for f in failures]
 
     # get first failure cycle
     pre_first_fail = min(failed_cycles) - decay_window
@@ -251,15 +252,18 @@ def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, dec
     Y_bad = []
     index_bad = []
     for fail in failures:
-        [pnum, run, fail_cycle, zone] = fail
+        [run, fail_cycle, zone, features] = fail
         weight = 1.0
+
+        all_cycle_data = reader.readAllCyclesForFailedZone(run,fail_cycle,zone)
+        data = list(reversed(all_cycle_data[-(1+decay_window):-1:]))
+        bad_zones_list.append(data)
+
         for step in range(decay_window):
 
             cycle = fail_cycle - step
-            data = reader.readZone(run, cycle, zone)
             weight = decay('linear', step, decay_window)
 
-            bad_zones_list.append(data.reshape(1,len(data)))
             Y_bad.append(weight)
             index_bad.append((cycle,zone))
 
@@ -450,7 +454,8 @@ def add_features(index):
       # vvv INSERT YOUR NEW FEATURES HERE vvv #
       #########################################
 
-      cycle_zone_values = [1,1,1] # just as a placeholder, we add three new features all with value=1
+      cycle_zone_values = [] 
+      #cycle_zone_values = [1,1,1] # just as a placeholder, we add three new features all with value=1
 
       #########################################
       # ^^^ INSERT YOUR NEW FEATURES HERE ^^^ #
@@ -465,7 +470,7 @@ def add_features(index):
 # Run quick learning test.
 #
 def main():
-    train_path = '/usr/workspace/wsrzd/alemm/data/bubbleShock_gold'
+    train_path = './data/bubbleShock/'
     test_path = train_path
 
     train_many_test_many([train_path], [test_path], TEST_ON_TRAIN_SPEC)
