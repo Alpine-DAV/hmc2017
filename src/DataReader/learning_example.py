@@ -470,7 +470,12 @@ def add_features(index):
 # Run quick learning test.
 #
 def main():
-    train_path = './data/bubbleShock/'
+
+    if len(sys.argv) < 2:
+        print "Usage: python %s <data_directory>" % sys.argv[0]
+        sys.exit(1)
+ 
+    train_path = sys.argv[1]
     test_path = train_path
 
     train_many_test_many([train_path], [test_path], TEST_ON_TRAIN_SPEC)
