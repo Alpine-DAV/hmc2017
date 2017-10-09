@@ -218,7 +218,7 @@ def accuracy(actual, predicted):
 # classifier is trained on the whole dataset in batch fashion. If mpi=True, then each task trains a
 # local model, and the local models are combined into a global model at the end. In this mode, the
 # result is only meaningful if comm.rank == 0.
-def train(X, y, online=False, mpi=False):
+def train(X, y, classes, online=False, mpi=False):
     clf = GaussianNB()
     if online:
         classes = np.unique(y)
@@ -287,13 +287,14 @@ def prepare_dataset():
 def train_and_test_k_fold(X, y, verbose=False, use_mpi=False, use_online=False, k=10):
     acc_accum = 0
     runs = 0
+    classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y):
         if use_mpi:
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
             print('process {} with {} samples'.format(comm.rank, train_X.shape[0]))
 
-        clf = train(train_X, train_y, online=use_online, mpi=use_mpi)
+        clf = train(train_X, train_y, classes, online=use_online, mpi=use_mpi)
         if comm.rank == 0:
             # Only root has the final model, so only root does the predicting
             prd = clf.predict(test_X)
