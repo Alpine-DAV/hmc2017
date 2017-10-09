@@ -283,7 +283,7 @@ def prepare_dataset():
     return X, y
 
 # Train and test the model using k-fold cross validation (default is 10-fold). Return the average
-# accuracy over all k runs
+# accuracy over all k runs. If running in MPI, only root (rank 0) has a meaningful return value.
 def train_and_test_k_fold(X, y, verbose=False, use_mpi=False, use_online=False, k=10):
     acc_accum = 0
     runs = 0
@@ -294,19 +294,21 @@ def train_and_test_k_fold(X, y, verbose=False, use_mpi=False, use_online=False, 
             print('process {} with {} samples'.format(comm.rank, train_X.shape[0]))
 
         clf = train(train_X, train_y, online=use_online, mpi=use_mpi)
-        if comm.rank != 0:
-            return # Only root has the final model, so only root does the predicting
+        if comm.rank == 0:
+            # Only root has the final model, so only root does the predicting
+            prd = clf.predict(test_X)
 
-        prd = clf.predict(test_X)
+            runs += 1
+            acc = accuracy(test_y, prd)
+            acc_accum += acc
+            if verbose:
+                print('run {}: accuracy={}'.format(runs, acc))
+                print('final model: {}'.format(clf))
 
-        runs += 1
-        acc = accuracy(test_y, prd)
-        acc_accum += acc
-        if verbose:
-            print('run {}: accuracy={}'.format(runs, acc))
-            print('final model: {}', clf)
+        comm.barrier()
 
-    return acc_accum / runs
+    if comm.rank == 0:
+        return acc_accum / runs
 
 if __name__ == '__main__':
 
