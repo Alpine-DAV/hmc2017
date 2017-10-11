@@ -239,11 +239,12 @@ def accuracy(actual, predicted):
 def train(X, y, classes, online=False, mpi=False):
     clf = GaussianNB()
     if online:
-        classes = np.unique(y)
         for i in range(X.shape[0]):
             clf.partial_fit(X[i:i+1], y[i:i+1], classes=classes)
     else:
-        clf.fit(X, y)
+        # Even though we're fitting all of the data, we use partial_fit so we can manually specify
+        # the classes, since we may have a partition of the data that does not contain every class
+        clf.partial_fit(X, y, classes=classes)
     if mpi:
         clf = clf.reduce()
     return clf
