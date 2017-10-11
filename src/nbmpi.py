@@ -86,7 +86,34 @@ class GaussianNB(BaseNB):
             comm.Allreduce(weighted_mu, mu[i], op=MPI.SUM)
             mu[i] /= n[i]
 
-        # TODO tree-reduce the global variance and store it in var
+        # tree-reduce the global variance to the root process 
+        n_curr = np.copy(self.class_count_)
+        mu_curr = np.copy(self.theta_)
+        var_curr = np.copy(self.sigma_)
+        
+        node_diff = 1
+        while(node_diff < comm.size):
+            if(comm.rank % (node_diff*2) == 0 and comm.rank+node_diff < comm.size):
+                n_2 = comm.recv(source=comm.rank+node_diff, tag=1)
+                mu_2 = comm.recv(source=comm.rank+node_diff, tag=2)
+                var_2 = comm.recv(source=comm.rank+node_diff, tag=3)
+                
+                for i in range(len(var_curr)):
+                    var_curr[i] = var_curr[i]*n_curr[i] + var_2[i]*n_2[i] + \
+                                  n_curr[i]*pow((mu_curr[i]-mu[i]),2) + \
+                                  n_2[i]*pow((mu_2[i]-mu[i]),2)
+                    var_curr[i] /= n[i] + n_2[i]
+
+                    mu_curr[i] = (mu_curr[i]*n_curr[i] + mu_2[i]*n_2[i]) / (n_curr[i] + n_2[i])
+                    n_curr[i] += n_2[i]
+
+            if(comm.rank % (node_diff*2) == node_diff):
+                comm.send(n_curr, dest=comm.rank-node_diff, tag=1)
+                comm.send(mu_curr, dest=comm.rank-node_diff, tag=2)
+                comm.send(var_curr, dest=comm.rank-node_diff, tag=3)
+            node_diff *= 2
+
+        var = comm.bcast(var_curr, root=0) # store global variance in var for all processes
 
         clf = GaussianNB()
         clf.class_count_ = n
