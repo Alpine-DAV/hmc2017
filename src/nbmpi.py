@@ -70,50 +70,41 @@ class GaussianNB(BaseNB):
                                  sample_weight=sample_weight)
 
     # When running in MPI, coordinate with other tasks to combine each task's local model into a
-    # global model. The global model is returned. Each process's local model is unchanged.
+    # global model. The global model is returned. Each process's local model is unchanged. Note: the
+    # return value is only meaningful for root (rank == 0)
     def reduce(self, verbose=False):
         # Variables which will collect the global results
         n = np.copy(self.class_count_)
         mu = np.copy(self.theta_)
         var = np.copy(self.sigma_)
 
-        # Sum the local counts of samples by class
-        comm.Allreduce(self.class_count_, n, op=MPI.SUM)
-
-        # For each class, compute the average of each feature value weighted by number of samples
-        for i in range(len(self.classes_)):
-            weighted_mu = self.theta_[i] * self.class_count_[i]
-            comm.Allreduce(weighted_mu, mu[i], op=MPI.SUM)
-            mu[i] /= n[i]
-
-        # tree-reduce the global variance to the root process 
-        n_curr = np.copy(self.class_count_)
-        mu_curr = np.copy(self.theta_)
-        var_curr = np.copy(self.sigma_)
-        
+        # tree-reduce the global count, mean, and variance to the root process
         node_diff = 1
         while(node_diff < comm.size):
             if(comm.rank % (node_diff*2) == 0 and comm.rank+node_diff < comm.size):
+                n_1 = np.copy(n)
+                mu_1 = np.copy(mu)
+                var_1 = np.copy(var)
+
                 n_2 = comm.recv(source=comm.rank+node_diff, tag=1)
                 mu_2 = comm.recv(source=comm.rank+node_diff, tag=2)
                 var_2 = comm.recv(source=comm.rank+node_diff, tag=3)
-                
-                for i in range(len(var_curr)):
-                    var_curr[i] = var_curr[i]*n_curr[i] + var_2[i]*n_2[i] + \
-                                  n_curr[i]*pow((mu_curr[i]-mu[i]),2) + \
-                                  n_2[i]*pow((mu_2[i]-mu[i]),2)
-                    var_curr[i] /= n[i] + n_2[i]
 
-                    mu_curr[i] = (mu_curr[i]*n_curr[i] + mu_2[i]*n_2[i]) / (n_curr[i] + n_2[i])
-                    n_curr[i] += n_2[i]
+                n = n_1 + n_2
+                for i in range(len(self.classes_)):
+                    mu[i] = (mu_1[i]*n_1[i] + mu_2[i]*n_2[i]) / n[i]
+
+                    var[i] = var_1[i]*n_1[i] + var_2[i]*n_2[i] + \
+                             n_1[i]*pow((mu_1[i]-mu[i]),2) + \
+                             n_2[i]*pow((mu_2[i]-mu[i]),2)
+                    var[i] /= n[i]
 
             if(comm.rank % (node_diff*2) == node_diff):
-                comm.send(n_curr, dest=comm.rank-node_diff, tag=1)
-                comm.send(mu_curr, dest=comm.rank-node_diff, tag=2)
-                comm.send(var_curr, dest=comm.rank-node_diff, tag=3)
-            node_diff *= 2
+                comm.send(n, dest=comm.rank-node_diff, tag=1)
+                comm.send(mu, dest=comm.rank-node_diff, tag=2)
+                comm.send(var, dest=comm.rank-node_diff, tag=3)
 
-        var = comm.bcast(var_curr, root=0) # store global variance in var for all processes
+            node_diff *= 2
 
         clf = GaussianNB()
         clf.class_count_ = n
