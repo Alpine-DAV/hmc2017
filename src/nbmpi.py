@@ -15,6 +15,8 @@ from sklearn.utils import check_X_y, check_array, check_consistent_length
 from sklearn.utils.multiclass import _check_partial_fit_first_call
 from sklearn.utils.validation import check_is_fitted
 
+from utils import *
+
 comm = MPI.COMM_WORLD
 
 # Gaussian naive Bayes classifier. This implementation is heavily based off of sckit learn's
@@ -227,10 +229,6 @@ class GaussianNB(BaseNB):
         joint_log_likelihood = np.array(joint_log_likelihood).T
         return joint_log_likelihood
 
-# Compute the accuracy of a set of predictions against the ground truth values.
-def accuracy(actual, predicted):
-    return np.sum(predicted == actual) / actual.shape[0]
-
 # Create a new classifier and train it using the given training data. If online=True, the data will
 # be passed to the classifier one sample at a time, updating the model each time. Otherwise, the
 # classifier is trained on the whole dataset in batch fashion. If mpi=True, then each task trains a
@@ -248,41 +246,6 @@ def train(X, y, classes, online=False, mpi=False):
     if mpi:
         clf = clf.reduce()
     return clf
-
-# Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
-# constant before-hand, so the results will not vary between runs.
-def shuffle_data(X, y, seed=0):
-    np.random.seed(0)
-    seed = np.random.get_state()
-    np.random.shuffle(X)
-    np.random.set_state(seed)
-    np.random.shuffle(y)
-
-# A generator yielding a tuple of (training features, training labels, test features, test labels)
-# for each run in a k-fold cross validation experiment. By default, k=10.
-def get_k_fold_data(X, y, k=10):
-    n_samples = X.shape[0]
-    n_test = n_samples // k
-    for i in range(k):
-        train_X = np.concatenate((X[:n_test*i], X[n_test*(i+1):]))
-        test_X = X[n_test*i:n_test*(i+1)]
-        train_y = np.concatenate((y[:n_test*i], y[n_test*(i+1):]))
-        test_y = y[n_test*i:n_test*(i+1)]
-        yield (train_X, test_X, train_y, test_y)
-
-# Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
-# function, then every sample in the dataset will be distributed to exactly one task.
-def get_mpi_task_data(X, y):
-    samps_per_task = X.shape[0] // comm.size
-
-    min_bound = samps_per_task*comm.rank
-    if comm.rank == comm.size - 1:
-        max_bound = X.shape[0]
-    else:
-        max_bound = min_bound + samps_per_task
-
-    return (X[min_bound:max_bound],
-            y[min_bound:max_bound])
 
 # Parse command line arguments
 def parse_args():
