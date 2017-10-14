@@ -256,14 +256,6 @@ def parse_args():
 
     return parser.parse_args()
 
-# Load the iris dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset():
-    iris = datasets.load_iris()
-    X = iris.data
-    y = iris.target
-    shuffle_data(X, y)
-    return X, y
-
 # Train and test the model using k-fold cross validation (default is 10-fold). Return the average
 # accuracy over all k runs. If running in MPI, only root (rank 0) has a meaningful return value.
 def train_and_test_k_fold(X, y, verbose=False, use_mpi=False, use_online=False, k=10):
@@ -298,15 +290,16 @@ if __name__ == '__main__':
     args = parse_args()
     verbose = args.verbose
     use_online = args.online
-    use_mpi = 'MPICH_INTERFACE_HOSTNAME' in os.environ
+    use_mpi = running_in_mpi()
 
     if use_mpi and comm.rank == 0:
         print('will train using MPI')
     if use_online and comm.rank == 0:
-        print('will train in online mode')
+        print('will train using online mode')
 
-    X, y = prepare_dataset()
-    acc = train_and_test_k_fold(X, y, verbose=verbose, use_online=use_online, use_mpi=use_mpi)
+    for train_X, test_X, train_y, test_y in get_k_fold_data(iris.data, iris.target):
+        X, y = prepare_dataset()
+        acc = train_and_test_k_fold(X, y, verbose=verbose, use_online=use_online, use_mpi=use_mpi)
 
-    if comm.rank == 0:
-        print('average accuracy: {}'.format(acc))
+        if comm.rank == 0:
+            print('average accuracy: {}'.format(acc))

@@ -2,11 +2,15 @@ from __future__ import division
 
 from mpi4py import MPI
 import numpy as np
+import os
+from sklearn import datasets
 
 __all__ = [ "accuracy"
           , "shuffle_data"
           , "get_k_fold_data"
           , "get_mpi_task_data"
+          , "running_in_mpi"
+          , "prepare_dataset"
           ]
 
 # Compute the accuracy of a set of predictions against the ground truth values.
@@ -47,3 +51,15 @@ def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
 
     return (X[min_bound:max_bound],
             y[min_bound:max_bound])
+
+# Determine if we are running as an MPI process
+def running_in_mpi():
+    return 'MPICH_INTERFACE_HOSTNAME' in os.environ
+
+# Load the requested example dataset and randomly reorder it so that it is not grouped by class
+def prepare_dataset(dataset='iris'):
+    iris = getattr(datasets, 'load_{}'.format(dataset))()
+    X = iris.data
+    y = iris.target
+    shuffle_data(X, y)
+    return X, y
