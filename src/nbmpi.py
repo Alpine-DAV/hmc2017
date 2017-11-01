@@ -256,35 +256,6 @@ def parse_args():
 
     return parser.parse_args()
 
-# Train and test the model using k-fold cross validation (default is 10-fold). Return the average
-# accuracy over all k runs. If running in MPI, only root (rank 0) has a meaningful return value.
-def train_and_test_k_fold(X, y, verbose=False, use_mpi=False, use_online=False, k=10):
-    acc_accum = 0
-    runs = 0
-    classes = np.unique(y)
-    for train_X, test_X, train_y, test_y in get_k_fold_data(X, y):
-        if use_mpi:
-            train_X, train_y = get_mpi_task_data(train_X, train_y)
-        if verbose:
-            print('process {} with {} samples'.format(comm.rank, train_X.shape[0]))
-
-        clf = train(train_X, train_y, classes, online=use_online, mpi=use_mpi)
-        if comm.rank == 0:
-            # Only root has the final model, so only root does the predicting
-            prd = clf.predict(test_X)
-
-            runs += 1
-            acc = accuracy(test_y, prd)
-            acc_accum += acc
-            if verbose:
-                print('run {}: accuracy={}'.format(runs, acc))
-                print('final model: {}'.format(clf))
-
-        comm.barrier()
-
-    if comm.rank == 0:
-        return acc_accum / runs
-
 if __name__ == '__main__':
 
     args = parse_args()
@@ -293,13 +264,13 @@ if __name__ == '__main__':
     use_mpi = running_in_mpi()
 
     if use_mpi and comm.rank == 0:
-        print('will train using MPI')
+        info('will train using MPI')
     if use_online and comm.rank == 0:
-        print('will train using online mode')
+        info('will train using online mode')
 
-    for train_X, test_X, train_y, test_y in get_k_fold_data(iris.data, iris.target):
-        X, y = prepare_dataset()
-        acc = train_and_test_k_fold(X, y, verbose=verbose, use_online=use_online, use_mpi=use_mpi)
+    data, target = prepare_dataset('iris')
+    acc = train_and_test_k_fold(
+        data, target, train, verbose=verbose, use_online=use_online, use_mpi=use_mpi)
 
-        if comm.rank == 0:
-            print('average accuracy: {}'.format(acc))
+    if comm.rank == 0:
+        info('average accuracy: {}'.format(acc))

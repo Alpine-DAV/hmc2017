@@ -9,10 +9,7 @@ from utils import *
 
 comm = MPI.COMM_WORLD
 
-def info(fmt, *args, **kwargs):
-    print(('rank {}: ' + fmt).format(comm.rank, *args, **kwargs))
-
-def train(X, y):
+def train(X, y, **kwargs):
     rf = RandomForestClassifier()
     rf.fit(X, y)
     return rf
@@ -30,20 +27,19 @@ if __name__ == '__main__':
     verbose = args.verbose
     use_mpi = running_in_mpi()
 
+    if verbose and comm.rank == 0:
+        if use_mpi:
+            info('training using MPI')
+        else:
+            info('training on one processor')
+
+
     runs = 0
     acc_accum = 0
 
-    X, y = prepare_dataset('iris')
-    if use_mpi:
-        train_X, train_y = get_mpi_task_data(X, y, comm, True)
-        rf = train(train_X, train_y)
-        all_estimators = comm.gather(rf.estimators_, root=0)
-        if comm.rank == 0:
-            super_forest = []
-            for forest in all_estimators:
-                super_forest.extend(forest)
-            rf.estimators_ = super_forest
-            test_X, test_y = get_testing_data(X, y, comm)
-            acc = rf.score(test_X, test_y)
-            if verbose:
-                info('accuracy: {}', acc)
+    data, target = prepare_dataset('iris')
+    acc = train_and_test_k_fold(
+        data, target, train, verbose=verbose, use_mpi=use_mpi)
+
+    if comm.rank == 0:
+        info('average accuracy: {}'.format(acc))
