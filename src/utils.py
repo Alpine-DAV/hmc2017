@@ -9,6 +9,7 @@ __all__ = [ "accuracy"
           , "shuffle_data"
           , "get_k_fold_data"
           , "get_mpi_task_data"
+          , "get_testing_data"
           , "running_in_mpi"
           , "prepare_dataset"
           ]
@@ -40,14 +41,24 @@ def get_k_fold_data(X, y, k=10):
 
 # Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
 # function, then every sample in the dataset will be distributed to exactly one task.
-def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
+def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD, has_testing = False):
     samps_per_task = X.shape[0] // comm.size
+    if has_testing:
+        samps_per_task = X.shape[0] // (comm.size+1)
 
     min_bound = samps_per_task*comm.rank
-    if comm.rank == comm.size - 1:
-        max_bound = X.shape[0]
-    else:
+    if has_testing:
         max_bound = min_bound + samps_per_task
+    elif comm.rank == comm.size - 1:
+        max_bound = X.shape[0]
+
+    return (X[min_bound:max_bound],
+            y[min_bound:max_bound])
+
+def get_testing_data(X, y, comm):
+    samps_per_task = X.shape[0] // (comm.size+1)
+    min_bound = samps_per_task*(comm.rank+1)
+    max_bound = X.shape[0]
 
     return (X[min_bound:max_bound],
             y[min_bound:max_bound])
