@@ -1,12 +1,9 @@
 #! /usr/bin/env python
-from __future__ import division
 
 import argparse
 from mpi4py import MPI
 from sklearn import datasets
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree._tree import Tree
 
 from utils import *
 
