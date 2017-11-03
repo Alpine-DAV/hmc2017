@@ -10,15 +10,16 @@ from utils import *
 comm = MPI.COMM_WORLD
 
 #trains on segment of data, then places final model in 0th process
-def train(X, y, **kwargs):
+def train(X, y, mpi=False, **kwargs):
     rf = RandomForestClassifier()
     rf.fit(X, y)
-    all_estimators = comm.gather(rf.estimators_, root=0)
-    if comm.rank == 0:
-        super_forest = []
-        for forest in all_estimators:
-            super_forest.extend(forest)
-        rf.estimators_ = super_forest
+    if mpi:
+        all_estimators = comm.gather(rf.estimators_, root=0)
+        if comm.rank == 0:
+            super_forest = []
+            for forest in all_estimators:
+                super_forest.extend(forest)
+            rf.estimators_ = super_forest
     return rf
 
 # Parse command line arguments
