@@ -13,8 +13,12 @@ comm = MPI.COMM_WORLD
 def train(X, y, **kwargs):
     rf = RandomForestRegressor()
     rf.fit(X, y)
-    if running_in_mpi():
-        reduce(rf)
+    all_estimators = comm.gather(rf.estimators_, root=0)
+    if comm.rank == 0:
+        super_forest = []
+        for forest in all_estimators:
+            super_forest.extend(forest)
+        rf.estimators_ = super_forest
     return rf
 
 # Compose all decision trees into one super forest of decision trees
