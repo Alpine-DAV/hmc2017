@@ -1,11 +1,10 @@
 #! /usr/bin/env python
 
 from mpi4py import MPI
-from sklearn.ensemble import RandomForestClassifier
+from skgarden.mondrian.ensemble import MondrianForestClassifier
 
-from datasets import prepare_dataset
 from utils import *
-from forest_utils import *
+from forest_utils import * 
 
 comm = MPI.COMM_WORLD
 
@@ -22,7 +21,7 @@ if __name__ == '__main__':
 
     data, target = prepare_dataset('iris')
     acc = train_and_test_k_fold(
-        data, target, forest_train, model=RandomForestClassifier(), verbose=verbose, use_mpi=use_mpi)
+        data, target, forest_train, model=MondrianForestClassifier(), verbose=verbose, use_mpi=use_mpi)
 
     if comm.rank == 0:
         info('average accuracy: {}'.format(acc))

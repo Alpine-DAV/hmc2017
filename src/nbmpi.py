@@ -236,12 +236,7 @@ class GaussianNB(BaseNB):
 # classifier is trained on the whole dataset in batch fashion. If mpi=True, then each task trains a
 # local model, and the local models are combined into a global model at the end. In this mode, the
 # result is only meaningful if comm.rank == 0.
-def train(X, y, classes=None, online=False, mpi=False, **kwargs):
-    if classes is None:
-        root_info("warning: no classes specified for nbmpi, inferring from training data")
-        classes = np.unique(y)
-
-    clf = GaussianNB()
+def train(X, y, classes, clf, online=False, mpi=False):
     if online:
         for i in range(X.shape[0]):
             clf.partial_fit(X[i:i+1], y[i:i+1], classes=classes)
@@ -276,7 +271,7 @@ if __name__ == '__main__':
 
     data, target = prepare_dataset('iris')
     acc = train_and_test_k_fold(
-        data, target, train, verbose=verbose, online=use_online, mpi=use_mpi)
+        data, target, train, model=GaussianNB(), verbose=verbose, use_online=use_online, use_mpi=use_mpi)
 
     if comm.rank == 0:
         info('average accuracy: {}'.format(acc))

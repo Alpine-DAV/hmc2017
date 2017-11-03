@@ -109,7 +109,7 @@ def get_testing_data(X, y, comm):
 def running_in_mpi():
     return 'MPICH_INTERFACE_HOSTNAME' in os.environ
 
-# Train and test a model using k-fold cross validation (default is 10-fold). Return the false 
+# Train and test a model using k-fold cross validation (default is 10-fold). Return the false
 # positives, false negatives, training time and testing time over all k runs (testing on root).
 # If running in MPI, only root (rank 0) has a meaningful return value. `train` should be a
 # function which, given a feature vector and a class vector, returns a trained instance of the
@@ -119,20 +119,16 @@ def train_and_test_k_fold(X, y, train, k=10, verbose=False, comm=MPI.COMM_WORLD,
     fp_accum = fn_accum = 0
     test_accum = 0
     time_train = time_test = 0
-    
     runs = 0
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
         if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
-            info('training with {} samples'.format(train_X.shape[0]))
+            info('training with {} samples'.format(comm.rank, train_X.shape[0]))
+        clf = train(train_X, train_y, classes=classes, clf=model, online=use_online, mpi=use_mpi)
 
-        start_train = time.time()
-        clf = train(train_X, train_y, classes=classes, **kwargs)
-        end_train = time.time()
-
-        if comm.rank == root:
+        if comm.rank == 0:
             # Only root has the final model, so only root does the predicting
             start_test = time.time()
             prd = clf.predict(test_X)
@@ -152,7 +148,14 @@ def train_and_test_k_fold(X, y, train, k=10, verbose=False, comm=MPI.COMM_WORLD,
 
         comm.barrier()
 
-# Train and test a model using k-fold cross validation (default is 10-fold). Return the false 
+    if comm.rank == root:
+        return fp_accum, fn_accum, test_accum, time_train, time_test
+    else:
+        # This allows us to tuple destructure the result of this function without checking whether
+        # we are root
+        return None, None, None, None, None
+
+# Train and test a model using k-fold cross validation (default is 10-fold). Return the false
 # positives, false negatives, training time and testing time over all k runs (testing on root).
 # If running in MPI, only root (rank 0) has a meaningful return value. `train` should be a
 # function which, given a feature vector and a class vector, returns a trained instance of the
@@ -163,7 +166,7 @@ def train_and_test_k_fold_no_merge(X, y, train, verbose=False, k=10, comm=MPI.CO
     fp_accum = fn_accum = 0
     test_accum = 0
     time_train = time_test = 0
-    
+
     runs = 0
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
@@ -196,13 +199,6 @@ def train_and_test_k_fold_no_merge(X, y, train, verbose=False, k=10, comm=MPI.CO
                     print('final model: {}'.format(clf))
 
         comm.barrier()
-
-    if comm.rank == root:
-        return fp_accum, fn_accum, test_accum, time_train, time_test
-    else:
-        # This allows us to tuple destructure the result of this function without checking whether
-        # we are root
-        return None, None, None, None, None
 
     if comm.rank == root:
         return fp_accum, fn_accum, test_accum, time_train, time_test
