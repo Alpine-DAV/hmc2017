@@ -2,7 +2,7 @@
 
 import argparse
 from mpi4py import MPI
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
 
 from datasets import prepare_dataset
 from utils import *
