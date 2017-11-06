@@ -94,12 +94,13 @@ class GaussianNB(BaseNB):
 
                 n = n_1 + n_2
                 for i in range(len(self.classes_)):
-                    mu[i] = (mu_1[i]*n_1[i] + mu_2[i]*n_2[i]) / n[i]
+                    if n[i] != 0:
+                        mu[i] = (mu_1[i]*n_1[i] + mu_2[i]*n_2[i]) / n[i]
 
-                    var[i] = var_1[i]*n_1[i] + var_2[i]*n_2[i] + \
-                             n_1[i]*pow((mu_1[i]-mu[i]),2) + \
-                             n_2[i]*pow((mu_2[i]-mu[i]),2)
-                    var[i] /= n[i]
+                        var[i] = var_1[i]*n_1[i] + var_2[i]*n_2[i] + \
+                                 n_1[i]*pow((mu_1[i]-mu[i]),2) + \
+                                 n_2[i]*pow((mu_2[i]-mu[i]),2)
+                        var[i] /= n[i]
 
             if(comm.rank % (node_diff*2) == node_diff):
                 comm.send(n, dest=comm.rank-node_diff, tag=1)
