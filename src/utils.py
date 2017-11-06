@@ -7,6 +7,7 @@ import time
 from sklearn import datasets
 
 __all__ = [ "info"
+          , "root_info"
           , "accuracy"
           , "shuffle_data"
           , "get_k_fold_data"
@@ -17,13 +18,32 @@ __all__ = [ "info"
           , "train_and_test_k_fold"
           ]
 
-def info(fmt, *args, **kwargs):
-    if 'comm' in kwargs:
-        comm = kwargs['comm']
-        del kwargs['comm']
+def _extract_arg(arg, default, kwargs):
+    if arg in kwargs:
+        res = kwargs[arg]
+        del kwargs[arg]
+        return res
     else:
-        comm = MPI.COMM_WORLD
-    print(('rank {}: ' + fmt).format(comm.rank, *args, **kwargs))
+        return default
+
+def info(fmt, *args, **kwargs):
+    comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
+    if type(fmt) == str:
+        fmt = 'rank {}: ' + fmt
+    else:
+        args = [fmt]
+        fmt = '{}'
+    print(fmt.format(comm.rank, *args, **kwargs))
+
+def root_info(fmt, *args, **kwargs):
+    comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
+    root = _extract_arg('root', 0, kwargs)
+    if comm.rank != root:
+        return
+    if type(fmt) != str:
+        args = [fmt]
+        fmt = '{}'
+    print(fmt.format(*args, **kwargs))
 
 # Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
@@ -99,28 +119,29 @@ def prepare_dataset(dataset):
 # accuracy over all k runs. If running in MPI, only root (rank 0) has a meaningful return value.
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model.
-def train_and_test_k_fold(X, y, train, verbose=False, use_mpi=False, use_online=False, k=10, comm=MPI.COMM_WORLD):
+def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
+    kwargs.update(verbose=verbose, k=k, comm=comm)
     fp_accum = fn_accum = 0
     time_train = time_test = 0
+
     runs = 0
     classes = np.unique(y)
-    for train_X, test_X, train_y, test_y in get_k_fold_data(X, y):
-        if use_mpi:
+    for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
+        if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
             info('training with {} samples'.format(train_X.shape[0]))
 
         start_train = time.time()
-        clf = train(train_X, train_y, classes=classes, online=use_online, mpi=use_mpi)
+        clf = train(train_X, train_y, **kwargs)
         end_train = time.time()
-        
 
-        if comm.rank == 0:
+        if comm.rank == root:
             # Only root has the final model, so only root does the predicting
             start_test = time.time()
             prd = clf.predict(test_X)
             end_test = time.time()
-            
+
             time_train += end_train-start_train
             time_test += end_test - start_test
 
@@ -135,5 +156,5 @@ def train_and_test_k_fold(X, y, train, verbose=False, use_mpi=False, use_online=
 
         comm.barrier()
 
-    if comm.rank == 0:
+    if comm.rank == root:
         return fp_accum, fn_accum, time_train, time_test
