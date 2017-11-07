@@ -3,6 +3,7 @@ from __future__ import division
 from mpi4py import MPI
 import numpy as np
 import os
+import time
 from sklearn import datasets
 
 __all__ = [ "info"
@@ -27,6 +28,17 @@ def info(fmt, *args, **kwargs):
 # Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
     return np.sum(predicted == actual) / actual.shape[0]
+
+# Compute number of false positives and false negatives in a set of predictions
+def num_errors(actual, predicted):
+    decision_boundary = 4e-6
+    fp = fn = 0
+    for i in range(len(actual)):
+        if actual[i] == 0 and predicted[i] > decision_boundary:
+            fp += 1
+        elif actual[i] > 0 and predicted[i] <= decision_boundary:
+            fn += 1
+    return fp, fn
 
 # Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
 # constant before-hand, so the results will not vary between runs.
@@ -88,22 +100,35 @@ def prepare_dataset(dataset):
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model.
 def train_and_test_k_fold(X, y, train, verbose=False, use_mpi=False, use_online=False, k=10, comm=MPI.COMM_WORLD):
-    acc_accum = 0
+    fp_accum = fn_accum = 0
+    time_train = time_test = 0
     runs = 0
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y):
         if use_mpi:
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
-            info('training with {} samples'.format(comm.rank, train_X.shape[0]))
+            info('training with {} samples'.format(train_X.shape[0]))
 
+        start_train = time.time()
         clf = train(train_X, train_y, classes=classes, online=use_online, mpi=use_mpi)
+        end_train = time.time()
+        
+
         if comm.rank == 0:
             # Only root has the final model, so only root does the predicting
-            acc = clf.score(test_X, test_y)
+            start_test = time.time()
+            prd = clf.predict(test_X)
+            end_test = time.time()
+            
+            time_train += end_train-start_train
+            time_test += end_test - start_test
+
+            fp, fn = num_errors(test_y, prd)
+            fp_accum += fp
+            fn_accum += fn
 
             runs += 1
-            acc_accum += acc
             if verbose:
                 print('run {}: accuracy={}'.format(runs, acc))
                 print('final model: {}'.format(clf))
@@ -111,4 +136,4 @@ def train_and_test_k_fold(X, y, train, verbose=False, use_mpi=False, use_online=
         comm.barrier()
 
     if comm.rank == 0:
-        return acc_accum / runs
+        return fp_accum, fn_accum, time_train, time_test
