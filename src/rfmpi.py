@@ -14,13 +14,16 @@ def train(X, y, mpi=False, **kwargs):
     rf = RandomForestClassifier()
     rf.fit(X, y)
     if mpi:
-        all_estimators = comm.gather(rf.estimators_, root=0)
-        if comm.rank == 0:
-            super_forest = []
-            for forest in all_estimators:
-                super_forest.extend(forest)
-            rf.estimators_ = super_forest
+        reduce(rf)
     return rf
+
+def reduce(rf):
+    all_estimators = comm.gather(rf.estimators_, root=0)
+    if comm.rank == 0:
+        super_forest = []
+        for forest in all_estimators:
+            super_forest.extend(forest)
+        rf.estimators_ = super_forest
 
 # Parse command line arguments
 def parse_args():
