@@ -119,7 +119,7 @@ def prepare_dataset(dataset):
 # accuracy over all k runs. If running in MPI, only root (rank 0) has a meaningful return value.
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model.
-def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
+def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, root=0, **kwargs):
     kwargs.update(verbose=verbose, k=k, comm=comm)
     fp_accum = fn_accum = 0
     time_train = time_test = 0
@@ -133,7 +133,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             info('training with {} samples'.format(train_X.shape[0]))
 
         start_train = time.time()
-        clf = train(train_X, train_y, **kwargs)
+        clf = train(train_X, train_y, classes=classes, **kwargs)
         end_train = time.time()
 
         if comm.rank == root:

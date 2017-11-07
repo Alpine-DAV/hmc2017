@@ -235,7 +235,11 @@ class GaussianNB(BaseNB):
 # classifier is trained on the whole dataset in batch fashion. If mpi=True, then each task trains a
 # local model, and the local models are combined into a global model at the end. In this mode, the
 # result is only meaningful if comm.rank == 0.
-def train(X, y, classes=[], online=False, mpi=False):
+def train(X, y, classes=None, online=False, mpi=False, **kwargs):
+    if classes is None:
+        root_info("warning: no classes specified for nbmpi, inferring from training data")
+        classes = np.unique(y)
+
     clf = GaussianNB()
     if online:
         for i in range(X.shape[0]):

@@ -1,7 +1,7 @@
 #!usr/bin/env python
 
 import cPickle
-from FeatureDataReader import FeatureDataReader
+from DataReader.FeatureDataReader import FeatureDataReader
 import glob
 import numpy as np
 from numpy import isinf, mean, std
@@ -195,7 +195,7 @@ def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, dec
     global learning_data_cache
     key = ":".join([ data_dir, str(start_cycle), str(end_cycle), str(sample_freq), str(decay_window), str(run_for_good_zones), str(num_failures) ])
     if num_failures < 0 and key in learning_data_cache:
-      return learning_data_cache[key] 
+      return learning_data_cache[key]
 
     # read failure data
     failures = reader.getAllFailures()
@@ -394,7 +394,7 @@ def train_many_test_many(train, test, test_data_spec):
         #decision_boundary = min(cv_predict)
         decision_boundary = 4e-6
         RMSE = np.sqrt( sum(pow(test_Y - cv_predict, 2)) / test_Y.size )
-        #err = sum(cv_predict - test_Y) / test_Y.size 
+        #err = sum(cv_predict - test_Y) / test_Y.size
         #pos_indices = [i for i, x in enumerate(test_Y) if x > 0]
         #neg_indices = [i for i, x in enumerate(test_Y) if x == 0]
         #err_on_pos = sum(np.array([cv_predict[i] for i in pos_indices]) - np.array([test_Y[i] for i in pos_indices])) / len(pos_indices)
@@ -412,13 +412,13 @@ def train_many_test_many(train, test, test_data_spec):
         if enable_print_predictions:
             for i in range(len(test_Y)):
                 print test_Y[i], cv_predict[i]
-        
+
         # if "piston" in test_path:
         #     piston_offset = test_path.find("piston") + len("piston")
         #     piston_param = int(test_path[piston_offset:piston_offset+3])
         #     density_offset = test_path.find("density") + len("density")
         #     density_param = float(test_path[density_offset:density_offset+4])
-        
+
         print "PERFORMANCE\t%d\t%d\t%d\t%.2f\t%.15f\t%d\t%d\t%d\t%d" % (test_data_spec, test_run, piston_param, density_param, RMSE, fp, fn, len(test_Y), round(end-start))
         sys.stdout.flush()
     except:
@@ -453,7 +453,7 @@ def add_features(index):
       # vvv INSERT YOUR NEW FEATURES HERE vvv #
       #########################################
 
-      cycle_zone_values = [] 
+      cycle_zone_values = []
       #cycle_zone_values = [1,1,1] # just as a placeholder, we add three new features all with value=1
 
       #########################################
@@ -473,7 +473,7 @@ def main():
     if len(sys.argv) < 2:
         print "Usage: python %s <data_directory>" % sys.argv[0]
         sys.exit(1)
- 
+
     train_path = sys.argv[1]
     test_path = train_path
 

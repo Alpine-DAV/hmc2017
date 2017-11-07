@@ -1,7 +1,7 @@
 #!usr/bin/env python
 
 import cPickle
-from FeatureDataReader import FeatureDataReader
+from DataReader.FeatureDataReader import FeatureDataReader
 import glob
 import numpy as np
 from numpy import isinf, mean, std
@@ -196,7 +196,7 @@ def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, dec
     global learning_data_cache
     key = ":".join([ data_dir, str(start_cycle), str(end_cycle), str(sample_freq), str(decay_window), str(run_for_good_zones), str(num_failures) ])
     if num_failures < 0 and key in learning_data_cache:
-      return learning_data_cache[key] 
+      return learning_data_cache[key]
 
     # read failure data
     failures = reader.getAllFailures()
@@ -431,7 +431,7 @@ def add_features(index):
       # vvv INSERT YOUR NEW FEATURES HERE vvv #
       #########################################
 
-      cycle_zone_values = [] 
+      cycle_zone_values = []
       #cycle_zone_values = [1,1,1] # just as a placeholder, we add three new features all with value=1
 
       #########################################
@@ -451,7 +451,7 @@ def main():
     if len(sys.argv) < 2:
         print "Usage: python %s <data_directory>" % sys.argv[0]
         sys.exit(1)
- 
+
     train_path = sys.argv[1]
     test_path = train_path
 

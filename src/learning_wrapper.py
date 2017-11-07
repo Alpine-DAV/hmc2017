@@ -1,4 +1,4 @@
-#!usr/bin/env python
+#! /usr/bin/env python
 from __future__ import division
 
 import argparse
@@ -7,7 +7,7 @@ import sys
 
 from mpi4py import MPI
 import cPickle
-from FeatureDataReader import FeatureDataReader
+from DataReader.FeatureDataReader import FeatureDataReader
 import glob
 import numpy as np
 from numpy import isinf, mean, std
@@ -196,7 +196,7 @@ def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, dec
     global learning_data_cache
     key = ":".join([ data_dir, str(start_cycle), str(end_cycle), str(sample_freq), str(decay_window), str(run_for_good_zones), str(num_failures) ])
     if num_failures < 0 and key in learning_data_cache:
-      return learning_data_cache[key] 
+      return learning_data_cache[key]
 
     # read failure data
     failures = reader.getAllFailures()
@@ -324,7 +324,7 @@ def add_features(index):
       # vvv INSERT YOUR NEW FEATURES HERE vvv #
       #########################################
 
-      cycle_zone_values = [] 
+      cycle_zone_values = []
       #cycle_zone_values = [1,1,1] # just as a placeholder, we add three new features all with value=1
 
       #########################################
@@ -342,6 +342,13 @@ def add_features(index):
 #####################################################################
 
 #####################################################################
+
+NAIVE_BAYES         = 'nb'
+NAIVE_BAYES_MPI     = 'nbp'
+RANDOM_FOREST       = 'rf'
+RANDOM_FOREST_MPI   = 'rfp'
+
+VALID_MODELS = [NAIVE_BAYES, NAIVE_BAYES_MPI, RANDOM_FOREST, RANDOM_FOREST_MPI]
 
 def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
@@ -372,7 +379,7 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
 
 
     # giving up on not reading bubbleShock n times
-    bubbleShock = get_bubbleshock()
+    bubbleShock = get_bubbleshock(data_path)
     X = bubbleShock[:,0:-1]
     y = np.ravel(bubbleShock[:,[-1]])
 
@@ -382,22 +389,22 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
             discretized_y[element] = 1
 
 
-    if ML_type == "naive bayes":
+    if ML_type == NAIVE_BAYES:
         if comm.rank == 0:
             print "############ Training using Naive Bayes ############"
             y = discretized_y
             result = bayes.train_and_test_k_fold(X, y, k)
             print "PERFORMANCE\t%s" % (result,)
-            print 
             print
-    elif ML_type == "random forest":
+            print
+    elif ML_type == RANDOM_FOREST:
         if comm.rank == 0:
             print "############ Training using Random Forest ############"
             result = rand_forest.train_and_test_k_fold(X, y, k)
-            print "PERFORMANCE\t%s" % (result,) 
-            print 
+            print "PERFORMANCE\t%s" % (result,)
             print
-    elif ML_type == "nbmpi":
+            print
+    elif ML_type == NAIVE_BAYES_MPI:
         if comm.rank == 0:
             print "############ Training using Parallel Naive Bayes ############"
 
@@ -408,12 +415,12 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
         if use_online and comm.rank == 0:
             print('will train in online mode')
 
-        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, use_online=use_online, use_mpi=use_mpi)
-        
+        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
+
         if comm.rank == 0:
             print "PERFORMANCE\t%s" % (result,)
 
-    elif ML_type == "rfmpi":
+    elif ML_type == RANDOM_FOREST_MPI:
         if comm.rank == 0:
             print "############ Training using Parallel Random Forest ############"
 
@@ -422,7 +429,7 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
         if use_online and comm.rank == 0:
             print('will train in online mode')
 
-        result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, use_online=use_online, use_mpi=use_mpi)
+        result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
         if comm.rank == 0:
             print "PERFORMANCE\t%s" % (result,)
 
@@ -431,49 +438,40 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
         raise Exception('Machine learning algorithm not recognized')
 
 def data_split(data_path, k, test_data_spec):
-    all_data = get_bubbleshock()
+    all_data = get_bubbleshock(data_path)
     k_percent = int(len(all_data)*k)
     train = all_data[:k_percent,:]
     test = all_data[k_percent:,:]
     return train, test
 
-def get_bubbleshock():
+def get_bubbleshock(dir='bubbleShock'):
     dataset = None
     start = time.time()
-    dataset = get_learning_data('bubbleShock', start_cycle, end_cycle, sample_freq, decay_window)
+    dataset = get_learning_data(dir, start_cycle, end_cycle, sample_freq, decay_window)
     end = time.time()
     print "TIME load training data: ", end-start
     return dataset
-
 
 if __name__ == '__main__':
 
     # Read command line inputs
     parser = argparse.ArgumentParser(
-        description='Train and test a naive Bayes classifier using the bubbleShock dataset')
+        description='Train and test a classifier using the bubbleShock dataset')
+    parser.add_argument('data_dir', type=str)
+    parser.add_argument('models', type=str, nargs='+', help='models to test {}'.format(VALID_MODELS))
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
     parser.add_argument('--online', action='store_true', help='train in online mode')
-    parser.add_argument('-nb', action='store_true', help='train using naive bayes')
-    parser.add_argument('-rf', action='store_true', help='train using random forest')
-    parser.add_argument('-nbp', action='store_true', help='train using parallel naive bayes')
-    parser.add_argument('-rfp', action='store_true', help='train using parallel naive bayes')
     args = parser.parse_args()
+
+    for model in args.models:
+        if model not in VALID_MODELS:
+            root_info('error: invalid model {}; valid models are {}', model, VALID_MODELS)
+            sys.exit(1)
 
     verbose    = args.verbose
     use_online = args.online
-    model_nb   = args.nb
-    model_rf   = args.rf
-    model_nbp  = args.nbp
-    model_rfp  = args.rfp
-    use_mpi = 'MPICH_INTERFACE_HOSTNAME' in os.environ
+    use_mpi = running_in_mpi()
     k = 10
 
-    if model_nb:
-        wrapper('naive bayes', k, ['bubbleShock'], verbose=verbose)
-    if model_rf:
-        wrapper('random forest', k, ['bubbleShock'], verbose=verbose)
-    if model_nbp:
-        wrapper('nbmpi', k, ['bubbleShock'], verbose=verbose, use_mpi=use_mpi)
-    if model_rfp:
-        wrapper('rfmpi', k, ['bubbleShock'], verbose=verbose, use_mpi=use_mpi)
-        
+    for model in args.models:
+        wrapper(model, k, args.data_dir, verbose=verbose, use_mpi=use_mpi, use_online=use_online)
