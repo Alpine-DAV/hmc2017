@@ -2,9 +2,9 @@
 
 import argparse
 from mpi4py import MPI
-from sklearn import datasets
 from sklearn.ensemble import RandomForestClassifier
 
+from datasets import prepare_dataset
 from utils import *
 
 comm = MPI.COMM_WORLD

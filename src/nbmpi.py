@@ -15,6 +15,7 @@ from sklearn.utils import check_X_y, check_array, check_consistent_length
 from sklearn.utils.multiclass import _check_partial_fit_first_call
 from sklearn.utils.validation import check_is_fitted
 
+from datasets import prepare_dataset
 from utils import *
 
 comm = MPI.COMM_WORLD

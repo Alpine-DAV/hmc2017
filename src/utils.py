@@ -4,17 +4,14 @@ from mpi4py import MPI
 import numpy as np
 import os
 import time
-from sklearn import datasets
 
 __all__ = [ "info"
           , "root_info"
           , "accuracy"
-          , "shuffle_data"
           , "get_k_fold_data"
           , "get_mpi_task_data"
           , "get_testing_data"
           , "running_in_mpi"
-          , "prepare_dataset"
           , "train_and_test_k_fold"
           ]
 
@@ -60,15 +57,6 @@ def num_errors(actual, predicted):
             fn += 1
     return fp, fn
 
-# Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
-# constant before-hand, so the results will not vary between runs.
-def shuffle_data(X, y, seed=0):
-    np.random.seed(0)
-    seed = np.random.get_state()
-    np.random.shuffle(X)
-    np.random.set_state(seed)
-    np.random.shuffle(y)
-
 # A generator yielding a tuple of (training features, training labels, test features, test labels)
 # for each run in a k-fold cross validation experiment. By default, k=10.
 def get_k_fold_data(X, y, k=10):
@@ -106,14 +94,6 @@ def get_testing_data(X, y, comm):
 # Determine if we are running as an MPI process
 def running_in_mpi():
     return 'MPICH_INTERFACE_HOSTNAME' in os.environ
-
-# Load the requested example dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset(dataset):
-    iris = getattr(datasets, 'load_{}'.format(dataset))()
-    X = iris.data
-    y = iris.target
-    shuffle_data(X, y)
-    return X, y
 
 # Train and test a model using k-fold cross validation (default is 10-fold). Return the average
 # accuracy over all k runs. If running in MPI, only root (rank 0) has a meaningful return value.
