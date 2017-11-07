@@ -2,6 +2,7 @@
 
 import argparse
 from contextlib import contextmanager
+import itertools
 import matplotlib.pyplot as plt
 from mpi4py import MPI
 import numpy as np
@@ -85,6 +86,18 @@ def train(X, y, model=GaussianNB, mpi=False, **kwargs):
 
     return train_at_root(clf, X, y, **kwargs)
 
+def parse_sweep(expr, default_step=0.01):
+    parts = [float(part) for part in expr.split(':')]
+    if len(parts) == 1:
+        return [parts[0]]
+    elif len(parts) == 2:
+        return np.arange(parts[0], parts[1], default_step)
+    elif len(parts) == 3:
+        return np.arange(parts[0], parts[2], parts[1])
+    else:
+        root_info('error: unrecognized probability range {}', expr)
+        sys.exit(1)
+
 models = {
     'nb': GaussianNB,
     'rf': RandomForestClassifier
@@ -98,16 +111,16 @@ def parse_args():
         help='Python expression evaluated to determine whether a sample should be broadcast. If '
              'x_0 is a feature vector and y_0 a class label, the sample (x_0, y_0) is said to '
              'satisfy criterion if (lambda x, y: EXPRESSION)(x_0, y_0) == True')
-    parser.add_argument('--pcast-positive', metavar='P', type=float, default=1,
+    parser.add_argument('--pcast-positive', metavar='P', type=str, default='1',
         help='probability of a sample on a non-training node which satisfies criterion being sent '
              'to the training node')
-    parser.add_argument('--pcast-negative', metavar='P', type=float, default=0,
+    parser.add_argument('--pcast-negative', metavar='P', type=str, default='0',
         help='probability of a sample on a non-training node which does not satisfy criterion '
              'being sent to the training node')
-    parser.add_argument('--pkeep-positive', metavar='P', type=float, default=1,
+    parser.add_argument('--pkeep-positive', metavar='P', type=str, default='1',
         help='probability of a sample on the training node which satisfies criterion being used '
              'for training')
-    parser.add_argument('--pkeep-negative', metavar='P', type=float, default=1,
+    parser.add_argument('--pkeep-negative', metavar='P', type=str, default='1',
         help='probability of a sample on the training node which does not satisfy criterion being '
              'used for training')
     parser.add_argument('--seed', type=int, default=None,
@@ -128,6 +141,11 @@ if __name__ == '__main__':
         root_info('unknown model "{}": valid models are {}', args.model, models.keys())
         sys.exit(1)
 
+    pcast_positive = parse_sweep(args.pcast_positive)
+    pcast_negative = parse_sweep(args.pcast_negative)
+    pkeep_positive = parse_sweep(args.pkeep_positive)
+    pkeep_negative = parse_sweep(args.pkeep_negative)
+
     if use_mpi:
         root_info('will train using MPI')
     else:
@@ -138,17 +156,22 @@ if __name__ == '__main__':
     data, target = get_bubbleshock(args.data_dir)
     shuffle_data(data, target)
     target = discretize(target)
-    fp, fn, train_time, test_time = train_and_test_k_fold(
-        data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
-            pkeep_positive=args.pkeep_positive, pkeep_negative=args.pkeep_negative,
-            pcast_positive=args.pcast_positive, pcast_negative=args.pcast_negative,
-            criterion=args.criterion)
-
     num_pos, num_neg = num_classes(target)
 
-    root_info('positive examples:   {}', num_pos)
-    root_info('negative examples:   {}', num_neg)
-    root_info('false positives:     {}', fp)
-    root_info('false negatives:     {}', fn)
-    root_info('training time:       {}', train_time)
-    root_info('testing time:        {}', test_time)
+    nrows = 0
+    total_rows = len(pcast_positive) * len(pcast_negative) * len(pkeep_positive) * len(pkeep_negative)
+    if comm.rank == 0:
+        print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
+    for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
+        fp, fn, train_time, test_time = train_and_test_k_fold(
+            data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
+            pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
+            criterion=args.criterion)
+        if comm.rank == 0:
+            print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
+                .format(args.model, **locals()))
+        nrows += 1
+        if nrows % 10 == 0:
+            root_info('{}/{} trials complete', nrows, total_rows)
+
+        comm.barrier()

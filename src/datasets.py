@@ -27,7 +27,7 @@ def get_bubbleshock(dir='bubbleShock'):
     start = time.time()
     dataset = get_learning_data(dir, start_cycle, end_cycle, sample_freq, decay_window)
     end = time.time()
-    print "TIME load training data: ", end-start
+    root_info("TIME load training data: {}", end-start)
 
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])
@@ -93,7 +93,7 @@ def get_reader(data_dir):
     else:
         num_partitions = get_num_partitions(data_dir)
         reader = FeatureDataReader(data_dir)
-        print "Creating reader for data directory: %s" % (data_dir)
+        root_info("Creating reader for data directory: {}", data_dir)
         data_readers[data_dir] = reader
 
     return reader
@@ -154,7 +154,7 @@ def get_failures(data_dir):
     failed_cycles = []
     for file in filenames:
         if os.path.isfile(file):
-            print "Reading file: ", file
+            root_info("Reading file: {}", file)
 
             name,part = file.split("_p")
 

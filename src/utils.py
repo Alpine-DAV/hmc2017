@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 
 from mpi4py import MPI
 import numpy as np
 import os
+import sys
 import time
 
 __all__ = [ "info"
@@ -24,6 +26,9 @@ def _extract_arg(arg, default, kwargs):
     else:
         return default
 
+def _info(fmt, *args, **kwargs):
+    print(fmt.format(*args, **kwargs), file=sys.stderr)
+
 def info(fmt, *args, **kwargs):
     comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
     if type(fmt) == str:
@@ -31,7 +36,7 @@ def info(fmt, *args, **kwargs):
     else:
         args = [fmt]
         fmt = '{}'
-    print(fmt.format(comm.rank, *args, **kwargs))
+    _info(fmt, comm.rank, *args, **kwargs)
 
 def root_info(fmt, *args, **kwargs):
     comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
@@ -41,7 +46,7 @@ def root_info(fmt, *args, **kwargs):
     if type(fmt) != str:
         args = [fmt]
         fmt = '{}'
-    print(fmt.format(*args, **kwargs))
+    _info(fmt, *args, **kwargs)
 
 # Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
