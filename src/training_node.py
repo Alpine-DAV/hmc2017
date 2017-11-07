@@ -8,6 +8,7 @@ import numpy as np
 import random
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
+from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
 import sys
 
@@ -91,8 +92,7 @@ models = {
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a classifier using the designated training node strategy')
-    parser.add_argument('--dataset', metavar="NAME", type=str, default='iris',
-        help='scikit-learn example dataset with which to evaluate the model (default iris)')
+    parser.add_argument('data_dir', type=str, help='path to bubble shock data')
     parser.add_argument('--model', type=str, default='nb', help='model to test')
     parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y == 0',
         help='Python expression evaluated to determine whether a sample should be broadcast. If '
@@ -135,11 +135,20 @@ if __name__ == '__main__':
 
     random.seed(args.seed)
 
-    data, target = prepare_dataset(args.dataset)
-    acc = train_and_test_k_fold(
-        data, target, train, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
+    data, target = get_bubbleshock(args.data_dir)
+    shuffle_data(data, target)
+    target = discretize(target)
+    fp, fn, train_time, test_time = train_and_test_k_fold(
+        data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=args.pkeep_positive, pkeep_negative=args.pkeep_negative,
             pcast_positive=args.pcast_positive, pcast_negative=args.pcast_negative,
             criterion=args.criterion)
 
-    root_info('average accuracy: {}'.format(acc))
+    num_pos, num_neg = num_classes(target)
+
+    root_info('positive examples:   {}', num_pos)
+    root_info('negative examples:   {}', num_neg)
+    root_info('false positives:     {}', fp)
+    root_info('false negatives:     {}', fn)
+    root_info('training time:       {}', train_time)
+    root_info('testing time:        {}', test_time)

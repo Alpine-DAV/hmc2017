@@ -13,6 +13,7 @@ __all__ = [ "info"
           , "get_testing_data"
           , "running_in_mpi"
           , "train_and_test_k_fold"
+          , "num_classes"
           ]
 
 def _extract_arg(arg, default, kwargs):
@@ -56,6 +57,11 @@ def num_errors(actual, predicted):
         elif actual[i] > 0 and predicted[i] <= decision_boundary:
             fn += 1
     return fp, fn
+
+# Return a pair of the number of positive examples (class > 0) and the number of negative examples
+# (class == 0)
+def num_classes(y):
+    return np.sum(y != 0), np.sum(y == 0)
 
 # A generator yielding a tuple of (training features, training labels, test features, test labels)
 # for each run in a k-fold cross validation experiment. By default, k=10.
@@ -131,10 +137,14 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
 
             runs += 1
             if verbose:
-                print('run {}: accuracy={}'.format(runs, acc))
+                print('run {}: {} false positives, {} false negatives'.format(runs, fp, fn))
                 print('final model: {}'.format(clf))
 
         comm.barrier()
 
     if comm.rank == root:
         return fp_accum, fn_accum, time_train, time_test
+    else:
+        # This allows us to tuple destructure the result of this function without checking whether
+        # we are root
+        return None, None, None, None

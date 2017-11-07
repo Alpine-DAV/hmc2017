@@ -11,7 +11,7 @@ import testing_randomforest as rand_forest
 import nbmpi
 import rfmpi
 
-from datasets import get_bubbleshock
+from datasets import get_bubbleshock, discretize
 
 from utils import *
 
@@ -30,11 +30,7 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
     """
 
     X, y = get_bubbleshock(data_path)
-
-    discretized_y = np.zeros(len(y))
-    for element in range(len(y)):
-        if y[element] != 0:
-            discretized_y[element] = 1
+    discretized_y = discretize(y)
 
 
     if ML_type == NAIVE_BAYES:

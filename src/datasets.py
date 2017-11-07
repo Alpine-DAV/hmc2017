@@ -1,13 +1,16 @@
 import glob
 import numpy as np
 import sklearn.datasets as sk
+import sys
 import time
+from utils import root_info
 
 from DataReader.FeatureDataReader import FeatureDataReader
 
 __all__ = [ "get_bubbleshock"
           , "prepare_dataset"
           , "shuffle_data"
+          , "discretize"
           ]
 
 # Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
@@ -37,6 +40,16 @@ def prepare_dataset(dataset):
     y = dataset.target
     shuffle_data(X, y)
     return X, y
+
+def discretize(v):
+    if v.ndim != 1:
+        root_info("error: can only discretize 1d array (got {})", v.ndim)
+        sys.exit(1)
+    discretized = np.zeros(v.shape[0])
+    for element in range(v.shape[0]):
+        if v[element] != 0:
+            discretized[element] = 1
+    return discretized
 
 #===============================================================================
 # Private stuff
