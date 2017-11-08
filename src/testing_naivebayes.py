@@ -107,48 +107,6 @@ def train_and_test_k_fold(X, y, k):
     return fp, fn
 
 #
-# Train a single model on one train_data_path
-#
-def train(train_data):
-
-    train_X = train_data[:,0:-1]
-    train_Y = np.ravel(train_data[:,[-1]])
-    train_Y = np.array([int(x*100) for x in train_Y])
-
-    start = time.time()
-    naive_bayes = GaussianNB()
-    naive_bayes.fit(train_X, train_Y)
-    end = time.time()
-    print "TIME train:", end-start
-
-    return naive_bayes
-
-def test(test, naive_bayes):
-    start = time.time()
-    test_X = test[:,0:-1]
-    test_Y = np.ravel(test[:,[-1]])
-    cv_predict = naive_bayes.predict(test_X)
-    decision_boundary = 4e-6
-    RMSE = np.sqrt( sum(pow(test_Y - cv_predict, 2)) / test_Y.size )
-    
-    # calculate false positives and false negatives
-    fp = fn = 0
-    for i in range(len(test_Y)):
-        if test_Y[i] == 0 and cv_predict[i] > decision_boundary:
-            fp += 1
-        elif test_Y[i] > 0 and cv_predict[i] <= decision_boundary:
-            fn += 1
-
-    end = time.time()
-    print "TIME test:", end-start
-
-    if enable_print_predictions:
-        for i in range(len(test_Y)):
-            print test_Y[i], cv_predict[i]
-
-    print "PERFORMANCE (fp, fn) \t%d\t%d" % (fp, fn)
-
-#
 # Train a single model on all train_data_paths, evaluate separately on each of test_data_paths.
 #
 def train_many_test_many(train, test, test_data_spec):

@@ -2,9 +2,9 @@
 
 import argparse
 from mpi4py import MPI
-from sklearn import datasets
 from sklearn.ensemble import RandomForestClassifier
 
+from datasets import prepare_dataset
 from utils import *
 
 comm = MPI.COMM_WORLD
@@ -38,8 +38,7 @@ if __name__ == '__main__':
     acc_accum = 0
 
     data, target = prepare_dataset('iris')
-    acc = train_and_test_k_fold(
-        data, target, train, verbose=verbose, use_mpi=use_mpi)
+    acc = train_and_test_k_fold(data, target, train, verbose=verbose)
 
     if comm.rank == 0:
         info('average accuracy: {}'.format(acc))

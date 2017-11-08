@@ -1,29 +1,52 @@
 from __future__ import division
+from __future__ import print_function
 
 from mpi4py import MPI
 import numpy as np
 import os
+import sys
 import time
-from sklearn import datasets
 
 __all__ = [ "info"
+          , "root_info"
           , "accuracy"
-          , "shuffle_data"
           , "get_k_fold_data"
           , "get_mpi_task_data"
           , "get_testing_data"
           , "running_in_mpi"
-          , "prepare_dataset"
           , "train_and_test_k_fold"
+          , "num_classes"
           ]
 
-def info(fmt, *args, **kwargs):
-    if 'comm' in kwargs:
-        comm = kwargs['comm']
-        del kwargs['comm']
+def _extract_arg(arg, default, kwargs):
+    if arg in kwargs:
+        res = kwargs[arg]
+        del kwargs[arg]
+        return res
     else:
-        comm = MPI.COMM_WORLD
-    print(('rank {}: ' + fmt).format(comm.rank, *args, **kwargs))
+        return default
+
+def _info(fmt, *args, **kwargs):
+    print(fmt.format(*args, **kwargs), file=sys.stderr)
+
+def info(fmt, *args, **kwargs):
+    comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
+    if type(fmt) == str:
+        fmt = 'rank {}: ' + fmt
+    else:
+        args = [fmt]
+        fmt = '{}'
+    _info(fmt, comm.rank, *args, **kwargs)
+
+def root_info(fmt, *args, **kwargs):
+    comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
+    root = _extract_arg('root', 0, kwargs)
+    if comm.rank != root:
+        return
+    if type(fmt) != str:
+        args = [fmt]
+        fmt = '{}'
+    _info(fmt, *args, **kwargs)
 
 # Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
@@ -40,14 +63,10 @@ def num_errors(actual, predicted):
             fn += 1
     return fp, fn
 
-# Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
-# constant before-hand, so the results will not vary between runs.
-def shuffle_data(X, y, seed=0):
-    np.random.seed(0)
-    seed = np.random.get_state()
-    np.random.shuffle(X)
-    np.random.set_state(seed)
-    np.random.shuffle(y)
+# Return a pair of the number of positive examples (class > 0) and the number of negative examples
+# (class == 0)
+def num_classes(y):
+    return np.sum(y != 0), np.sum(y == 0)
 
 # A generator yielding a tuple of (training features, training labels, test features, test labels)
 # for each run in a k-fold cross validation experiment. By default, k=10.
@@ -87,40 +106,33 @@ def get_testing_data(X, y, comm):
 def running_in_mpi():
     return 'MPICH_INTERFACE_HOSTNAME' in os.environ
 
-# Load the requested example dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset(dataset):
-    iris = getattr(datasets, 'load_{}'.format(dataset))()
-    X = iris.data
-    y = iris.target
-    shuffle_data(X, y)
-    return X, y
-
 # Train and test a model using k-fold cross validation (default is 10-fold). Return the average
 # accuracy over all k runs. If running in MPI, only root (rank 0) has a meaningful return value.
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model.
-def train_and_test_k_fold(X, y, train, verbose=False, use_mpi=False, use_online=False, k=10, comm=MPI.COMM_WORLD):
+def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, root=0, **kwargs):
+    kwargs.update(verbose=verbose, k=k, comm=comm)
     fp_accum = fn_accum = 0
     time_train = time_test = 0
+
     runs = 0
     classes = np.unique(y)
-    for train_X, test_X, train_y, test_y in get_k_fold_data(X, y):
-        if use_mpi:
+    for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
+        if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
             info('training with {} samples'.format(train_X.shape[0]))
 
         start_train = time.time()
-        clf = train(train_X, train_y, classes=classes, online=use_online, mpi=use_mpi)
+        clf = train(train_X, train_y, classes=classes, **kwargs)
         end_train = time.time()
-        
 
-        if comm.rank == 0:
+        if comm.rank == root:
             # Only root has the final model, so only root does the predicting
             start_test = time.time()
             prd = clf.predict(test_X)
             end_test = time.time()
-            
+
             time_train += end_train-start_train
             time_test += end_test - start_test
 
@@ -130,10 +142,14 @@ def train_and_test_k_fold(X, y, train, verbose=False, use_mpi=False, use_online=
 
             runs += 1
             if verbose:
-                print('run {}: accuracy={}'.format(runs, acc))
+                print('run {}: {} false positives, {} false negatives'.format(runs, fp, fn))
                 print('final model: {}'.format(clf))
 
         comm.barrier()
 
-    if comm.rank == 0:
+    if comm.rank == root:
         return fp_accum, fn_accum, time_train, time_test
+    else:
+        # This allows us to tuple destructure the result of this function without checking whether
+        # we are root
+        return None, None, None, None
