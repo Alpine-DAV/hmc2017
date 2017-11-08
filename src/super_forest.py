@@ -2,7 +2,7 @@
 
 import argparse
 from mpi4py import MPI
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 
 from datasets import prepare_dataset
 from utils import *
@@ -10,13 +10,14 @@ from utils import *
 comm = MPI.COMM_WORLD
 
 #trains on segment of data, then places final model in 0th process
-def train(X, y, mpi=False, **kwargs):
-    rf = RandomForestClassifier()
+def train(X, y, **kwargs):
+    rf = RandomForestRegressor()
     rf.fit(X, y)
-    if mpi:
+    if running_in_mpi():
         reduce(rf)
     return rf
 
+# Compose all decision trees into one super forest of decision trees
 def reduce(rf):
     all_estimators = comm.gather(rf.estimators_, root=0)
     if comm.rank == 0:
