@@ -2,7 +2,6 @@
 
 import argparse
 from mpi4py import MPI
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 
 from datasets import prepare_dataset
@@ -10,22 +9,22 @@ from utils import *
 
 comm = MPI.COMM_WORLD
 
+#trains on segment of data, then places final model in 0th process
+def train(X, y, **kwargs):
+    rf = RandomForestRegressor()
+    rf.fit(X, y)
+    if running_in_mpi():
+        reduce(rf)
+    return rf
 
+# Compose all decision trees into one super forest of decision trees
 def reduce(rf):
     all_estimators = comm.gather(rf.estimators_, root=0)
     if comm.rank == 0:
         super_forest = []
         for forest in all_estimators:
             super_forest.extend(forest)
-        rf.estimators_ = super_forest    
-
-#trains on segment of data, then places final model in 0th process
-def train(X, y, mpi=False, **kwargs):
-    rf = RandomForestRegressor()
-    rf.fit(X, y)
-    if mpi:
-        reduce(rf)
-    return rf
+        rf.estimators_ = super_forest
 
 # Parse command line arguments
 def parse_args():
@@ -45,10 +44,6 @@ if __name__ == '__main__':
             info('training using MPI')
         else:
             info('training on one processor')
-
-
-    runs = 0
-    acc_accum = 0
 
     data, target = prepare_dataset('iris')
     acc = train_and_test_k_fold(data, target, train, verbose=verbose)
