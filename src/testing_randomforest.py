@@ -1,7 +1,7 @@
 #!usr/bin/env python
 
 import cPickle
-from FeatureDataReader import FeatureDataReader
+from DataReader.FeatureDataReader import FeatureDataReader
 import glob
 import numpy as np
 from numpy import isinf, mean, std
