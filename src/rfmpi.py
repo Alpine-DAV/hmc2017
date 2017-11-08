@@ -3,15 +3,28 @@
 import argparse
 from mpi4py import MPI
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 
 from datasets import prepare_dataset
 from utils import *
 
 comm = MPI.COMM_WORLD
 
-def train(X, y, **kwargs):
-    rf = RandomForestClassifier()
+
+def reduce(rf):
+    all_estimators = comm.gather(rf.estimators_, root=0)
+    if comm.rank == 0:
+        super_forest = []
+        for forest in all_estimators:
+            super_forest.extend(forest)
+        rf.estimators_ = super_forest    
+
+#trains on segment of data, then places final model in 0th process
+def train(X, y, mpi=False, **kwargs):
+    rf = RandomForestRegressor()
     rf.fit(X, y)
+    if mpi:
+        reduce(rf)
     return rf
 
 # Parse command line arguments
