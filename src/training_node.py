@@ -216,7 +216,7 @@ if __name__ == '__main__':
     if comm.rank == 0:
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
-        fp, fn, __total, train_time, test_time = train_and_test_k_fold(
+        fp, fn, total, train_time, test_time = train_and_test_k_fold(
             data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
             criterion=args.criterion) 
