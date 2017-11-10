@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from mpi4py import MPI
 import numpy as np
 import random
-from sklearn.naive_bayes import GaussianNB
+from nbmpi import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
@@ -98,12 +98,12 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
                   pkeep_negative)
 
     # Sample from the training data, selecting samples to broadcast
-    bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
-    bcast = comm.allgather(bcast)
+    bcast0 = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
+    bcast = [elem for l in comm.allgather(bcast0) for elem in l]
 
     # Get this node's samples
     sampled_X, sampled_y = get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative)
-    
+
     # Add in the new samples from other nodes
     new_X, new_y = unzip(bcast)
     sampled_X.extend(new_X)
@@ -120,8 +120,7 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
             for trees in all_estimators:
                 super_forest.extend(trees)
             clf.estimators_ = super_forest
-        clf = comm.scatter(clf, src=0)
-        return clf
+            return clf
 
 def train(X, y, model=GaussianNB, mpi=False, **kwargs):
     kwargs.update(model=model, mpi=mpi)
@@ -131,7 +130,7 @@ def train(X, y, model=GaussianNB, mpi=False, **kwargs):
     if not mpi:
         clf.fit(X, y)
         return clf
-    
+
     if "recipients" in kwargs and kwargs["recipients"] == "all":
         return train_on_all(clf, X, y, **kwargs)
 
@@ -157,10 +156,10 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a classifier using the designated training node strategy')
     parser.add_argument('data_dir', type=str, help='path to bubble shock data')
-    parser.add_argument('--model', type=str, default='nb', help='model to test')
-    parser.add_argument('--recipients', type=str, default='root', 
+    parser.add_argument('--model', type=str, default='rf', help='model to test (default rf)')
+    parser.add_argument('--recipients', type=str, default='root',
         help='specify whether to broadcast to the root node or all nodes')
-    parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y == 0',
+    parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y > 0.5',
         help='Python expression evaluated to determine whether a sample should be broadcast. If '
              'x_0 is a feature vector and y_0 a class label, the sample (x_0, y_0) is said to '
              'satisfy criterion if (lambda x, y: EXPRESSION)(x_0, y_0) == True')
@@ -219,7 +218,7 @@ if __name__ == '__main__':
         fp, fn, total, train_time, test_time = train_and_test_k_fold(
             data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
-            criterion=args.criterion) 
+            criterion=args.criterion, recipients=args.recipients)
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
                 .format(args.model, **locals()))
