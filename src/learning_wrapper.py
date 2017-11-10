@@ -37,15 +37,13 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
             print "############ Training using Naive Bayes ############"
             y = discretized_y
             result = nb.train_and_test_k_fold(X, y, k)
-            print "PERFORMANCE\t%s" % (result,)
             print
             print
     elif ML_type == RANDOM_FOREST:
         if comm.rank == 0:
             print "############ Training using Random Forest ############"
             forest = rf.train_and_test_k_fold(X, y, k)
-            output_feature_importance(forest, "bubbleShock")
-            print "PERFORMANCE\t%s" % (result,)
+            output_feature_importance(forest, data_path)
             print
             print
     elif ML_type == NAIVE_BAYES_MPI:
@@ -76,7 +74,6 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
         result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
         if comm.rank == 0:
             print "PERFORMANCE\t%s" % (result,)
-
 
     else:
         raise Exception('Machine learning algorithm not recognized')
