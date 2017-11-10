@@ -23,6 +23,33 @@ def unzip(xys):
 def probable(p):
     return random.uniform(0, 1) <= p
 
+def get_bcast_sample(X,y,criterion,p__positive,p__negative):
+    should_bcast = lambda x, y: probable(p__positive) \
+                        if eval(criterion) \
+                        else probable(p__negative)
+
+    bcast = []
+    for i in range(X.shape[0]):
+        samp = X[i:i+1]
+        label = y[i:i+1]
+        if should_bcast(samp, label):
+            bcast += [(samp, label)]
+    return bcast
+
+def get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative):
+    should_keep = lambda x, y: probable(pkeep_positive) \
+                    if eval(criterion) \
+                    else probable(pkeep_negative)
+
+    # Sample from the training data, keep samples which satisfy should_keep
+    sampled_X = []
+    sampled_y = []
+    for i in range(X.shape[0]):
+        if should_keep(X[i:i+1], y[i:i+1]):
+            sampled_X.append(X[i:i+1,:])
+            sampled_y.append(y[i:i+1])
+    return sampled_X, sampled_y
+
 def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
     if verbose:
@@ -39,17 +66,7 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
                   pkeep_negative)
 
     if (comm.rank == root):
-        should_keep = lambda x, y: probable(pkeep_positive) \
-                        if eval(criterion) \
-                        else probable(pkeep_negative)
-
-        # Sample from the training data, keep samples which satisfy should_keep
-        sampled_X = []
-        sampled_y = []
-        for i in range(X.shape[0]):
-            if should_keep(X[i:i+1], y[i:i+1]):
-                sampled_X.append(X[i:i+1,:])
-                sampled_y.append(y[i:i+1])
+        sampled_X, sampled_y = get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative)
 
         # Get the broadcast results from other processes
         for proc in range(comm.size):
@@ -62,17 +79,7 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
         clf.fit(np.vstack(sampled_X), np.concatenate(sampled_y))
         return clf
     else:
-        should_bcast = lambda x, y: probable(pcast_positive) \
-                            if eval(criterion) \
-                            else probable(pcast_negative)
-
-        # Sample from the training data, selecting samples to broadcast
-        bcast = []
-        for i in range(X.shape[0]):
-            samp = X[i:i+1]
-            label = y[i:i+1]
-            if should_bcast(samp, label):
-                bcast += [(samp, label)]
+        bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
         comm.send(bcast, dest=root)
 
 def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True',
@@ -90,38 +97,31 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
                   pkeep_positive,
                   pkeep_negative)
 
-    should_bcast = lambda x, y: probable(pcast_positive) \
-                        if eval(criterion) \
-                        else probable(pcast_negative)
-
     # Sample from the training data, selecting samples to broadcast
-    bcast = []
-    for i in range(X.shape[0]):
-        samp = X[i:i+1]
-        label = y[i:i+1]
-        if should_bcast(samp, label):
-            bcast += [(samp, label)]
+    bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
     bcast = comm.allgather(bcast)
 
-    should_keep = lambda x, y: probable(pkeep_positive) \
-                    if eval(criterion) \
-                    else probable(pkeep_negative)
-
-    # Sample from the training data, keep samples which satisfy should_keep
-    sampled_X = []
-    sampled_y = []
-    for i in range(X.shape[0]):
-        if should_keep(X[i:i+1], y[i:i+1]):
-            sampled_X.append(X[i:i+1,:])
-            sampled_y.append(y[i:i+1])
-
+    # Get this node's samples
+    sampled_X, sampled_y = get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative)
+    
     # Add in the new samples from other nodes
     new_X, new_y = unzip(bcast)
     sampled_X.extend(new_X)
     sampled_y.extend(new_y)
 
     clf.fit(np.vstack(sampled_X), np.concatenate(sampled_y))
-    return reduce_model(clf)
+    if isinstance(clf, GaussianNB):
+        return clf.reduce()
+    elif isinstance(clf, RandomForestClassifier):
+        all_estimators = comm.gather(clf.estimators_, root=0)
+
+        if comm.rank == 0:
+            super_forest = []
+            for trees in all_estimators:
+                super_forest.extend(trees)
+            clf.estimators_ = super_forest
+        clf = comm.scatter(clf, src=0)
+        return clf
 
 def train(X, y, model=GaussianNB, mpi=False, **kwargs):
     kwargs.update(model=model, mpi=mpi)
@@ -131,7 +131,8 @@ def train(X, y, model=GaussianNB, mpi=False, **kwargs):
     if not mpi:
         clf.fit(X, y)
         return clf
-    if args.recipient == 'all':
+    
+    if "recipients" in kwargs and kwargs["recipients"] == "all":
         return train_on_all(clf, X, y, **kwargs)
 
     return train_at_root(clf, X, y, **kwargs)
@@ -215,10 +216,10 @@ if __name__ == '__main__':
     if comm.rank == 0:
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
-        fp, fn, train_time, test_time = train_and_test_k_fold(
+        fp, fn, __total, train_time, test_time = train_and_test_k_fold(
             data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
-            criterion=args.criterion)
+            criterion=args.criterion) 
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
                 .format(args.model, **locals()))

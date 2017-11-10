@@ -6,7 +6,6 @@ import numpy as np
 import os
 import sys
 import time
-from rfmpi import reduce as rf_reduce
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 
@@ -114,7 +113,7 @@ def running_in_mpi():
 # If running in MPI, only root (rank 0) has a meaningful return value. `train` should be a
 # function which, given a feature vector and a class vector, returns a trained instance of the
 # desired model.
-def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, root=0, **kwargs):
+def train_and_test_k_fold(X, y, train, k=10, verbose=False, comm=MPI.COMM_WORLD, root=0, **kwargs):
     kwargs.update(verbose=verbose, k=k, comm=comm)
     fp_accum = fn_accum = 0
     test_accum = 0
@@ -158,10 +157,3 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         # This allows us to tuple destructure the result of this function without checking whether
         # we are root
         return None, None, None, None, None
-
-# This is dirty
-def reduce_model(clf):
-    if isinstance(clf, GaussianNB):
-        return clf.reduce()
-    elif isinstance(clf, RandomForestClassifier):
-        return rf_reduce(clf)
