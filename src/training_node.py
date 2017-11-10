@@ -82,7 +82,7 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
         bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
         comm.send(bcast, dest=root)
 
-def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True',
+def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion=')',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
     if verbose:
         root_info('training with parameters:\n'
@@ -136,7 +136,15 @@ def train(X, y, model=GaussianNB, mpi=False, **kwargs):
 
     return train_at_root(clf, X, y, **kwargs)
 
-def parse_sweep(expr, default_step=0.01):
+# Users can specify a range of parameter values to investigate using the CLI. This function parses
+# a parameter range expression and returns a list of values to try. Valid expression formats are:
+#
+# n         (just test a single value)
+# l:h       (test values from l to h at intervals of default_step)
+# l:s:h     (test values from l to h at intervals of s)
+#
+# The program will run one 10-fold cross validation trial for each combination of paramter values.
+def parse_range(expr, default_step=0.01):
     parts = [float(part) for part in expr.split(':')]
     if len(parts) == 1:
         return [parts[0]]
@@ -193,10 +201,10 @@ if __name__ == '__main__':
         root_info('unknown model "{}": valid models are {}', args.model, models.keys())
         sys.exit(1)
 
-    pcast_positive = parse_sweep(args.pcast_positive)
-    pcast_negative = parse_sweep(args.pcast_negative)
-    pkeep_positive = parse_sweep(args.pkeep_positive)
-    pkeep_negative = parse_sweep(args.pkeep_negative)
+    pcast_positive = parse_range(args.pcast_positive)
+    pcast_negative = parse_range(args.pcast_negative)
+    pkeep_positive = parse_range(args.pkeep_positive)
+    pkeep_negative = parse_range(args.pkeep_negative)
 
     if use_mpi:
         root_info('will train using MPI')
