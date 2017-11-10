@@ -6,6 +6,9 @@ import numpy as np
 import os
 import sys
 import time
+from rfmpi import reduce as rf_reduce
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
 
 __all__ = [ "info"
           , "root_info"
@@ -153,3 +156,10 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         # This allows us to tuple destructure the result of this function without checking whether
         # we are root
         return None, None, None, None
+
+# This is dirty
+def reduce_model(clf):
+    if isinstance(clf, GaussianNB):
+        return clf.reduce()
+    elif isinstance(clf, RandomForestClassifier):
+        return rf_reduce(clf)
