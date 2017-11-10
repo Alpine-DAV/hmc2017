@@ -89,21 +89,6 @@ def get_feature_names(data_dir):
 
   return feature_name_cache
 
-#
-# Print feature importance for a random forest model.
-#
-def output_feature_importance(rand_forest, data_dir):
-    importances = rand_forest.feature_importances_
-    indices = np.argsort(importances)[::-1]
-    feature_names = get_feature_names(data_dir)
-    for f in range(len(importances)):
-        feature_index = indices[f]
-        try:
-          feature_name = feature_names[feature_index]
-        except IndexError:
-          feature_name = 'UNKNOWN'
-        print "FEATURE\t%d\t%d\t%s\t%f" % ((f + 1), feature_index, feature_name, importances[feature_index])
-
 # A generator yielding a tuple of (training features, training labels, test features, test labels)
 # for each run in a k-fold cross validation experiment. By default, k=10.
 def get_k_fold_data(X, y, k=10):
@@ -141,9 +126,6 @@ def train_and_test_k_fold(X, y, k):
         end = time.time()
         time_train += end-start
 
-        # output feature importance
-        if enable_feature_importance:
-            output_feature_importance(rand_forest, "bubbleShock")
 
         start = time.time()
 
@@ -166,12 +148,12 @@ def train_and_test_k_fold(X, y, k):
             for i in range(len(test_y)):
                 print test_y[i], cv_predict[i]
 
-
     print "TIME train:", time_train
     print "TIME test:",  time_test
     print "PERFORMANCE (fp, fn) \t%d\t%d" % (fp, fn)
     # print "PERFORMANCE\t%d\t%d\t%d\t%.2f\t%.15f\t%d\t%d\t%d\t%d" % (test_data_spec, test_run, piston_param, density_param, RMSE, fp, fn, len(test_y), round(end-start))
     sys.stdout.flush()
+    return rand_forest
     
 
 #
