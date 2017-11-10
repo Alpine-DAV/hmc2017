@@ -114,8 +114,9 @@ def running_in_mpi():
 def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, root=0, **kwargs):
     kwargs.update(verbose=verbose, k=k, comm=comm)
     fp_accum = fn_accum = 0
+    test_accum = 0
     time_train = time_test = 0
-
+    
     runs = 0
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
@@ -140,7 +141,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             fp, fn = num_errors(test_y, prd)
             fp_accum += fp
             fn_accum += fn
-
+            test_accum += len(test_y)
             runs += 1
             if verbose:
                 print('run {}: {} false positives, {} false negatives'.format(runs, fp, fn))
@@ -149,7 +150,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         comm.barrier()
 
     if comm.rank == root:
-        return fp_accum, fn_accum, len(train_X), time_train, time_test
+        return fp_accum, fn_accum, test_accum, time_train, time_test
     else:
         # This allows us to tuple destructure the result of this function without checking whether
         # we are root
