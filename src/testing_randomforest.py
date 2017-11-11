@@ -126,6 +126,74 @@ def train_and_test_k_fold(X, y, k):
         end = time.time()
         time_train += end-start
 
+        start = time.time()
+
+        # Check results on cv set
+        cv_predict = rand_forest.predict(test_X)
+        decision_boundary = 4e-6
+        RMSE = np.sqrt( sum(pow(test_y - cv_predict, 2)) / test_y.size )
+       
+        # calculate false positives and false negatives
+        for i in range(len(test_y)):
+            if test_y[i] == 0 and cv_predict[i] > decision_boundary:
+                fp += 1
+            elif test_y[i] > 0 and cv_predict[i] <= decision_boundary:
+                fn += 1
+        end = time.time()
+
+        time_test += end-start
+
+        if enable_print_predictions:
+            for i in range(len(test_y)):
+                print test_y[i], cv_predict[i]
+
+    print "TIME train:", time_train
+    print "TIME test:",  time_test
+    print "PERFORMANCE (fp, fn) \t%d\t%d" % (fp, fn)
+    # print "PERFORMANCE\t%d\t%d\t%d\t%.2f\t%.15f\t%d\t%d\t%d\t%d" % (test_data_spec, test_run, piston_param, density_param, RMSE, fp, fn, len(test_y), round(end-start))
+    sys.stdout.flush()
+    return rand_forest
+
+#
+# Train a single model on all train_data_paths, evaluate separately on each of test_data_paths.
+#
+def train_and_test_k_fold_serial_merge(X, y, k):
+
+    time_train = 0
+    time_test = 0
+    fp = fn = 0
+
+    n_samples = X.shape[0]
+    n_test = n_samples // k
+
+    for i in range(k):
+
+        train_X = np.concatenate((X[:n_test*i], X[n_test*(i+1):]))
+        test_X = X[n_test*i:n_test*(i+1)]
+        train_y = np.concatenate((y[:n_test*i], y[n_test*(i+1):]))
+        test_y = y[n_test*i:n_test*(i+1)]
+
+        start = time.time()
+
+        # pretend we're running in parallel and merge
+        rand_forest = RandomForestRegressor(n_estimators=NumTrees, n_jobs=parallelism, random_state=rand_seed)
+        
+        samps_per_task = train_X.shape[0] // 8
+        trees = []
+        for k in range(1,9):
+            min_bound = samps_per_task*k
+            if k == 8:
+                max_bound = train_X.shape[0]
+            else:
+                max_bound = min_bound + samps_per_task
+
+            interval = (train_X[min_bound:max_bound], train_y[min_bound:max_bound])
+            rf = RandomForestRegressor(n_estimators=NumTrees, n_jobs=parallelism, random_state=rand_seed)
+            rf.fit(train_X[min_bound:max_bound], train_y[min_bound:max_bound])
+            rand_forest.estimators_ += rf.estimators_
+
+        end = time.time()
+        time_train += end-start
 
         start = time.time()
 
