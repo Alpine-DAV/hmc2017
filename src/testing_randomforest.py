@@ -9,9 +9,11 @@ import os
 import random
 import scipy
 from scipy.spatial.distance import euclidean
-from sklearn.ensemble.forest import RandomForestRegressor
+from sklearn.ensemble.forest import RandomForestClassifier, RandomForestRegressor
 import sys
 import time
+from sklearn.datasets import load_iris
+
 
 
 #===============================================================================
@@ -163,6 +165,11 @@ def train_and_test_k_fold_serial_merge(X, y, k):
     time_test = 0
     fp = fn = 0
 
+    # USE IRIS INSTEAD
+    dataset = load_iris()
+    X = dataset.data
+    y = dataset.target
+
     n_samples = X.shape[0]
     n_test = n_samples // k
 
@@ -177,12 +184,14 @@ def train_and_test_k_fold_serial_merge(X, y, k):
 
         # pretend we're running in parallel and merge
         rand_forest = RandomForestRegressor(n_estimators=NumTrees, n_jobs=parallelism, random_state=rand_seed)
-        
-        samps_per_task = train_X.shape[0] // 8
+
+        commsize = 2
         trees = []
-        for k in range(1,9):
+        for k in range(commsize):
+            samps_per_task = train_X.shape[0] // commsize
+
             min_bound = samps_per_task*k
-            if k == 8:
+            if k == commsize - 1:
                 max_bound = train_X.shape[0]
             else:
                 max_bound = min_bound + samps_per_task
