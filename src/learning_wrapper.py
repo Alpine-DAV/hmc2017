@@ -87,19 +87,6 @@ def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
     return (X[min_bound:max_bound],
             y[min_bound:max_bound])
 
-def serial_merge_rf(train_X, test_X, train_y, test_y):
-    samps_per_task = train_X.shape[0] // comm.size
-    trees = []
-    for k in range(1,9):
-        min_bound = samps_per_task*comm.rank
-        if k == 8:
-            max_bound = train_X.shape[0]
-        else:
-            max_bound = min_bound + samps_per_task
-
-        interval = (train_X[min_bound:max_bound], train_y[min_bound:max_bound])
-
-
 if __name__ == '__main__':
     np.random.seed(0)
 
@@ -120,7 +107,7 @@ if __name__ == '__main__':
     verbose    = args.verbose
     use_online = args.online
     use_mpi = running_in_mpi()
-    k = 2
+    k = 10
 
     for model in args.models:
         wrapper(model, k, args.data_dir, verbose=verbose, use_mpi=use_mpi, use_online=use_online)
