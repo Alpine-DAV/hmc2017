@@ -3,7 +3,6 @@
 import argparse
 from contextlib import contextmanager
 import itertools
-import matplotlib.pyplot as plt
 from mpi4py import MPI
 import numpy as np
 import random
