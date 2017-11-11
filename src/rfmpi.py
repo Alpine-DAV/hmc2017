@@ -51,7 +51,7 @@ if __name__ == '__main__':
     acc_accum = 0
 
     data, target = prepare_dataset('iris')
-    acc = train_and_test_k_fold(data, target, train, verbose=verbose)
+    result = train_and_test_k_fold(data, target, train, verbose=verbose)
 
     if comm.rank == 0:
-        info('average accuracy: {}'.format(acc))
+        info('average accuracy: {}'.format(result))
