@@ -130,21 +130,14 @@ def train_and_test_k_fold(X, y, train, k=10, verbose=False, comm=MPI.COMM_WORLD,
 
         if comm.rank == 0:
             # Only root has the final model, so only root does the predicting
-            start_test = time.time()
             prd = clf.predict(test_X)
-            end_test = time.time()
-
-            time_train += end_train-start_train
-            time_test += end_test - start_test
 
             fp, fn = num_errors(test_y, prd)
-            fp_accum += fp
-            fn_accum += fn
-            test_accum += len(test_y)
             runs += 1
+            acc_accum += accuracy(prd, test_y)
             if verbose:
-                print('run {}: {} false positives, {} false negatives'.format(runs, fp, fn))
-                print('final model: {}'.format(clf))
+                root_info('run {}: {} false positives, {} false negatives', runs, fp, fn)
+                root_info('final model: {}', clf)
 
         comm.barrier()
 
@@ -206,3 +199,6 @@ def train_and_test_k_fold_no_merge(X, y, train, verbose=False, k=10, comm=MPI.CO
         # This allows us to tuple destructure the result of this function without checking whether
         # we are root
         return None, None, None, None, None
+
+if not running_in_mpi():
+    root_info('WARNING: NOT USING MPI')

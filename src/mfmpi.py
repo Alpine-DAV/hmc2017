@@ -4,7 +4,8 @@ from mpi4py import MPI
 from skgarden.mondrian.ensemble import MondrianForestClassifier
 
 from utils import *
-from forest_utils import * 
+from forest_utils import *
+from datasets import prepare_dataset
 
 comm = MPI.COMM_WORLD
 
