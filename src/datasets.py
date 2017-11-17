@@ -51,6 +51,7 @@ def discretize(v):
             discretized[element] = 1
     return discretized
 
+
 #===============================================================================
 # Private stuff
 #===============================================================================
@@ -97,6 +98,24 @@ def get_reader(data_dir):
         data_readers[data_dir] = reader
 
     return reader
+
+#
+# Print feature importance for a random forest model.
+#
+def output_feature_importance(rand_forest, data_dir):
+    importances = rand_forest.feature_importances_
+    indices = np.argsort(importances)[::-1]
+
+    reader = get_reader(data_dir)
+    feature_names = reader.getFeatureNames()
+    for f in range(len(importances)):
+        feature_index = indices[f]
+        try:
+          feature_name = feature_names[feature_index]
+        except IndexError:
+          feature_name = 'UNKNOWN'
+        print "FEATURE\t%d\t%d\t%s\t%f" % ((f + 1), feature_index, feature_name, importances[feature_index])
+
 
 #
 # Looks at directory structure and returns the number of partition index files.

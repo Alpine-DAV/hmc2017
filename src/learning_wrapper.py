@@ -6,12 +6,12 @@ import sys
 
 from mpi4py import MPI
 
-import testing_naivebayes as bayes
-import testing_randomforest as rand_forest
+import testing_naivebayes as nb
+import testing_randomforest as rf
 import nbmpi
 import rfmpi
 
-from datasets import get_bubbleshock, discretize
+from datasets import get_bubbleshock, discretize, output_feature_importance
 
 from utils import *
 
@@ -32,20 +32,18 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
     X, y = get_bubbleshock(data_path)
     discretized_y = discretize(y)
 
-
     if ML_type == NAIVE_BAYES:
         if comm.rank == 0:
             print "############ Training using Naive Bayes ############"
             y = discretized_y
-            result = bayes.train_and_test_k_fold(X, y, k)
-            print "PERFORMANCE\t%s" % (result,)
+            result = nb.train_and_test_k_fold(X, y, k)
             print
             print
     elif ML_type == RANDOM_FOREST:
         if comm.rank == 0:
             print "############ Training using Random Forest ############"
-            result = rand_forest.train_and_test_k_fold(X, y, k)
-            print "PERFORMANCE\t%s" % (result,)
+            forest = rf.train_and_test_k_fold(X, y, k)
+            output_feature_importance(forest, data_path)
             print
             print
     elif ML_type == NAIVE_BAYES_MPI:
@@ -76,7 +74,6 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
         result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
         if comm.rank == 0:
             print "PERFORMANCE\t%s" % (result,)
-
 
     else:
         raise Exception('Machine learning algorithm not recognized')
