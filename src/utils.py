@@ -178,6 +178,7 @@ def train_and_test_k_fold_no_merge(X, y, train, verbose=False, k=10, comm=MPI.CO
 
         if comm.rank == root:
             # Only root has the final model, so only root does the predicting
+            print(clf)
             for forest in clf:
                 start_test = time.time()
                 prd = forest.predict(test_X)
