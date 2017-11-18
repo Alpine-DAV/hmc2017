@@ -50,7 +50,8 @@ def get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative):
     return sampled_X, sampled_y
 
 def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True',
-                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
+                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1,
+                  method='online', **kwargs):
     if verbose:
         root_info('training with parameters:\n'
                   '  criterion={}\n'
@@ -74,15 +75,15 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
             new_X, new_y = unzip(comm.recv(source=proc))
             sampled_X.extend(new_X)
             sampled_y.extend(new_y)
+        return train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), method=method)
 
-        clf.fit(np.vstack(sampled_X), np.concatenate(sampled_y))
-        return clf
     else:
         bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
         comm.send(bcast, dest=root)
 
 def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion=')',
-                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
+                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1,
+                  method='online', **kwargs):
     if verbose:
         root_info('training with parameters:\n'
                   '  criterion={}\n'
@@ -108,7 +109,7 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
     sampled_X.extend(new_X)
     sampled_y.extend(new_y)
 
-    clf.fit(np.vstack(sampled_X), np.concatenate(sampled_y))
+    train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), method=method)
     if isinstance(clf, GaussianNB):
         return clf.reduce()
     elif isinstance(clf, RandomForestClassifier):
@@ -166,6 +167,8 @@ def parse_args():
     parser.add_argument('--model', type=str, default='rf', help='model to test (default rf)')
     parser.add_argument('--recipients', type=str, default='root',
         help='specify whether to broadcast to the root node or all nodes')
+    parser.add_argument('--method', type=str, default='online',
+        help='specify whether to train in online mode, batch mode, or an otherwise specified mode. See train_with_method in utils')
     parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y > 0.5',
         help='Python expression evaluated to determine whether a sample should be broadcast. If '
              'x_0 is a feature vector and y_0 a class label, the sample (x_0, y_0) is said to '
@@ -185,7 +188,6 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=None,
         help='seed the ranom state (default is nondeterministic)')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
-
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -225,7 +227,7 @@ if __name__ == '__main__':
         fp, fn, total, train_time, test_time = train_and_test_k_fold(
             data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
-            criterion=args.criterion, recipients=args.recipients)
+            criterion=args.criterion, recipients=args.recipients, method=args.method)
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
                 .format(args.model, **locals()))
