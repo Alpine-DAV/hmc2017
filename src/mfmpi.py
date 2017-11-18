@@ -22,8 +22,7 @@ if __name__ == '__main__':
 
     data, target = get_bubbleshock(args.data_dir)
     shuffle_data(data, target)
-    acc = train_and_test_k_fold(
+    res = train_and_test_k_fold(
         data, target, forest_train, model=MondrianForestRegressor(), verbose=verbose, use_mpi=use_mpi)
 
-    if comm.rank == 0:
-        info('average accuracy: {}'.format(acc))
+    root_info('### PERFORMANCE ###\n{}', prettify_train_and_test_k_fold_results(res))

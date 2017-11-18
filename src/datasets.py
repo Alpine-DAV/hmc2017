@@ -26,7 +26,7 @@ def shuffle_data(X, y, seed=0):
     np.random.set_state(seed)
     np.random.shuffle(y)
 
-def get_bubbleshock(dir='bubbleShock'):
+def get_bubbleshock(dir='bubbleShock', discrete=False):
     dataset = None
     start = time.time()
     dataset = get_learning_data(dir, config.start_cycle, config.end_cycle, config.sample_freq, config.decay_window)
@@ -35,6 +35,10 @@ def get_bubbleshock(dir='bubbleShock'):
 
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])
+
+    if discrete:
+        y = discretize(y)
+
     return X, y
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class

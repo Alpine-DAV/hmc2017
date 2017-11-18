@@ -222,13 +222,14 @@ if __name__ == '__main__':
     if comm.rank == 0:
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
-        fp, fn, total, train_time, test_time = train_and_test_k_fold(
+        res = train_and_test_k_fold(
             data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
             criterion=args.criterion, recipients=args.recipients)
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
-                .format(args.model, **locals()))
+                .format(args.model, fp=res['fp'], fn=res['fn'], train_time=res['time_train'],
+                        test_time=res['time_test'], **locals()))
         nrows += 1
         if nrows % 10 == 0:
             root_info('{}/{} trials complete', nrows, total_rows)

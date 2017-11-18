@@ -59,9 +59,7 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
             print('will train in online mode')
 
         result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
-
-        if comm.rank == 0:
-            print "PERFORMANCE\t%s" % (result,)
+        root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     elif ML_type == RANDOM_FOREST_MPI:
         if comm.rank == 0:
@@ -73,8 +71,7 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
             print('will train in online mode')
 
         result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
-        if comm.rank == 0:
-            print "PERFORMANCE\t%s" % (result,)
+        root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     elif ML_type == RANDOM_FOREST_NO_MERGE:
         if comm.rank == 0:

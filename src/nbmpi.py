@@ -15,7 +15,7 @@ from sklearn.utils import check_X_y, check_array, check_consistent_length
 from sklearn.utils.multiclass import _check_partial_fit_first_call
 from sklearn.utils.validation import check_is_fitted
 
-from datasets import prepare_dataset
+from datasets import get_bubbleshock, shuffle_data
 from utils import *
 
 comm = MPI.COMM_WORLD
@@ -236,7 +236,8 @@ class GaussianNB(BaseNB):
 # classifier is trained on the whole dataset in batch fashion. If mpi=True, then each task trains a
 # local model, and the local models are combined into a global model at the end. In this mode, the
 # result is only meaningful if comm.rank == 0.
-def train(X, y, classes, clf, online=False, mpi=False):
+def train(X, y, classes=None, clf=GaussianNB(), online=False, mpi=False, **kwargs):
+    classes = classes or np.unique(y)
     if online:
         for i in range(X.shape[0]):
             clf.partial_fit(X[i:i+1], y[i:i+1], classes=classes)
@@ -252,6 +253,7 @@ def train(X, y, classes, clf, online=False, mpi=False):
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a naive Bayes classifier using the sklearn iris dataset')
+    parser.add_argument('--data-dir', type=str, help='path to data directory')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
     parser.add_argument('--online', action='store_true', help='train in online mode')
 
@@ -269,9 +271,9 @@ if __name__ == '__main__':
     if use_online and comm.rank == 0:
         info('will train using online mode')
 
-    data, target = prepare_dataset('iris')
-    acc = train_and_test_k_fold(
+    data, target = get_bubbleshock(args.data_dir, discrete=True)
+    shuffle_data(data, target)
+    res = train_and_test_k_fold(
         data, target, train, model=GaussianNB(), verbose=verbose, use_online=use_online, use_mpi=use_mpi)
 
-    if comm.rank == 0:
-        info('average accuracy: {}'.format(acc))
+    root_info('### PERFORMANCE ###\n{}', prettify_train_and_test_k_fold_results(res))
