@@ -1,15 +1,12 @@
 #! /usr/bin/env python
 
 import argparse
-from mpi4py import MPI
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
-
 from datasets import prepare_dataset
+
 from utils import *
-
-comm = MPI.COMM_WORLD
-
+import config
+from config import comm
 
 def reduce(rf):
     all_estimators = comm.gather(rf.estimators_, root=0)
@@ -21,7 +18,7 @@ def reduce(rf):
 
 #trains on segment of data, then places final model in 0th process
 def train(X, y, mpi=False, **kwargs):
-    rf = RandomForestRegressor()
+    rf = RandomForestRegressor(n_estimators=config.NumTrees, n_jobs=config.parallelism, random_state=config.rand_seed)
     rf.fit(X, y)
     if mpi:
         reduce(rf)
@@ -45,7 +42,6 @@ if __name__ == '__main__':
             info('training using MPI')
         else:
             info('training on one processor')
-
 
     runs = 0
     acc_accum = 0
