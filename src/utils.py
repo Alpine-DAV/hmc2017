@@ -179,6 +179,7 @@ def train_and_test_k_fold_no_merge(X, y, train, verbose=False, k=10, comm=MPI.CO
     
     runs = 0
     classes = np.unique(y)
+    
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
         if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
@@ -191,23 +192,21 @@ def train_and_test_k_fold_no_merge(X, y, train, verbose=False, k=10, comm=MPI.CO
 
         if comm.rank == root:
             # Only root has the final model, so only root does the predicting
-            print(clf)
-            for forest in clf:
-                start_test = time.time()
-                prd = forest.predict(test_X)
-                end_test = time.time()
+            start_test = time.time()
+            prd = clf[1].predict(test_X)
+            end_test = time.time()
 
-                time_train += end_train-start_train
-                time_test += end_test - start_test
+            time_train += end_train-start_train
+            time_test += end_test - start_test
 
-                fp, fn = num_errors(test_y, prd)
-                fp_accum += fp
-                fn_accum += fn
-                test_accum += len(test_y)
-                runs += 1
-                if verbose:
-                    print('run {}: {} false positives, {} false negatives'.format(runs, fp, fn))
-                    print('final model: {}'.format(clf))
+            fp, fn = num_errors(test_y, prd)
+            fp_accum += fp
+            fn_accum += fn
+            test_accum += len(test_y)
+            runs += 1
+            if verbose:
+                print('run {}: {} false positives, {} false negatives'.format(runs, fp, fn))
+                print('final model: {}'.format(clf))
 
         comm.barrier()
 
