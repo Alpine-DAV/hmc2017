@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 
 from mpi4py import MPI
-from skgarden.mondrian.ensemble import MondrianForestClassifier
+from skgarden.mondrian.ensemble import MondrianForestRegressor
 
 from utils import *
 from forest_utils import *
-from datasets import prepare_dataset
+from datasets import get_bubbleshock, shuffle_data
 
 comm = MPI.COMM_WORLD
 
@@ -20,9 +20,10 @@ if __name__ == '__main__':
         else:
             info('training on one processor')
 
-    data, target = prepare_dataset('iris')
+    data, target = get_bubbleshock(args.data_dir)
+    shuffle_data(data, target)
     acc = train_and_test_k_fold(
-        data, target, forest_train, model=MondrianForestClassifier(), verbose=verbose, use_mpi=use_mpi)
+        data, target, forest_train, model=MondrianForestRegressor(), verbose=verbose, use_mpi=use_mpi)
 
     if comm.rank == 0:
         info('average accuracy: {}'.format(acc))
