@@ -152,6 +152,19 @@ def train_and_test_k_fold(X, y, train, k=10, verbose=False, comm=MPI.COMM_WORLD,
 
         comm.barrier()
 
+    if comm.rank == root:
+        return fp_accum, fn_accum, test_accum, time_train, time_test
+    else:
+        # This allows us to tuple destructure the result of this function without checking whether
+        # we are root
+        return None, None, None, None, None
+
+    if comm.rank == root:
+        return fp_accum, fn_accum, test_accum, time_train, time_test
+    else:
+        # This allows us to tuple destructure the result of this function without checking whether
+        # we are root
+        return None, None, None, None, None
 # Train and test a model using k-fold cross validation (default is 10-fold). Return the false 
 # positives, false negatives, training time and testing time over all k runs (testing on root).
 # If running in MPI, only root (rank 0) has a meaningful return value. `train` should be a
