@@ -1,8 +1,8 @@
 from __future__ import division
 from __future__ import print_function
 
-from mpi4py import MPI
 import numpy as np
+from mpi4py import MPI
 import os
 import sys
 import time
