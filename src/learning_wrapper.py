@@ -21,8 +21,9 @@ NAIVE_BAYES         = 'nb'
 NAIVE_BAYES_MPI     = 'nbp'
 RANDOM_FOREST       = 'rf'
 RANDOM_FOREST_MPI   = 'rfp'
+RANDOM_FOREST_NO_MERGE = 'rfnm'
 
-VALID_MODELS = [NAIVE_BAYES, NAIVE_BAYES_MPI, RANDOM_FOREST, RANDOM_FOREST_MPI]
+VALID_MODELS = [NAIVE_BAYES, NAIVE_BAYES_MPI, RANDOM_FOREST, RANDOM_FOREST_MPI, RANDOM_FOREST_NO_MERGE]
 
 def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
@@ -75,6 +76,19 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
         if comm.rank == 0:
             print "PERFORMANCE\t%s" % (result,)
 
+    elif ML_type == RANDOM_FOREST_NO_MERGE:
+        if comm.rank == 0:
+            print "############ Training using Parallel Random Forest No Merging ############"
+        if not use_mpi:
+            print('You are trying to run Random Forest No Merge without MPI.')
+            print('This is pointless')
+            raise Exception('ML Algorithm only for use with MPI')
+        if use_online and comm.rank == 0:
+            print('will train in online mode')
+
+        result = train_and_test_k_fold_no_merge(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
+        if comm.rank == 0:
+            print "PERFORMANCE\t%s" % (result,)
     else:
         raise Exception('Machine learning algorithm not recognized')
 
