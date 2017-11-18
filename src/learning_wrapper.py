@@ -35,7 +35,6 @@ def wrapper(ML_type, data_path, verbose=False, use_online=False, use_mpi=False):
     elif ML_type == config.RANDOM_FOREST:
         if comm.rank == 0:
             print "Training using serial Random Forest with k =", config.kfold, "..."
-            # forest = rf.train_and_test_k_fold(X, y, k)
             forest = rf.train_and_test_k_fold(X, y, config.kfold)
             output_feature_importance(forest, data_path)
             print
