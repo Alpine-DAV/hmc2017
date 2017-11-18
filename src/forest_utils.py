@@ -12,6 +12,7 @@ __all__ = [ "parse_args"
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a decision tree classifier using the sklearn iris dataset')
+    parser.add_argument('--data-dir', type=str, help='path to data directory')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
 
     return parser.parse_args()
