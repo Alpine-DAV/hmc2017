@@ -68,7 +68,6 @@ def wrapper(ML_type, data_path, verbose=False, use_online=False, use_mpi=False):
             print "PERFORMANCE\t%s" % (result,)
 
 if __name__ == '__main__':
-    np.random.seed(config.rand_seed)
 
     # Read command line inputs
     parser = argparse.ArgumentParser(
