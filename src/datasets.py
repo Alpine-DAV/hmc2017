@@ -4,6 +4,7 @@ import sklearn.datasets as sk
 import sys
 import time
 from utils import root_info
+import config
 
 from DataReader.FeatureDataReader import FeatureDataReader
 
@@ -11,6 +12,9 @@ __all__ = [ "get_bubbleshock"
           , "prepare_dataset"
           , "shuffle_data"
           , "discretize"
+          , "get_reader"
+          , "output_feature_importance"
+          , "get_num_partitions"
           ]
 
 # Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
@@ -25,7 +29,7 @@ def shuffle_data(X, y, seed=0):
 def get_bubbleshock(dir='bubbleShock'):
     dataset = None
     start = time.time()
-    dataset = get_learning_data(dir, start_cycle, end_cycle, sample_freq, decay_window)
+    dataset = get_learning_data(dir, config.start_cycle, config.end_cycle, config.sample_freq, config.decay_window)
     end = time.time()
     root_info("TIME load training data: {}", end-start)
 
@@ -52,38 +56,7 @@ def discretize(v):
     return discretized
 
 
-#===============================================================================
-# Private stuff
-#===============================================================================
-
-
-TEST_ON_FAIL_ONLY = 1
-TEST_ON_FAIL_PLUS_CYCLE_ZERO = 2
-TEST_ON_FAIL_PLUS_CYCLE_MAX = 3
-TEST_ON_TRAIN_SPEC = 4
-
-enable_feature_importance = True
-enable_load_pickled_model = False
-enable_save_pickled_model = False
-enable_print_predictions = False
-start_cycle = 0   # start sampling "good" zones at this cycle
-#end_cycle = 0    # only sample "good" from cycle 0
-end_cycle = -1    # stop sampling "good" zones at this cycle (-1 means train all cycles from run 0 - decay_window)
-sample_freq = 1000 # how frequently to sample "good" zones
-#decay_window = 1000 # how many cycles back does decay function go for failed (zone,cycle)
-decay_window = 100 # how many cycles back does decay function go for failed (zone,cycle)
-load_learning_data = False  # if true, load pre-created learning data
-                            # other wise, load raw simulation data and
-                            # calculate learning data on-the-fly
-
-# random forest configuration
-NumTrees = 1000
-rand_seed = None
-#rand_seed = 58930865 # (gallagher23) use a fixed seed for reproducible results
-parallelism = -1 # note: -1 = number of cores on the system
-
 learning_data_cache = {}
-
 data_readers = {}
 def get_reader(data_dir):
 
@@ -116,7 +89,6 @@ def output_feature_importance(rand_forest, data_dir):
           feature_name = 'UNKNOWN'
         print "FEATURE\t%d\t%d\t%s\t%f" % ((f + 1), feature_index, feature_name, importances[feature_index])
 
-
 #
 # Looks at directory structure and returns the number of partition index files.
 #
@@ -124,6 +96,11 @@ def get_num_partitions(data_dir):
 
     files = glob.glob("%s/indexes/indexes_p*_r000.txt" % data_dir)
     return len(files)
+
+
+#===============================================================================
+# Private stuff
+#===============================================================================
 
 #
 # Returns a pair (index,data) where:
