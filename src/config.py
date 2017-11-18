@@ -1,6 +1,5 @@
 from mpi4py import MPI
-
-comm = MPI.COMM_WORLD
+import numpy as np
 
 #===============================================================================
 # GLOBAL CONSTANTS
@@ -43,3 +42,6 @@ parallelism = -1 # note: -1 = number of cores on the system
 # TESTING
 #===============================================================================
 kfold = 10
+
+comm = MPI.COMM_WORLD
+np.random.seed(rand_seed)
