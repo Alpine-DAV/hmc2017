@@ -17,7 +17,6 @@ __all__ = [ "get_bubbleshock"
 # Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
 # constant before-hand, so the results will not vary between runs.
 def shuffle_data(X, y, seed=0):
-    np.random.seed(0)
     seed = np.random.get_state()
     np.random.shuffle(X)
     np.random.set_state(seed)
