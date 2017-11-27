@@ -7,7 +7,8 @@ import os
 import sys
 import time
 from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
+from skgarden.mondrian.ensemble import MondrianForestRegressor
 
 __all__ = [ "info"
           , "root_info"
@@ -19,6 +20,7 @@ __all__ = [ "info"
           , "train_and_test_k_fold"
           , "prettify_train_and_test_k_fold_results"
           , "num_classes"
+          , "train_with_method"
           ]
 
 def _extract_arg(arg, default, kwargs):
@@ -212,3 +214,31 @@ performance
 
 if not running_in_mpi():
     root_info('WARNING: NOT USING MPI')
+        # This allows us to tuple destructure the result of this function without checking whether
+        # we are root
+        return None, None, None, None, None
+
+online_classifiers = (
+    GaussianNB,
+    MondrianForestRegressor
+)
+
+methods = [
+    'batch',
+    'online'
+]
+
+def train_with_method(clf, X, y, **kwargs):
+    if 'method' not in kwargs:
+        kwargs['method'] = 'batch'
+    if not isinstance(clf, online_classifiers) or kwargs['method'] == 'batch':
+        if not isinstance(clf, online_classifiers) and kwargs['method'] != 'batch':
+            print('Forcing batch training for non-online classifier method')
+        clf.fit(X,y)
+    elif kwargs['method'] == 'online':
+        for i in range(X.shape[0]):
+            clf.partial_fit(X[i:i+1], y[i:i+1])
+    else:
+        raise ValueError("Invalid argument supplied for --method flag. \
+                 Please use one of the following: %s", methods)
+    return clf
