@@ -7,7 +7,8 @@ from mpi4py import MPI
 import numpy as np
 import random
 from nbmpi import GaussianNB
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
+from skgarden import MondrianForestRegressor
 from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
 import sys
@@ -112,7 +113,7 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
     train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), method=method)
     if isinstance(clf, GaussianNB):
         return clf.reduce()
-    elif isinstance(clf, RandomForestClassifier):
+    elif isinstance(clf, RandomForestRegressor):
         all_estimators = comm.gather(clf.estimators_, root=0)
 
         if comm.rank == 0:
@@ -158,8 +159,10 @@ def parse_range(expr, default_step=0.01):
 
 models = {
     'nb': GaussianNB,
-    'rf': RandomForestClassifier
+    'rf': RandomForestRegressor,
+    'mf': MondrianForestRegressor
 }
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a classifier using the designated training node strategy')
