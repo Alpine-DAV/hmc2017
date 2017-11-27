@@ -8,7 +8,7 @@ import sys
 import time
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestRegressor
-from skgarden.mondrian.ensemble import MondrianForestClassifier
+from skgarden.mondrian.ensemble import MondrianForestRegressor
 
 __all__ = [ "info"
           , "root_info"

@@ -8,7 +8,7 @@ import numpy as np
 import random
 from nbmpi import GaussianNB
 from sklearn.ensemble import RandomForestRegressor
-from skgarden import MondrianForestRegressor
+from skgarden.mondrian.ensemble import MondrianForestRegressor
 from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
 import sys
