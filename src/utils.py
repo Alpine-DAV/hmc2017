@@ -162,7 +162,7 @@ def train_and_test_k_fold(X, y, train, k=10, verbose=False, comm=MPI.COMM_WORLD,
 
 online_classifiers = [
     GaussianNB,
-    MondrianForestClassifier
+    MondrianForestRegressor
 ]
 
 methods = [
