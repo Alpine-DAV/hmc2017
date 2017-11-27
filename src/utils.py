@@ -160,10 +160,10 @@ def train_and_test_k_fold(X, y, train, k=10, verbose=False, comm=MPI.COMM_WORLD,
         # we are root
         return None, None, None, None, None
 
-online_classifiers = [
+online_classifiers = (
     GaussianNB,
     MondrianForestRegressor
-]
+)
 
 methods = [
     'batch',
@@ -173,13 +173,13 @@ methods = [
 def train_with_method(clf, X, y, **kwargs):
     if 'method' not in kwargs:
         kwargs['method'] = 'batch'
-    if clf not in online_classifiers or kwargs['method'] == 'batch':
-        if clf not in online_classifiers and kwargs['method'] != 'batch':
+    if not isinstance(clf, online_classifiers) or kwargs['method'] == 'batch':
+        if not isinstance(clf, online_classifiers) and kwargs['method'] != 'batch':
             print('Forcing batch training for non-online classifier method')
         clf.fit(X,y)
     elif kwargs['method'] == 'online':
         for i in range(X.shape[0]):
-            clf.partial_fit(X[i], y[i])
+            clf.partial_fit(X[i:i+1], y[i:i+1])
     else:
         raise ValueError("Invalid argument supplied for --method flag. \
                  Please use one of the following: %s", methods)

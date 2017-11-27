@@ -76,6 +76,7 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
             new_X, new_y = unzip(comm.recv(source=proc))
             sampled_X.extend(new_X)
             sampled_y.extend(new_y)
+        print("train at root")
         return train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), method=method)
 
     else:
