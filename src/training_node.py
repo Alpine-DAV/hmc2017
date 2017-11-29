@@ -173,6 +173,8 @@ def parse_args():
         help='specify whether to broadcast to the root node or all nodes')
     parser.add_argument('--method', type=str, default='online',
         help='specify whether to train in online mode, batch mode, or an otherwise specified mode. See train_with_method in utils')
+    parser.add_argument('--online-pool', type=int, default=1, 
+        help='number of samples to collect in online training before a partial_fit is applied')
     parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y > 0.5',
         help='Python expression evaluated to determine whether a sample should be broadcast. If '
              'x_0 is a feature vector and y_0 a class label, the sample (x_0, y_0) is said to '
@@ -231,7 +233,7 @@ if __name__ == '__main__':
         res = train_and_test_k_fold(
             data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
-            criterion=args.criterion, recipients=args.recipients, method=args.method)
+            criterion=args.criterion, recipients=args.recipients, method=args.method, online_pool=args.online_pool)
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
                 .format(args.model, fp=res['fp'], fn=res['fn'], train_time=res['time_train'],
