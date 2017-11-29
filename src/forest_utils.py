@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import argparse
+from skgarden.mondrian.ensemble import MondrianForestRegressor
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 
@@ -18,12 +19,12 @@ def parse_args():
     return parser.parse_args()
 
 # Pass in MF or RF to be trained as clf
-def forest_train(X, y, clf, **kwargs):
-    clf.fit(X, y)
-    all_estimators = comm.gather(clf.estimators_, root=0)
+def forest_train(X, y, model=MondrianForestRegressor(), **kwargs):
+    model.fit(X, y)
+    all_estimators = comm.gather(model.estimators_, root=0)
     if comm.rank == 0:
         super_forest = []
         for trees in all_estimators:
             super_forest.extend(trees)
-        clf.estimators_ = super_forest
-    return clf
+        model.estimators_ = super_forest
+    return model

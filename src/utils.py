@@ -212,12 +212,6 @@ performance
            test_total = d['negative_test_samples'] + d['positive_test_samples'],
            **d)
 
-if not running_in_mpi():
-    root_info('WARNING: NOT USING MPI')
-        # This allows us to tuple destructure the result of this function without checking whether
-        # we are root
-        return None, None, None, None, None
-
 online_classifiers = (
     GaussianNB,
     MondrianForestRegressor
