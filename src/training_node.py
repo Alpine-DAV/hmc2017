@@ -51,8 +51,7 @@ def get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative):
     return sampled_X, sampled_y
 
 def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True',
-                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1,
-                  method='online', **kwargs):
+                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
     if verbose:
         root_info('training with parameters:\n'
                   '  criterion={}\n'
@@ -76,16 +75,14 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
             new_X, new_y = unzip(comm.recv(source=proc))
             sampled_X.extend(new_X)
             sampled_y.extend(new_y)
-        print("train at root")
-        return train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), method=method)
+        return train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), **kwargs)
 
     else:
         bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
         comm.send(bcast, dest=root)
 
 def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion=')',
-                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1,
-                  method='online', **kwargs):
+                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
     if verbose:
         root_info('training with parameters:\n'
                   '  criterion={}\n'
@@ -111,7 +108,7 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
     sampled_X.extend(new_X)
     sampled_y.extend(new_y)
 
-    train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), method=method)
+    train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), **kwargs)
     if isinstance(clf, GaussianNB):
         return clf.reduce()
     elif isinstance(clf, RandomForestRegressor):

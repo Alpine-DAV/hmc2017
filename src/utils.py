@@ -233,7 +233,6 @@ def train_with_method(clf, X, y, **kwargs):
         if 'online_pool' not in kwargs:
             kwargs['online_pool'] = 1
         online_pool = kwargs['online_pool']
-        print(online_pool)
         for i in xrange(0,X.shape[0],online_pool):
             clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
     else:
