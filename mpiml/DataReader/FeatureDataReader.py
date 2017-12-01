@@ -4,7 +4,7 @@ import sys, os, re
 
 class FeatureDataReader(object):
     """Reader for simulation data related to machine learning features
-    
+
     Attributes:
         dataDir: data directory
         numParts: # of partitions in mesh
@@ -18,7 +18,7 @@ class FeatureDataReader(object):
 
     def __init__(self, dataDir):
         """Class constructor
-        
+
         Args:
             dataDir: data directory
             numParts: # of partitions in mesh
@@ -34,23 +34,23 @@ class FeatureDataReader(object):
         self.zoneOffsets = {}
         self.indexCache = {}
         self.metaData = {}
-        
+
 
     def readZone(self, run, cycle, zone):
         """Read data from a single mesh zone from a simulation cycle of a run
-        
+
         Args:
             run: simulation run #
             cycle: simulation cycle # (time step)
             zone: mesh zone id
-        
+
         Returns:
             1D numpy array of size (# of features)
         """
         zid = self.getZoneOffset(zone)
         index = self.readFileIndex(run, zid['part'])
         meta = self.readMetaData(zid['part'])
-        
+
         fname = 'features_p%03d_r%03d.npy' % (zid['part'], run)
         numFeats = len(meta['features'])
         offset = zid['offset'] * numFeats * 4
@@ -62,12 +62,12 @@ class FeatureDataReader(object):
 
     def readPartition(self, run, part, cycle):
         """Read data from entire mesh partition from a simulation cycle of a run
-        
+
         Args:
             run: simulation run #
             part: mesh partition #
             cycle: simulation cycle # (time step)
-            
+
         Returns:
             2D numpy array of shape (# of zones in partition X # of features)
         """
@@ -77,7 +77,7 @@ class FeatureDataReader(object):
         fname = 'features_p%03d_r%03d.npy' % (part, run)
         numFeats = len(meta['features'])
         numZones = len(meta['zones'])
-        
+
         with open("%s/features/%s" % (self.dataDir,fname), 'rb') as fin:
             fin.seek(index[cycle])
             data = np.fromfile(fin, dtype=np.float32, count=numZones*numFeats)
@@ -86,18 +86,18 @@ class FeatureDataReader(object):
 
     def readAllCyclesForZone(self, run, zone):
         """Read data from all simulation cycles in a run of a single mesh zone
-        
+
         Args:
             run: simulation run #
             zone: mesh zone id
-            
+
         Returns:
             2D numpy array of shape (# of cycles X # of features)
         """
         zid = self.getZoneOffset(zone)
         index = self.readFileIndex(run, zid['part'])
         meta = self.readMetaData(zid['part'])
-        
+
         fname = 'features_p%03d_r%03d.npy' % (zid['part'], run)
         numFeats = len(meta['features'])
         offset = zid['offset'] * numFeats * 4
@@ -113,7 +113,7 @@ class FeatureDataReader(object):
 
     def readAllZonesInCycle(self, run, cycle):
         """Read data from all mesh zones from a simulation cycle of a run
-        
+
         Args:
             run: simulation run #
             cycle: simulation cycle # (time step)
@@ -128,12 +128,12 @@ class FeatureDataReader(object):
 
     def getPartitionZoneIds(self, part):
         """Get zone ids for a mesh partition
-        
+
         Must ensure zone ids are in same order as read in from meta data file
-        
+
         Args:
             part: mesh partition #
-            
+
         Returns:
             1D numpy array of size (# of zones in partition)
         """
@@ -144,7 +144,7 @@ class FeatureDataReader(object):
 
     def getCycleZoneIds(self):
         """Get zone ids for entire mesh
-        
+
         Returns:
             1D numpy array of size (# of zones in mesh)
         """
@@ -156,10 +156,10 @@ class FeatureDataReader(object):
 
     def getFeatureNames(self):
         """Get names (or labels) of feature features
-        
+
         Must ensure names are in same order as read in from meta data file
         All mesh partitions have the same set of features
-        
+
         Returns:
             list of size (# of features)
         """
@@ -169,13 +169,13 @@ class FeatureDataReader(object):
 
     def readFileIndex(self, run, part):
         """Read file index and cache content into dictionary for mesh partition
-        
+
         File index contains the seek position for the start of each cycle
         This speeds up the process for reading data from each cycle
-        For each mesh partition, a separate dictionary is constructed that can 
+        For each mesh partition, a separate dictionary is constructed that can
         be indexed by the partition file name
         Essentially, this is a dictionary of dictionaries
-        
+
         Args:
             run: simulation run #
             part: mesh partition #
@@ -195,29 +195,29 @@ class FeatureDataReader(object):
 
     def readMetaData(self, part):
         """Read meta data and cache content into dictinary for mesh partition
-        
+
         Meta data file contains feature feature names and mesh zone ids
-        For each mesh partition, a separate dictionary is constructed that can 
+        For each mesh partition, a separate dictionary is constructed that can
         be indexed by the partition file name
-        Each dictionary contains two elements: feature names and zone ids, both 
+        Each dictionary contains two elements: feature names and zone ids, both
         of which are dictionaries themselves:
             Features is a dictionary with keys as names and values as offsets
             Zones is a dictionary with keys as ids and values as offsets
-        The purpose of these two dictionaries is to enable users to find which 
-        row or column within the 2D numpy array corresponds to which zone or 
+        The purpose of these two dictionaries is to enable users to find which
+        row or column within the 2D numpy array corresponds to which zone or
         feature value, respectively
         Essentially, this is a dictionary of dictionaries of dictionaries
-        
+
         Args:
             part: mesh partition #
-            
+
         Returns:
             Dictionary of two dictionaries: feature names and zone ids
         """
         fname = 'metadata_p%03d.txt' % part
         if fname not in self.metaData:
             with open("%s/features/%s" % (self.dataDir,fname), 'r') as fin:
-                
+
                 fin.readline()  # skip features header
                 # strip away newline and extra comma
                 names = fin.readline().rstrip('\n,').split(',')
@@ -233,15 +233,15 @@ class FeatureDataReader(object):
 
     def getZoneOffset(self, zone):
         """Get mesh partition # and offset within partition for a single zone
-        
-        Construct a dictionary using zone ids as keys and partition plus offset 
+
+        Construct a dictionary using zone ids as keys and partition plus offset
         as values
-        This requires first reading (and caching) the meta data files for all 
+        This requires first reading (and caching) the meta data files for all
         mesh partitions
-        
+
         Args:
             zone: mesh zone id
-            
+
         Returns:
             Dictionary with keys as zone ids and values as partition and offset
         """
@@ -287,7 +287,7 @@ class FeatureDataReader(object):
                 for line in fin:
                     # strip away newline and extra comma
                     vals = line.rstrip('\n,').split(',')
-                    
+
                     if vals[0] == 'Run':
                         state = 1
                     elif vals[0] == 'volume':
@@ -297,7 +297,7 @@ class FeatureDataReader(object):
                             failures.append(map(int, vals))
                         else:
                             failures[-1].append(map(float, vals))
-                            
+
         return sorted(failures, key=lambda x: x[0])
 
     def readAllCyclesForFailedZone(self,run,fail_cycle,zone):
@@ -348,12 +348,12 @@ if __name__ == '__main__':
 
     data = reader.getPartitionZoneIds(part)
     print 'PartitionZoneIds:', data.shape
-    
+
     data = reader.getCycleZoneIds()
     print 'CycleZoneIds:', data.shape
 
     data = reader.getRunNumbers()
     print 'Runs: %d, %d, ..., %d' % (data[0], data[1], data[-1])
-    
+
     data = reader.getAllFailures()
-print 'Failure:', data[0]
+    print 'Failure:', data[0]
