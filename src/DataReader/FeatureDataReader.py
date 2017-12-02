@@ -117,7 +117,6 @@ class FeatureDataReader(object):
         Args:
             run: simulation run #
             cycle: simulation cycle # (time step)
-
         Returns:
             2D numpy array of shape (# of zones in mesh X # of features)
         """
@@ -180,7 +179,6 @@ class FeatureDataReader(object):
         Args:
             run: simulation run #
             part: mesh partition #
-
         Returns:
             Dictionary with keys as cycle # and values as seek position
         """
@@ -252,15 +250,13 @@ class FeatureDataReader(object):
                 meta = self.readMetaData(part)
                 for key in meta['zones'].keys():
                     self.zoneOffsets[key] = {'part': part,
-											 'offset': meta['zones'][key]}
+                                             'offset': meta['zones'][key]}
         return self.zoneOffsets[zone]
 
 
     def getRunNumbers(self):
         """Get the simulation run numbers from timing.txt file
-
-		Look for the pattern: Timing for run###
-
+        Look for the pattern: Timing for run###
         Returns:
             List of run numbers as ints
         """
@@ -269,18 +265,16 @@ class FeatureDataReader(object):
             for line in fin:
                 num = re.findall('Timing for run(\d+)', line)
                 if len(num) == 1:
-					nums.append(int(num[0]))
+                    nums.append(int(num[0]))
         return nums
 
 
     def getAllFailures(self):
         """Get the run #, cycle #, and zone id for each failure
-
         The failures/ directory contains text files for both types of failures:
         negative side or corner volume, divided into partitions
         e.g., side_p001 contains all the negative side volume failures from
         partition 1
-
         Returns:
             List of tuples (run,cycle,zone) for each failure, sorted by run #
         """
@@ -305,6 +299,26 @@ class FeatureDataReader(object):
                             failures[-1].append(map(float, vals))
                             
         return sorted(failures, key=lambda x: x[0])
+
+    def readAllCyclesForFailedZone(self,run,fail_cycle,zone):
+        """Read data from all simulation cycles in a run of a single failed mesh zone
+        Args:
+            run: simulation run #
+            fail_cycle: the cycle that the zone failed
+            zone: mesh zone id
+        Returns:
+            2D numpy array of shape (# of cycles X # of features)
+        """
+        numFeats = len(self.readMetaData(0)['features'])
+
+        with open('%s/timeSeries/failure_r%04d_z%06d.npy' %
+              (self.dataDir,run,zone), 'rb') as fin:
+            # assumes contiguous cycles starting at 0
+            # failure cycle is the last cycle of that time series
+            data = np.fromfile(fin, dtype=np.float32, count=(fail_cycle+1)*numFeats)
+            data = np.reshape(data, (fail_cycle+1,numFeats))
+
+            return data
 
 
 if __name__ == '__main__':
@@ -342,4 +356,4 @@ if __name__ == '__main__':
     print 'Runs: %d, %d, ..., %d' % (data[0], data[1], data[-1])
     
     data = reader.getAllFailures()
-    print 'Failure:', data[0]
+print 'Failure:', data[0]
