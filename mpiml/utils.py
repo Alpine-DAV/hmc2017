@@ -207,9 +207,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         return {}
 
 def output_model_info(MLtype, mpi, online):
-    output_str = ""
-
-    output_str += \
+    output_str = \
 """
 ---------------------------
 ML model:  {ml_type}
