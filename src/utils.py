@@ -9,6 +9,7 @@ import time
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestRegressor
 from skgarden.mondrian.ensemble import MondrianForestRegressor
+import config
 
 __all__ = [ "info"
           , "root_info"
@@ -18,6 +19,7 @@ __all__ = [ "info"
           , "get_testing_data"
           , "running_in_mpi"
           , "train_and_test_k_fold"
+          , "output_model_info"
           , "prettify_train_and_test_k_fold_results"
           , "num_classes"
           , "train_with_method"
@@ -133,6 +135,8 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
 
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
+        train_y_orig = train_y
+
         if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
@@ -158,7 +162,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             fp_accum += fp
             fn_accum += fn
 
-            train_pos, train_neg = num_classes(train_y)
+            train_pos, train_neg = num_classes(train_y_orig)
             train_pos_accum += train_pos
             train_neg_accum += train_neg
             test_pos, test_neg = num_classes(test_y)
@@ -187,6 +191,30 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         }
     else:
         return {}
+
+def output_model_info(MLtype, mpi, online):
+    output_str = ""
+    
+    output_str += \
+"""
+---------------------------
+ML model:  {ml_type}
+num cores: {num_cores}
+MPI:       {use_mpi}
+online:    {use_online}
+---------------------------
+""".format(ml_type=MLtype,
+           num_cores=config.comm.size,
+           use_mpi=mpi, use_online=online)
+
+    if 'rf' in MLtype:
+        output_str += \
+"""
+num trees: {num_trees}
+---------------------------
+""".format(num_trees=config.NumTrees)   
+
+    return output_str
 
 def prettify_train_and_test_k_fold_results(d):
     if d:
