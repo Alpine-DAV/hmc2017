@@ -245,8 +245,11 @@ def train_with_method(clf, X, y, **kwargs):
             print('Forcing batch training for non-online classifier method')
         clf.fit(X,y)
     elif kwargs['method'] == 'online':
-        for i in range(X.shape[0]):
-            clf.partial_fit(X[i:i+1], y[i:i+1])
+        if 'online_pool' not in kwargs:
+            kwargs['online_pool'] = 1
+        online_pool = kwargs['online_pool']
+        for i in xrange(0,X.shape[0],online_pool):
+            clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
     else:
         raise ValueError("Invalid argument supplied for --method flag. \
                  Please use one of the following: %s", methods)
