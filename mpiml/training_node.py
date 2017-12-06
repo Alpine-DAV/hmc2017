@@ -165,8 +165,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a classifier using the designated training node strategy')
     parser.add_argument('data_dir', type=str, help='path to bubble shock data')
-    parser.add_argument('--super-forest', action='store_true',
-        help='wrapper to perform simple super forest model (only passes completely trained trees, no data). Requires a model to be specified.')
     parser.add_argument('--model', type=str, default='rf', help='model to test (default rf)')
     parser.add_argument('--recipients', type=str, default='root',
         help='specify whether to broadcast to the root node or all nodes')
@@ -193,6 +191,10 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=None,
         help='seed the ranom state (default is nondeterministic)')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
+    
+    # Special wrapper flags that specify & overwrite some of the above values
+    parser.add_argument('--super-forest', action='store_true',
+        help='wrapper to perform simple super forest model (only passes completely trained trees, no data). Requires a model to be specified.')
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -236,7 +238,7 @@ if __name__ == '__main__':
         sf_fmt   = ''
         online_fmt = ''
         if 'super_forest' in args:
-            sf_fmt = ', SUPER FOREST'
+            sf_fmt = ', super forest'
         if args.method == 'online':
             online_fmt = ', pooling: ' + str(args.online_pool)
         print('Training with model: {}, method: {}{}{}'.format(args.model, args.method, online_fmt, sf_fmt))
