@@ -12,8 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from skgarden.mondrian.ensemble import MondrianForestRegressor
 import config
 
-__all__ = [ "set_verbose"
-          , "info"
+__all__ = [ "info"
           , "debug"
           , "root_info"
           , "root_debug"
@@ -27,11 +26,12 @@ __all__ = [ "set_verbose"
           , "num_classes"
           , "train_with_method"
           , "toggle_profiling"
+          , "toggle_verbose"
           ]
 
 _verbose = False
 
-def set_verbose(v=True):
+def toggle_verbose(v=True):
     global _verbose
     _verbose = v
 

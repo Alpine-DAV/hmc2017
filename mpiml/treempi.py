@@ -36,8 +36,9 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    verbose = args.verbose
     use_mpi = running_in_mpi()
+
+    toggle_verbose(args.verbose)
 
     runs = 0
     acc_accum = 0
@@ -53,15 +54,13 @@ if __name__ == '__main__':
                 tree = recv_tree(src=1)
                 acc = tree.score(test_X, test_y)
                 acc_accum += acc
-                if verbose:
-                    info('run {}: accuracy={}', runs, acc)
+                debug('run {}: accuracy={}', runs, acc)
 
             comm.barrier()
         else:
             acc = tree.score(test_X, test_y)
             acc_accum += acc
-            if verbose:
-                info('run {}: accuracy={}', runs, acc)
+            debug('run {}: accuracy={}', runs, acc)
 
         runs += 1
 

@@ -29,16 +29,11 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    verbose = args.verbose
     use_mpi = running_in_mpi()
 
-    if verbose and comm.rank == 0:
-        if use_mpi:
-            info('training using MPI')
-        else:
-            info('training on one processor')
+    toggle_verbose(args.verbose)
 
     data, target = prepare_dataset('iris')
-    acc = train_and_test_k_fold_no_merge(data, target, train, verbose=verbose)
+    acc = train_and_test_k_fold_no_merge(data, target, train)
     if comm.rank == 0:
         info('average accuracy: {}'.format(acc))

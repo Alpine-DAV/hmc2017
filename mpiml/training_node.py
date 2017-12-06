@@ -37,20 +37,19 @@ def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):
             sampled_y.extend(y[i:i+1])
     return np.array(sampled_X), np.array(sampled_y)
 
-def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True', method='batch',
+def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', method='batch',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
-    if verbose:
-        root_info('training with parameters:\n'
-                  '  criterion={}\n'
-                  '  pcast_positive={}\n'
-                  '  pcast_negative={}\n'
-                  '  pkeep_positive={}\n'
-                  '  pkeep_negative={}\n',
-                  criterion,
-                  pcast_positive,
-                  pcast_negative,
-                  pkeep_positive,
-                  pkeep_negative)
+    root_debug('training with parameters:\n'
+              '  criterion={}\n'
+              '  pcast_positive={}\n'
+              '  pcast_negative={}\n'
+              '  pkeep_positive={}\n'
+              '  pkeep_negative={}\n',
+              criterion,
+              pcast_positive,
+              pcast_negative,
+              pkeep_positive,
+              pkeep_negative)
 
     if comm.rank == root:
         p_pos, p_neg = pkeep_positive, pkeep_negative
@@ -63,20 +62,19 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
     if comm.rank == root:
         return train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
 
-def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion=')', method='batch',
+def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion=')', method='batch',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
-    if verbose:
-        root_info('training with parameters:\n'
-                  '  criterion={}\n'
-                  '  pcast_positive={}\n'
-                  '  pcast_negative={}\n'
-                  '  pkeep_positive={}\n'
-                  '  pkeep_negative={}\n',
-                  criterion,
-                  pcast_positive,
-                  pcast_negative,
-                  pkeep_positive,
-                  pkeep_negative)
+    root_debug('training with parameters:\n'
+              '  criterion={}\n'
+              '  pcast_positive={}\n'
+              '  pcast_negative={}\n'
+              '  pkeep_positive={}\n'
+              '  pkeep_negative={}\n',
+              criterion,
+              pcast_positive,
+              pcast_negative,
+              pkeep_positive,
+              pkeep_negative)
 
     cast_X, cast_y = get_sample(X, y, criterion, pcast_positive, pcast_negative)
     keep_X, keep_y = get_sample(X, y, criterion, pkeep_positive, pkeep_negative)
@@ -159,7 +157,7 @@ def parse_args():
     parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
     parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
-    
+
     # Special wrapper flags that specify & overwrite some of the above values
     parser.add_argument('--super-forest', action='store_true',
         help='wrapper to perform simple super forest model (only passes completely trained trees, no data). Requires a model to be specified.')
@@ -168,15 +166,18 @@ def parse_args():
 if __name__ == '__main__':
 
     args = parse_args()
-    verbose = args.verbose
     use_mpi = running_in_mpi()
+
+    toggle_verbose(args.verbose)
+    toggle_profiling(args.profile)
+
     if args.model in models:
         model = models[args.model]
-        if verbose: root_info('using model {}', model)
+        root_debug('using model {}', model)
     else:
         root_info('unknown model "{}": valid models are {}', args.model, models.keys())
         sys.exit(1)
-    
+
     pcast_positive = parse_range(args.pcast_positive)
     pcast_negative = parse_range(args.pcast_negative)
     pkeep_positive = parse_range(args.pkeep_positive)
@@ -187,13 +188,6 @@ if __name__ == '__main__':
         pcast_positive = pcast_negative = [0.]
         pkeep_positive = pkeep_negative = [1.]
         args.recipients = 'all'
-
-    if use_mpi:
-        root_info('will train using MPI')
-    else:
-        root_info('will train serially')
-
-    toggle_profiling(args.profile)
 
     random.seed(args.seed)
 
@@ -215,7 +209,7 @@ if __name__ == '__main__':
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
         res = train_and_test_k_fold(
-            data, target, train, k=args.num_runs, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
+            data, target, train, k=args.num_runs, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
             criterion=args.criterion, recipients=args.recipients, method=args.method, online_pool=args.online_pool)
         if comm.rank == 0:

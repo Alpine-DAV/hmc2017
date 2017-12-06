@@ -75,7 +75,7 @@ class GaussianNB(BaseNB):
     # When running in MPI, coordinate with other tasks to combine each task's local model into a
     # global model. The global model is returned. Each process's local model is unchanged. Note: the
     # return value is only meaningful for root (rank == 0)
-    def reduce(self, verbose=False):
+    def reduce(self):
         # Variables which will collect the global results
         n = np.copy(self.class_count_)
         mu = np.copy(self.theta_)
@@ -262,18 +262,14 @@ def parse_args():
 if __name__ == '__main__':
 
     args = parse_args()
-    verbose = args.verbose
     use_online = args.online
     use_mpi = running_in_mpi()
 
-    if use_mpi and comm.rank == 0:
-        info('will train using MPI')
-    if use_online and comm.rank == 0:
-        info('will train using online mode')
+    toggle_verbose(args.verbose)
 
     data, target = get_bubbleshock(args.data_dir, discrete=True)
     shuffle_data(data, target)
     res = train_and_test_k_fold(
-        data, target, train, model=GaussianNB(), verbose=verbose, use_online=use_online, use_mpi=use_mpi)
+        data, target, train, model=GaussianNB(), use_online=use_online, use_mpi=use_mpi)
 
     root_info('### PERFORMANCE ###\n{}', prettify_train_and_test_k_fold_results(res))
