@@ -151,6 +151,9 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             test_pos_accum += test_pos
             test_neg_accum += test_neg
 
+            #RMSE
+            RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
+
             runs += 1
             if verbose:
                 root_info('run {}: {} false positives, {} false negatives', runs, fp, fn)
@@ -162,6 +165,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         return {
             'fp': fp_accum / runs,
             'fn': fn_accum / runs,
+            'RMSE': RMSE,
             'accuracy': 1 - ((fp_accum + fn_accum) / (train_neg_accum + train_pos_accum)),
             'time_train': time_train / runs,
             'time_test': time_test / runs,
@@ -216,6 +220,7 @@ performance
     false positives:            {fp}
     false negatives:            {fn}
     accuracy:                   {accuracy}
+    RMSE:                       {RMSE}
 
 (statistics averaged over {runs} runs)
 """.format(train_total = d['negative_train_samples'] + d['positive_train_samples'],
