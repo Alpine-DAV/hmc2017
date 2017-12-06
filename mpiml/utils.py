@@ -102,7 +102,7 @@ def running_in_mpi():
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model. In addition, kwargs passed to train_and_test_k_fold will be
 # forwarded train.
-def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
+def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
     kwargs.update(verbose=verbose, k=k, comm=comm)
 
     runs = 0
@@ -114,12 +114,13 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
     test_neg_accum = 0
     time_train = 0
     time_test = 0
+    clf = None
 
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
         train_y_orig = train_y
 
-        if running_in_mpi():
+        if use_mpi:
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
             info('training with {} samples'.format(comm.rank, train_X.shape[0]))
@@ -134,7 +135,6 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
 
         if comm.rank == 0:
             # Only root has the final model, so only root does the predicting
-
             start_test = time.time()
             prd = clf.predict(test_X)
             end_test = time.time()
@@ -151,7 +151,6 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             test_pos_accum += test_pos
             test_neg_accum += test_neg
 
-            #RMSE
             RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
 
             runs += 1
@@ -173,7 +172,8 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             'negative_train_samples': train_neg_accum / runs,
             'positive_train_samples': train_pos_accum / runs,
             'negative_test_samples': test_neg_accum / runs,
-            'positive_test_samples': test_pos_accum / runs
+            'positive_test_samples': test_pos_accum / runs,
+            'clf': clf
         }
     else:
         return {}
