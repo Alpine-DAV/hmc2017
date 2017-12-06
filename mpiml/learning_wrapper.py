@@ -6,8 +6,6 @@ import sys
 
 from mpi4py import MPI
 
-import testing_naivebayes as nb
-import testing_randomforest as rf
 import nbmpi
 import rfmpi
 
@@ -23,29 +21,30 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
 
     X, y = get_bubbleshock(data_path)
     shuffle_data(X, y)
-    discretized_y = discretize(y)
 
     root_info('{}',output_model_info(ML_type, mpi=use_mpi, online=use_online))
 
-    if ML_type == NAIVE_BAYES:
-        if comm.rank == 0:
-            y = discretized_y
-            result = nb.train_and_test_k_fold(X, y, k)
+    # if ML_type == NAIVE_BAYES:
+    #     if comm.rank == 0:
+    #         y = discretized_y
+    #         result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, online=use_online, use_mpi=False)
+    #         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-    elif ML_type == RANDOM_FOREST:
-        if comm.rank == 0:
-            forest = rf.train_and_test_k_fold(X, y, k)
-            output_feature_importance(forest, data_path)
+    # elif ML_type == RANDOM_FOREST:
+    #     if comm.rank == 0:
+    #         result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, use_mpi=False)
+    #         output_feature_importance(result['clf'], data_path)
+    #         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-    elif ML_type == NAIVE_BAYES_MPI:
-        y = discretized_y
+    if ML_type == NAIVE_BAYES or ML_type == NAIVE_BAYES_MPI:
+        y = discretize(y)
 
-        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
+        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, online=use_online, use_mpi=use_mpi)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-    elif ML_type == RANDOM_FOREST_MPI:
-
-        result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
+    elif ML_type == RANDOM_FOREST or ML_type == RANDOM_FOREST_MPI:
+        result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, use_mpi=use_mpi)
+        root_info('FEATURE IMPORTANCE \n{}', output_feature_importance(result, data_path))
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     # elif ML_type == RANDOM_FOREST_NO_MERGE:
