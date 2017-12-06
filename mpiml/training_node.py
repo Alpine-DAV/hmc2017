@@ -191,6 +191,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=None,
         help='seed the ranom state (default is nondeterministic)')
     parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
+    parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
     
     # Special wrapper flags that specify & overwrite some of the above values
@@ -225,6 +226,8 @@ if __name__ == '__main__':
         root_info('will train using MPI')
     else:
         root_info('will train serially')
+
+    toggle_profiling(args.profile)
 
     random.seed(args.seed)
 

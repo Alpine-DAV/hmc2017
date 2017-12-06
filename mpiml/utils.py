@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 
+import cProfile
 import numpy as np
 from mpi4py import MPI
 import os
@@ -22,6 +23,7 @@ __all__ = [ "info"
           , "prettify_train_and_test_k_fold_results"
           , "num_classes"
           , "train_with_method"
+          , "toggle_profiling"
           ]
 
 def _extract_arg(arg, default, kwargs):
@@ -95,6 +97,31 @@ def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
 def running_in_mpi():
     return 'MPICH_INTERFACE_HOSTNAME' in os.environ
 
+_profiling_enabled = False
+def profile(filename=None, comm=MPI.COMM_WORLD):
+    def prof_decorator(f):
+        def wrap_f(*args, **kwargs):
+            if not _profiling_enabled:
+                return f(*args, **kwargs)
+
+            pr = cProfile.Profile()
+            pr.enable()
+            result = f(*args, **kwargs)
+            pr.disable()
+
+            if filename is None:
+                pr.print_stats()
+            else:
+                filename_r = filename + ".{}".format(comm.rank)
+                pr.dump_stats(filename_r)
+            return result
+        return wrap_f
+    return prof_decorator
+
+def toggle_profiling(enabled=True):
+    global _profiling_enabled
+    _profiling_enabled = enabled
+
 # Train and test a model using k-fold cross validation (default is 10-fold).
 # Return a dictionary of statistics, which can be passed to prettify_train_and_test_k_fold_results
 # to get a readable performance summary.
@@ -102,7 +129,8 @@ def running_in_mpi():
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model. In addition, kwargs passed to train_and_test_k_fold will be
 # forwarded train.
-def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
+@profile('train.prof')
+def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
     kwargs.update(verbose=verbose, k=k, comm=comm)
 
     runs = 0
@@ -120,7 +148,7 @@ def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=M
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
         train_y_orig = train_y
 
-        if use_mpi:
+        if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
             info('training with {} samples'.format(comm.rank, train_X.shape[0]))
@@ -180,7 +208,7 @@ def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=M
 
 def output_model_info(MLtype, mpi, online):
     output_str = ""
-    
+
     output_str += \
 """
 ---------------------------
@@ -198,7 +226,7 @@ online:    {use_online}
 """
 num trees: {num_trees}
 ---------------------------
-""".format(num_trees=config.NumTrees)   
+""".format(num_trees=config.NumTrees)
 
     return output_str
 
