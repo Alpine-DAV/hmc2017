@@ -170,7 +170,7 @@ def parse_args():
         help='specify whether to broadcast to the root node or all nodes')
     parser.add_argument('--method', type=str, default='online',
         help='specify whether to train in online mode, batch mode, or an otherwise specified mode. See train_with_method in utils')
-    parser.add_argument('--online-pool', type=int, default=1, 
+    parser.add_argument('--online-pool', type=int, default=1,
         help='number of samples to collect in online training before a partial_fit is applied')
     parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y > 0.5',
         help='Python expression evaluated to determine whether a sample should be broadcast. If '
@@ -190,6 +190,7 @@ def parse_args():
              'used for training')
     parser.add_argument('--seed', type=int, default=None,
         help='seed the ranom state (default is nondeterministic)')
+    parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
     
     # Special wrapper flags that specify & overwrite some of the above values
@@ -245,7 +246,7 @@ if __name__ == '__main__':
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
         res = train_and_test_k_fold(
-            data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
+            data, target, train, k=args.num_runs, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
             pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
             criterion=args.criterion, recipients=args.recipients, method=args.method, online_pool=args.online_pool)
         if comm.rank == 0:
