@@ -12,8 +12,11 @@ from sklearn.ensemble import RandomForestRegressor
 from skgarden.mondrian.ensemble import MondrianForestRegressor
 import config
 
-__all__ = [ "info"
+__all__ = [ "set_verbose"
+          , "info"
+          , "debug"
           , "root_info"
+          , "root_debug"
           , "accuracy"
           , "get_k_fold_data"
           , "get_mpi_task_data"
@@ -25,6 +28,12 @@ __all__ = [ "info"
           , "train_with_method"
           , "toggle_profiling"
           ]
+
+_verbose = False
+
+def set_verbose(v=True):
+    global _verbose
+    _verbose = v
 
 def _extract_arg(arg, default, kwargs):
     if arg in kwargs:
@@ -46,6 +55,10 @@ def info(fmt, *args, **kwargs):
         fmt = '{}'
     _info(fmt, comm.rank, *args, **kwargs)
 
+def debug(fmt, *args, **kwargs):
+    if _verbose:
+        info(fmt, *args, **kwargs)
+
 def root_info(fmt, *args, **kwargs):
     comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
     root = _extract_arg('root', 0, kwargs)
@@ -55,6 +68,10 @@ def root_info(fmt, *args, **kwargs):
         args = [fmt]
         fmt = '{}'
     _info(fmt, *args, **kwargs)
+
+def root_debug(fmt, *args, **kwargs):
+    if _verbose:
+        root_info(fmt, *args, **kwargs)
 
 # Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
@@ -129,9 +146,9 @@ def toggle_profiling(enabled=True):
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model. In addition, kwargs passed to train_and_test_k_fold will be
 # forwarded train.
-@profile('train.prof')
-def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
-    kwargs.update(verbose=verbose, k=k, comm=comm)
+@profile('train_and_test_k_fold_prof')
+def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
+    kwargs.update(k=k, comm=comm)
 
     runs = 0
     fp_accum = 0
@@ -150,8 +167,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
 
         if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
-        if verbose:
-            info('training with {} samples'.format(comm.rank, train_X.shape[0]))
+        debug('training with {} samples', train_X.shape[0])
 
         start_train = time.time()
         clf = train(train_X, train_y, **kwargs)
@@ -182,9 +198,8 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
 
             runs += 1
-            if verbose:
-                root_info('run {}: {} false positives, {} false negatives', runs, fp, fn)
-                root_info('final model: {}', clf)
+            root_debug('run {}: {} false positives, {} false negatives', runs, fp, fn)
+            root_debug('final model: {}', clf)
 
         comm.barrier()
 
@@ -263,20 +278,18 @@ methods = [
     'online'
 ]
 
-def train_with_method(clf, X, y, **kwargs):
-    if 'method' not in kwargs:
-        kwargs['method'] = 'batch'
-    if not isinstance(clf, online_classifiers) or kwargs['method'] == 'batch':
-        if not isinstance(clf, online_classifiers) and kwargs['method'] != 'batch':
-            print('Forcing batch training for non-online classifier method')
+def train_with_method(clf, X, y, method='batch', online_pool=1):
+    if not isinstance(clf, online_classifiers) or method == 'batch':
+        if not isinstance(clf, online_classifiers) and method != 'batch':
+            root_info('Forcing batch training for non-online classifier method')
         clf.fit(X,y)
-    elif kwargs['method'] == 'online':
-        if 'online_pool' not in kwargs:
-            kwargs['online_pool'] = 1
-        online_pool = kwargs['online_pool']
+    elif method == 'online':
         for i in xrange(0,X.shape[0],online_pool):
             clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
     else:
         raise ValueError("Invalid argument supplied for --method flag. \
                  Please use one of the following: %s", methods)
     return clf
+
+if not running_in_mpi():
+    root_info("WARNING: NOT RUNNING WITH MPI")

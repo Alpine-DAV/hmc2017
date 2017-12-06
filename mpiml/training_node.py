@@ -23,20 +23,7 @@ def unzip(xys):
 def probable(p):
     return random.uniform(0, 1) <= p
 
-def get_bcast_sample(X,y,criterion,p__positive,p__negative):
-    should_bcast = lambda x, y: probable(p__positive) \
-                        if eval(criterion) \
-                        else probable(p__negative)
-
-    bcast = []
-    for i in range(X.shape[0]):
-        samp = X[i:i+1]
-        label = y[i:i+1]
-        if should_bcast(samp, label):
-            bcast += [(samp, label)]
-    return bcast
-
-def get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative):
+def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):
     should_keep = lambda x, y: probable(pkeep_positive) \
                     if eval(criterion) \
                     else probable(pkeep_negative)
@@ -46,11 +33,11 @@ def get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative):
     sampled_y = []
     for i in range(X.shape[0]):
         if should_keep(X[i:i+1], y[i:i+1]):
-            sampled_X.append(X[i:i+1,:])
-            sampled_y.append(y[i:i+1])
-    return sampled_X, sampled_y
+            sampled_X.extend(X[i:i+1,:])
+            sampled_y.extend(y[i:i+1])
+    return np.array(sampled_X), np.array(sampled_y)
 
-def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True',
+def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True', method='batch',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
     if verbose:
         root_info('training with parameters:\n'
@@ -65,23 +52,18 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criteri
                   pkeep_positive,
                   pkeep_negative)
 
-    if (comm.rank == root):
-        sampled_X, sampled_y = get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative)
-
-        # Get the broadcast results from other processes
-        for proc in range(comm.size):
-            if proc == comm.rank:
-                continue
-            new_X, new_y = unzip(comm.recv(source=proc))
-            sampled_X.extend(new_X)
-            sampled_y.extend(new_y)
-        return train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), **kwargs)
-
+    if comm.rank == root:
+        p_pos, p_neg = pkeep_positive, pkeep_negative
     else:
-        bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
-        comm.send(bcast, dest=root)
+        p_pos, p_neg = pcast_positive, pcast_negative
 
-def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion=')',
+    sampled_X, sampled_y = get_sample(X, y, criterion, p_pos, p_neg)
+    all_X = comm.gather(sampled_X, root=root)
+    all_y = comm.gather(sampled_y, root=root)
+    if comm.rank == root:
+        return train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
+
+def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion=')', method='batch',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
     if verbose:
         root_info('training with parameters:\n'
@@ -96,30 +78,14 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
                   pkeep_positive,
                   pkeep_negative)
 
-    # Sample from the training data, selecting samples to broadcast
-    bcast0 = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
-    bcast = [elem for l in comm.allgather(bcast0) for elem in l]
+    cast_X, cast_y = get_sample(X, y, criterion, pcast_positive, pcast_negative)
+    keep_X, keep_y = get_sample(X, y, criterion, pkeep_positive, pkeep_negative)
 
-    # Get this node's samples
-    sampled_X, sampled_y = get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative)
+    all_X = comm.allgather(cast_X)
+    all_X.append(keep_X)
 
-    # Add in the new samples from other nodes
-    new_X, new_y = unzip(bcast)
-    sampled_X.extend(new_X)
-    sampled_y.extend(new_y)
-
-    train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), **kwargs)
-    if isinstance(clf, GaussianNB):
-        return clf.reduce()
-    elif isinstance(clf, RandomForestRegressor) or isinstance(clf, MondrianForestRegressor):
-        all_estimators = comm.gather(clf.estimators_, root=0)
-
-        if comm.rank == 0:
-            super_forest = []
-            for trees in all_estimators:
-                super_forest.extend(trees)
-            clf.estimators_ = super_forest
-            return clf
+    clf = train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
+    return clf.reduce()
 
 def train(X, y, model=GaussianNB, mpi=False, **kwargs):
     kwargs.update(model=model, mpi=mpi)
@@ -132,8 +98,8 @@ def train(X, y, model=GaussianNB, mpi=False, **kwargs):
 
     if "recipients" in kwargs and kwargs["recipients"] == "all":
         return train_on_all(clf, X, y, **kwargs)
-
-    return train_at_root(clf, X, y, **kwargs)
+    else:
+        return train_at_root(clf, X, y, **kwargs)
 
 # Users can specify a range of parameter values to investigate using the CLI. This function parses
 # a parameter range expression and returns a list of values to try. Valid expression formats are:

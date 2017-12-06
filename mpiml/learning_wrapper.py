@@ -40,7 +40,7 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
     elif ML_type == NAIVE_BAYES_MPI:
         y = discretized_y
 
-        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
+        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, vey, online=use_online, mpi=use_mpi)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     elif ML_type == RANDOM_FOREST_MPI:
