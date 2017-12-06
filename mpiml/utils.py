@@ -9,15 +9,16 @@ import time
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestRegressor
 from skgarden.mondrian.ensemble import MondrianForestRegressor
+import config
 
 __all__ = [ "info"
           , "root_info"
           , "accuracy"
           , "get_k_fold_data"
           , "get_mpi_task_data"
-          , "get_testing_data"
           , "running_in_mpi"
           , "train_and_test_k_fold"
+          , "output_model_info"
           , "prettify_train_and_test_k_fold_results"
           , "num_classes"
           , "train_with_method"
@@ -58,54 +59,37 @@ def accuracy(actual, predicted):
     return np.sum(predicted == actual) / actual.shape[0]
 
 # Compute number of false positives and false negatives in a set of predictions
-def num_errors(actual, predicted):
-    decision_boundary = 4e-6
+def num_errors(actual, predicted, threshold=4e-6):
     fp = fn = 0
     for i in range(len(actual)):
-        if actual[i] == 0 and predicted[i] > decision_boundary:
+        if actual[i] <= threshold and predicted[i] > threshold:
             fp += 1
-        elif actual[i] > 0 and predicted[i] <= decision_boundary:
+        elif actual[i] > threshold and predicted[i] <= threshold:
             fn += 1
     return fp, fn
 
-# Return a pair of the number of positive examples (class > 0) and the number of negative examples
-# (class == 0)
-def num_classes(y):
-    return np.sum(y != 0), np.sum(y == 0)
+# Return a pair of the number of positive examples (class > threshold) and the number of negative
+# examples (class <= threshold)
+def num_classes(y, threshold=4e-6):
+    return np.sum(y > threshold), np.sum(y <= threshold)
 
 # A generator yielding a tuple of (training features, training labels, test features, test labels)
 # for each run in a k-fold cross validation experiment. By default, k=10.
 def get_k_fold_data(X, y, k=10):
-    n_samples = X.shape[0]
-    n_test = n_samples // k
+    X_splits = np.array_split(X, k)
+    y_splits = np.array_split(y, k)
     for i in range(k):
-        train_X = np.concatenate((X[:n_test*i], X[n_test*(i+1):]))
-        test_X = X[n_test*i:n_test*(i+1)]
-        train_y = np.concatenate((y[:n_test*i], y[n_test*(i+1):]))
-        test_y = y[n_test*i:n_test*(i+1)]
+        train_X = np.concatenate([X_splits[j] for j in range(k) if j != i])
+        test_X = X_splits[i]
+        train_y = np.concatenate([y_splits[j] for j in range(k) if j != i])
+        test_y = y_splits[i]
         yield (train_X, test_X, train_y, test_y)
 
 # Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
 # function, then every sample in the dataset will be distributed to exactly one task.
 def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
-    samps_per_task = X.shape[0] // comm.size
-
-    min_bound = samps_per_task*comm.rank
-    if comm.rank == comm.size - 1:
-        max_bound = X.shape[0]
-    else:
-        max_bound = min_bound + samps_per_task
-
-    return (X[min_bound:max_bound],
-            y[min_bound:max_bound])
-
-def get_testing_data(X, y, comm):
-    samps_per_task = X.shape[0] // (comm.size+1)
-    min_bound = samps_per_task*(comm.rank+1)
-    max_bound = X.shape[0]
-
-    return (X[min_bound:max_bound],
-            y[min_bound:max_bound])
+    return np.array_split(X, comm.size)[comm.rank], \
+           np.array_split(y, comm.size)[comm.rank]
 
 # Determine if we are running as an MPI process
 def running_in_mpi():
@@ -133,6 +117,8 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
 
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
+        train_y_orig = train_y
+
         if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
         if verbose:
@@ -158,12 +144,15 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
             fp_accum += fp
             fn_accum += fn
 
-            train_pos, train_neg = num_classes(train_y)
+            train_pos, train_neg = num_classes(train_y_orig)
             train_pos_accum += train_pos
             train_neg_accum += train_neg
             test_pos, test_neg = num_classes(test_y)
             test_pos_accum += test_pos
             test_neg_accum += test_neg
+
+            #RMSE
+            RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
 
             runs += 1
             if verbose:
@@ -176,6 +165,7 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         return {
             'fp': fp_accum / runs,
             'fn': fn_accum / runs,
+            'RMSE': RMSE,
             'accuracy': 1 - ((fp_accum + fn_accum) / (train_neg_accum + train_pos_accum)),
             'time_train': time_train / runs,
             'time_test': time_test / runs,
@@ -187,6 +177,30 @@ def train_and_test_k_fold(X, y, train, verbose=False, k=10, comm=MPI.COMM_WORLD,
         }
     else:
         return {}
+
+def output_model_info(MLtype, mpi, online):
+    output_str = ""
+    
+    output_str += \
+"""
+---------------------------
+ML model:  {ml_type}
+num cores: {num_cores}
+MPI:       {use_mpi}
+online:    {use_online}
+---------------------------
+""".format(ml_type=MLtype,
+           num_cores=config.comm.size,
+           use_mpi=mpi, use_online=online)
+
+    if 'rf' in MLtype:
+        output_str += \
+"""
+num trees: {num_trees}
+---------------------------
+""".format(num_trees=config.NumTrees)   
+
+    return output_str
 
 def prettify_train_and_test_k_fold_results(d):
     if d:
@@ -206,6 +220,7 @@ performance
     false positives:            {fp}
     false negatives:            {fn}
     accuracy:                   {accuracy}
+    RMSE:                       {RMSE}
 
 (statistics averaged over {runs} runs)
 """.format(train_total = d['negative_train_samples'] + d['positive_train_samples'],

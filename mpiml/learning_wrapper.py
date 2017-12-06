@@ -11,19 +11,10 @@ import testing_randomforest as rf
 import nbmpi
 import rfmpi
 
-from datasets import get_bubbleshock, discretize, output_feature_importance
+from datasets import get_bubbleshock, discretize, output_feature_importance, shuffle_data
 
 from utils import *
-
-comm = MPI.COMM_WORLD
-
-NAIVE_BAYES         = 'nb'
-NAIVE_BAYES_MPI     = 'nbp'
-RANDOM_FOREST       = 'rf'
-RANDOM_FOREST_MPI   = 'rfp'
-RANDOM_FOREST_NO_MERGE = 'rfnm'
-
-VALID_MODELS = [NAIVE_BAYES, NAIVE_BAYES_MPI, RANDOM_FOREST, RANDOM_FOREST_MPI, RANDOM_FOREST_NO_MERGE]
+from config import *
 
 def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
@@ -31,61 +22,43 @@ def wrapper(ML_type, k, data_path, verbose=False, use_online=False, use_mpi=Fals
     """
 
     X, y = get_bubbleshock(data_path)
+    shuffle_data(X, y)
     discretized_y = discretize(y)
+
+    root_info('{}',output_model_info(ML_type, mpi=use_mpi, online=use_online))
 
     if ML_type == NAIVE_BAYES:
         if comm.rank == 0:
-            print "############ Training using Naive Bayes ############"
             y = discretized_y
             result = nb.train_and_test_k_fold(X, y, k)
-            print
-            print
+
     elif ML_type == RANDOM_FOREST:
         if comm.rank == 0:
-            print "############ Training using Random Forest ############"
             forest = rf.train_and_test_k_fold(X, y, k)
             output_feature_importance(forest, data_path)
-            print
-            print
+
     elif ML_type == NAIVE_BAYES_MPI:
-        if comm.rank == 0:
-            print "############ Training using Parallel Naive Bayes ############"
-
         y = discretized_y
-
-        if use_mpi and comm.rank == 0:
-            print('will train using MPI')
-        if use_online and comm.rank == 0:
-            print('will train in online mode')
 
         result = train_and_test_k_fold(X, y, nbmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     elif ML_type == RANDOM_FOREST_MPI:
-        if comm.rank == 0:
-            print "############ Training using Parallel Random Forest ############"
-
-        if use_mpi and comm.rank == 0:
-            print('will train using MPI')
-        if use_online and comm.rank == 0:
-            print('will train in online mode')
 
         result = train_and_test_k_fold(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-    elif ML_type == RANDOM_FOREST_NO_MERGE:
-        if comm.rank == 0:
-            print "############ Training using Parallel Random Forest No Merging ############"
-        if not use_mpi:
-            print('You are trying to run Random Forest No Merge without MPI.')
-            print('This is pointless')
-            raise Exception('ML Algorithm only for use with MPI')
-        if use_online and comm.rank == 0:
-            print('will train in online mode')
+    # elif ML_type == RANDOM_FOREST_NO_MERGE:
+    #     if not use_mpi:
+    #         print('You are trying to run Random Forest No Merge without MPI.')
+    #         print('This is pointless')
+    #         raise Exception('ML Algorithm only for use with MPI')
+    #     if use_online and comm.rank == 0:
+    #         print('will train in online mode')
 
-        result = train_and_test_k_fold_no_merge(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
-        if comm.rank == 0:
-            print "PERFORMANCE\t%s" % (result,)
+    #     result = train_and_test_k_fold_no_merge(X, y, rfmpi.train, k=k, verbose=verbose, online=use_online, mpi=use_mpi)
+    #     if comm.rank == 0:
+    #         print "PERFORMANCE\t%s" % (result,)
     else:
         raise Exception('Machine learning algorithm not recognized')
 

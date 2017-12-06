@@ -43,3 +43,4 @@ parallelism = -1 # note: -1 = number of cores on the system
 # TESTING
 #===============================================================================
 kfold = 10
+decision_boundary = 4e-6
