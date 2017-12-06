@@ -111,7 +111,7 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterio
     train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), **kwargs)
     if isinstance(clf, GaussianNB):
         return clf.reduce()
-    elif isinstance(clf, RandomForestRegressor):
+    elif isinstance(clf, RandomForestRegressor) or isinstance(clf, MondrianForestRegressor):
         all_estimators = comm.gather(clf.estimators_, root=0)
 
         if comm.rank == 0:
@@ -165,6 +165,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a classifier using the designated training node strategy')
     parser.add_argument('data_dir', type=str, help='path to bubble shock data')
+    parser.add_argument('--super-forest', action='store_true',
+        help='wrapper to perform simple super forest model (only passes completely trained trees, no data). Requires a model to be specified.')
     parser.add_argument('--model', type=str, default='rf', help='model to test (default rf)')
     parser.add_argument('--recipients', type=str, default='root',
         help='specify whether to broadcast to the root node or all nodes')
@@ -204,11 +206,17 @@ if __name__ == '__main__':
     else:
         root_info('unknown model "{}": valid models are {}', args.model, models.keys())
         sys.exit(1)
-
+    
     pcast_positive = parse_range(args.pcast_positive)
     pcast_negative = parse_range(args.pcast_negative)
     pkeep_positive = parse_range(args.pkeep_positive)
     pkeep_negative = parse_range(args.pkeep_negative)
+
+    # Super forest training; when all nodes train on only their own data
+    if 'super_forest' in args:
+        pcast_positive = pcast_negative = [0.]
+        pkeep_positive = pkeep_negative = [1.]
+        args.recipients = 'all'
 
     if use_mpi:
         root_info('will train using MPI')
@@ -225,6 +233,13 @@ if __name__ == '__main__':
     nrows = 0
     total_rows = len(pcast_positive) * len(pcast_negative) * len(pkeep_positive) * len(pkeep_negative)
     if comm.rank == 0:
+        sf_fmt   = ''
+        online_fmt = ''
+        if 'super_forest' in args:
+            sf_fmt = ', SUPER FOREST'
+        if args.method == 'online':
+            online_fmt = ', pooling: ' + str(args.online_pool)
+        print('Training with model: {}, method: {}{}{}'.format(args.model, args.method, online_fmt, sf_fmt))
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
         res = train_and_test_k_fold(
