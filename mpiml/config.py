@@ -1,4 +1,5 @@
 from mpi4py import MPI
+import numpy as np
 
 comm = MPI.COMM_WORLD
 
@@ -44,3 +45,4 @@ parallelism = -1 # note: -1 = number of cores on the system
 #===============================================================================
 kfold = 10
 decision_boundary = 4e-6
+np.random.seed(rand_seed)
