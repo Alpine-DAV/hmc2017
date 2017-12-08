@@ -9,6 +9,7 @@ import config
 from DataReader.FeatureDataReader import FeatureDataReader
 
 __all__ = [ "get_bubbleshock"
+          , "get_bubbleshock_byhand_by_cycle"
           , "prepare_dataset"
           , "shuffle_data"
           , "discretize"
@@ -26,10 +27,42 @@ def shuffle_data(X, y, seed=0):
     np.random.set_state(seed)
     np.random.shuffle(y)
 
-def get_bubbleshock(dir='bubbleShock', discrete=False):
+def get_bubbleshock_byhand_by_cycle(data_dir, cycle):
     dataset = None
     start = time.time()
-    dataset = get_learning_data(dir, config.start_cycle, config.end_cycle, config.sample_freq, config.decay_window)
+    reader = get_reader(data_dir)
+    feature_names = reader.getFeatureNames()
+    zids = reader.getCycleZoneIds()
+    dataset = reader.readAllZonesInCycle(0, cycle)
+    end = time.time()
+    root_info("TIME load training data: {}", end-start)
+
+    X = dataset[:,0:-1]
+    y = np.ravel(dataset[:,[-1]])
+
+    return X, y
+
+# def get_bubbleshock_all_cycles(data_dir):
+#     dataset = np.zeros(shape=(0, 18))
+#     start = time.time()
+#     reader = get_reader(data_dir)
+#     feature_names = reader.getFeatureNames()
+#     zids = reader.getCycleZoneIds()
+
+#     for cycle in range(1000):
+#         dataset = np.concatenate((dataset,reader.readAllZonesInCycle(0, cycle)),axis=0)
+#     end = time.time()
+#     root_info("TIME load training data: {}", end-start)
+
+#     X = dataset[:,0:-1]
+#     y = np.ravel(dataset[:,[-1]])
+
+#     return X, y
+
+def get_bubbleshock(data_dir='bubbleShock', discrete=False):
+    dataset = None
+    start = time.time()
+    dataset = get_learning_data(data_dir, config.start_cycle, config.end_cycle, config.sample_freq, config.decay_window)
     end = time.time()
     root_info("TIME load training data: {}", end-start)
 
