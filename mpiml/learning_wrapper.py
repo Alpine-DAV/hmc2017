@@ -1,4 +1,4 @@
-nb#! /usr/bin/env python
+#! /usr/bin/env python
 
 import argparse
 import numpy as np
@@ -6,12 +6,10 @@ import sys
 
 from mpi4py import MPI
 
-import testing_naivebayes as nb
-import testing_randomforest as rf
 import nbmpi
 import rfmpi
 
-from datasets import get_bubbleshock, discretize, output_feature_importance, shuffle_data
+from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretize, output_feature_importance, shuffle_data
 
 from utils import *
 from config import *
@@ -22,28 +20,19 @@ def wrapper(ML_type, k, data_path, use_online=False):
     """
 
     X, y = get_bubbleshock(data_path)
+    # X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000)
     shuffle_data(X, y)
     discretized_y = discretize(y)
 
     root_info('{}',output_model_info(ML_type, online=use_online))
 
     if ML_type == NAIVE_BAYES:
-        if comm.rank == 0:
-            y = discretized_y
-            result = nb.train_and_test_k_fold(X, y, k)
-
-    elif ML_type == RANDOM_FOREST:
-        if comm.rank == 0:
-            forest = rf.train_and_test_k_fold(X, y, k)
-            output_feature_importance(forest, data_path)
-
-    elif ML_type == NAIVE_BAYES_MPI:
         y = discretized_y
 
         result = train_and_test_k_fold(X, y, nbmpi.train, k=k, online=use_online)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-    elif ML_type == RANDOM_FOREST_MPI:
+    elif ML_type == RANDOM_FOREST:
 
         result = train_and_test_k_fold(X, y, rfmpi.train, k=k, online=use_online)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
