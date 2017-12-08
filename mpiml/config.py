@@ -41,8 +41,8 @@ def register_model(cli_name, cls, discrete=False, forest=False):
     if discrete:
         discrete_models.append(cls)
     if forest:
-		forest_models.append(cls)
-
+        forest_models.append(cls)
+        
 #===============================================================================
 # RANDOM FOREST CONFIGURATION
 #===============================================================================
