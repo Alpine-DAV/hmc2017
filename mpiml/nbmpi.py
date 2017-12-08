@@ -75,7 +75,7 @@ class GaussianNB(BaseNB):
     # When running in MPI, coordinate with other tasks to combine each task's local model into a
     # global model. The global model is returned. Each process's local model is unchanged. Note: the
     # return value is only meaningful for root (rank == 0)
-    def reduce(self, verbose=False):
+    def reduce(self):
         # Variables which will collect the global results
         n = np.copy(self.class_count_)
         mu = np.copy(self.theta_)
@@ -236,7 +236,7 @@ class GaussianNB(BaseNB):
 # classifier is trained on the whole dataset in batch fashion. If mpi=True, then each task trains a
 # local model, and the local models are combined into a global model at the end. In this mode, the
 # result is only meaningful if comm.rank == 0.
-def train(X, y, classes=None, clf=GaussianNB(), online=False, mpi=False, **kwargs):
+def train(X, y, classes=None, clf=GaussianNB(), online=False, **kwargs):
     classes = classes or np.unique(y)
     if online:
         for i in range(X.shape[0]):
@@ -245,7 +245,7 @@ def train(X, y, classes=None, clf=GaussianNB(), online=False, mpi=False, **kwarg
         # Even though we're fitting all of the data, we use partial_fit so we can manually specify
         # the classes, since we may have a partition of the data that does not contain every class
         clf.partial_fit(X, y, classes=classes)
-    if mpi:
+    if running_in_mpi():
         clf = clf.reduce()
     return clf
 
@@ -262,18 +262,12 @@ def parse_args():
 if __name__ == '__main__':
 
     args = parse_args()
-    verbose = args.verbose
     use_online = args.online
-    use_mpi = running_in_mpi()
 
-    if use_mpi and comm.rank == 0:
-        info('will train using MPI')
-    if use_online and comm.rank == 0:
-        info('will train using online mode')
+    toggle_verbose(args.verbose)
 
     data, target = get_bubbleshock(args.data_dir, discrete=True)
     shuffle_data(data, target)
-    res = train_and_test_k_fold(
-        data, target, train, model=GaussianNB(), verbose=verbose, use_online=use_online, use_mpi=use_mpi)
+    res = train_and_test_k_fold(data, target, train, model=GaussianNB(), use_online=use_online)
 
     root_info('### PERFORMANCE ###\n{}', prettify_train_and_test_k_fold_results(res))

@@ -75,10 +75,17 @@ def get_bubbleshock(data_dir='bubbleShock', discrete=False):
     return X, y
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset(dataset):
-    dataset = getattr(sk, 'load_{}'.format(dataset))()
-    X = dataset.data
-    y = dataset.target
+def prepare_dataset(dataset, discrete=False):
+    if hasattr(sk, 'load_{}'.format(dataset)):
+        dataset = getattr(sk, 'load_{}'.format(dataset))()
+        X = dataset.data
+        y = dataset.target
+    else:
+        X, y = get_bubbleshock(dir=dataset)
+
+    if discrete:
+        y = discretize(y)
+
     shuffle_data(X, y)
     return X, y
 

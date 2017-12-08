@@ -36,8 +36,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    verbose = args.verbose
-    use_mpi = running_in_mpi()
+    toggle_verbose(args.verbose)
 
     runs = 0
     acc_accum = 0
@@ -46,22 +45,20 @@ if __name__ == '__main__':
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y):
         tree = train(train_X, train_y)
 
-        if use_mpi:
+        if running_in_mpi():
             if comm.rank == 1:
                 send_tree(tree, dst=0)
             elif comm.rank == 0:
                 tree = recv_tree(src=1)
                 acc = tree.score(test_X, test_y)
                 acc_accum += acc
-                if verbose:
-                    info('run {}: accuracy={}', runs, acc)
+                debug('run {}: accuracy={}', runs, acc)
 
             comm.barrier()
         else:
             acc = tree.score(test_X, test_y)
             acc_accum += acc
-            if verbose:
-                info('run {}: accuracy={}', runs, acc)
+            debug('run {}: accuracy={}', runs, acc)
 
         runs += 1
 

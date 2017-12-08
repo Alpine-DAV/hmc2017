@@ -23,20 +23,7 @@ def unzip(xys):
 def probable(p):
     return random.uniform(0, 1) <= p
 
-def get_bcast_sample(X,y,criterion,p__positive,p__negative):
-    should_bcast = lambda x, y: probable(p__positive) \
-                        if eval(criterion) \
-                        else probable(p__negative)
-
-    bcast = []
-    for i in range(X.shape[0]):
-        samp = X[i:i+1]
-        label = y[i:i+1]
-        if should_bcast(samp, label):
-            bcast += [(samp, label)]
-    return bcast
-
-def get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative):
+def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):
     should_keep = lambda x, y: probable(pkeep_positive) \
                     if eval(criterion) \
                     else probable(pkeep_negative)
@@ -46,94 +33,71 @@ def get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative):
     sampled_y = []
     for i in range(X.shape[0]):
         if should_keep(X[i:i+1], y[i:i+1]):
-            sampled_X.append(X[i:i+1,:])
-            sampled_y.append(y[i:i+1])
-    return sampled_X, sampled_y
+            sampled_X.extend(X[i:i+1,:])
+            sampled_y.extend(y[i:i+1])
+    return np.array(sampled_X), np.array(sampled_y)
 
-def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion='True',
+def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', method='batch',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
-    if verbose:
-        root_info('training with parameters:\n'
-                  '  criterion={}\n'
-                  '  pcast_positive={}\n'
-                  '  pcast_negative={}\n'
-                  '  pkeep_positive={}\n'
-                  '  pkeep_negative={}\n',
-                  criterion,
-                  pcast_positive,
-                  pcast_negative,
-                  pkeep_positive,
-                  pkeep_negative)
+    root_debug('training with parameters:\n'
+              '  criterion={}\n'
+              '  pcast_positive={}\n'
+              '  pcast_negative={}\n'
+              '  pkeep_positive={}\n'
+              '  pkeep_negative={}\n',
+              criterion,
+              pcast_positive,
+              pcast_negative,
+              pkeep_positive,
+              pkeep_negative)
 
-    if (comm.rank == root):
-        sampled_X, sampled_y = get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative)
-
-        # Get the broadcast results from other processes
-        for proc in range(comm.size):
-            if proc == comm.rank:
-                continue
-            new_X, new_y = unzip(comm.recv(source=proc))
-            sampled_X.extend(new_X)
-            sampled_y.extend(new_y)
-        return train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), **kwargs)
-
+    if comm.rank == root:
+        p_pos, p_neg = pkeep_positive, pkeep_negative
     else:
-        bcast = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
-        comm.send(bcast, dest=root)
+        p_pos, p_neg = pcast_positive, pcast_negative
 
-def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, verbose=False, criterion=')',
+    sampled_X, sampled_y = get_sample(X, y, criterion, p_pos, p_neg)
+    all_X = comm.gather(sampled_X, root=root)
+    all_y = comm.gather(sampled_y, root=root)
+    if comm.rank == root:
+        return train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
+
+def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion=')', method='batch',
                   pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
-    if verbose:
-        root_info('training with parameters:\n'
-                  '  criterion={}\n'
-                  '  pcast_positive={}\n'
-                  '  pcast_negative={}\n'
-                  '  pkeep_positive={}\n'
-                  '  pkeep_negative={}\n',
-                  criterion,
-                  pcast_positive,
-                  pcast_negative,
-                  pkeep_positive,
-                  pkeep_negative)
+    root_debug('training with parameters:\n'
+              '  criterion={}\n'
+              '  pcast_positive={}\n'
+              '  pcast_negative={}\n'
+              '  pkeep_positive={}\n'
+              '  pkeep_negative={}\n',
+              criterion,
+              pcast_positive,
+              pcast_negative,
+              pkeep_positive,
+              pkeep_negative)
 
-    # Sample from the training data, selecting samples to broadcast
-    bcast0 = get_bcast_sample(X, y, criterion, pcast_positive, pcast_negative)
-    bcast = [elem for l in comm.allgather(bcast0) for elem in l]
+    cast_X, cast_y = get_sample(X, y, criterion, pcast_positive, pcast_negative)
+    keep_X, keep_y = get_sample(X, y, criterion, pkeep_positive, pkeep_negative)
 
-    # Get this node's samples
-    sampled_X, sampled_y = get_local_sample(X, y, criterion, pkeep_positive, pkeep_negative)
+    all_X = comm.allgather(cast_X)
+    all_X.append(keep_X)
 
-    # Add in the new samples from other nodes
-    new_X, new_y = unzip(bcast)
-    sampled_X.extend(new_X)
-    sampled_y.extend(new_y)
+    clf = train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
+    return clf.reduce()
 
-    train_with_method(clf, np.vstack(sampled_X), np.concatenate(sampled_y), **kwargs)
-    if isinstance(clf, GaussianNB):
-        return clf.reduce()
-    elif isinstance(clf, RandomForestRegressor):
-        all_estimators = comm.gather(clf.estimators_, root=0)
-
-        if comm.rank == 0:
-            super_forest = []
-            for trees in all_estimators:
-                super_forest.extend(trees)
-            clf.estimators_ = super_forest
-            return clf
-
-def train(X, y, model=GaussianNB, mpi=False, **kwargs):
-    kwargs.update(model=model, mpi=mpi)
+def train(X, y, model=GaussianNB, **kwargs):
+    kwargs.update(model=model)
 
     clf = model()
 
-    if not mpi:
+    if not running_in_mpi():
         clf.fit(X, y)
         return clf
 
     if "recipients" in kwargs and kwargs["recipients"] == "all":
         return train_on_all(clf, X, y, **kwargs)
-
-    return train_at_root(clf, X, y, **kwargs)
+    else:
+        return train_at_root(clf, X, y, **kwargs)
 
 # Users can specify a range of parameter values to investigate using the CLI. This function parses
 # a parameter range expression and returns a list of values to try. Valid expression formats are:
@@ -170,7 +134,7 @@ def parse_args():
         help='specify whether to broadcast to the root node or all nodes')
     parser.add_argument('--method', type=str, default='online',
         help='specify whether to train in online mode, batch mode, or an otherwise specified mode. See train_with_method in utils')
-    parser.add_argument('--online-pool', type=int, default=1, 
+    parser.add_argument('--online-pool', type=int, default=1,
         help='number of samples to collect in online training before a partial_fit is applied')
     parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y > 0.5',
         help='Python expression evaluated to determine whether a sample should be broadcast. If '
@@ -190,17 +154,25 @@ def parse_args():
              'used for training')
     parser.add_argument('--seed', type=int, default=None,
         help='seed the ranom state (default is nondeterministic)')
+    parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
+    parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
+
+    # Special wrapper flags that specify & overwrite some of the above values
+    parser.add_argument('--super-forest', action='store_true',
+        help='wrapper to perform simple super forest model (only passes completely trained trees, no data). Requires a model to be specified.')
     return parser.parse_args()
 
 if __name__ == '__main__':
 
     args = parse_args()
-    verbose = args.verbose
-    use_mpi = running_in_mpi()
+
+    toggle_verbose(args.verbose)
+    toggle_profiling(args.profile)
+
     if args.model in models:
         model = models[args.model]
-        if verbose: root_info('using model {}', model)
+        root_debug('using model {}', model)
     else:
         root_info('unknown model "{}": valid models are {}', args.model, models.keys())
         sys.exit(1)
@@ -210,10 +182,11 @@ if __name__ == '__main__':
     pkeep_positive = parse_range(args.pkeep_positive)
     pkeep_negative = parse_range(args.pkeep_negative)
 
-    if use_mpi:
-        root_info('will train using MPI')
-    else:
-        root_info('will train serially')
+    # Super forest training; when all nodes train on only their own data
+    if 'super_forest' in args:
+        pcast_positive = pcast_negative = [0.]
+        pkeep_positive = pkeep_negative = [1.]
+        args.recipients = 'all'
 
     random.seed(args.seed)
 
@@ -225,12 +198,19 @@ if __name__ == '__main__':
     nrows = 0
     total_rows = len(pcast_positive) * len(pcast_negative) * len(pkeep_positive) * len(pkeep_negative)
     if comm.rank == 0:
+        sf_fmt   = ''
+        online_fmt = ''
+        if 'super_forest' in args:
+            sf_fmt = ', super forest'
+        if args.method == 'online':
+            online_fmt = ', pooling: ' + str(args.online_pool)
+        print('Training with model: {}, method: {}{}{}'.format(args.model, args.method, online_fmt, sf_fmt))
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
         res = train_and_test_k_fold(
-            data, target, train, k=10, verbose=verbose, use_mpi=use_mpi, mpi=use_mpi, model=model,
-            pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
-            criterion=args.criterion, recipients=args.recipients, method=args.method, online_pool=args.online_pool)
+            data, target, train, k=args.num_runs, model=model, pkeep_positive=pkp,
+            pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn, criterion=args.criterion,
+            recipients=args.recipients, method=args.method, online_pool=args.online_pool)
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
                 .format(args.model, fp=res['fp'], fn=res['fn'], train_time=res['time_train'],

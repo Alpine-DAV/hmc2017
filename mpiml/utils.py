@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 
+import cProfile
 import numpy as np
 from mpi4py import MPI
 import os
@@ -12,7 +13,9 @@ from skgarden.mondrian.ensemble import MondrianForestRegressor
 import config
 
 __all__ = [ "info"
+          , "debug"
           , "root_info"
+          , "root_debug"
           , "accuracy"
           , "get_k_fold_data"
           , "get_mpi_task_data"
@@ -22,7 +25,15 @@ __all__ = [ "info"
           , "prettify_train_and_test_k_fold_results"
           , "num_classes"
           , "train_with_method"
+          , "toggle_profiling"
+          , "toggle_verbose"
           ]
+
+_verbose = False
+
+def toggle_verbose(v=True):
+    global _verbose
+    _verbose = v
 
 def _extract_arg(arg, default, kwargs):
     if arg in kwargs:
@@ -44,6 +55,10 @@ def info(fmt, *args, **kwargs):
         fmt = '{}'
     _info(fmt, comm.rank, *args, **kwargs)
 
+def debug(fmt, *args, **kwargs):
+    if _verbose:
+        info(fmt, *args, **kwargs)
+
 def root_info(fmt, *args, **kwargs):
     comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
     root = _extract_arg('root', 0, kwargs)
@@ -53,6 +68,10 @@ def root_info(fmt, *args, **kwargs):
         args = [fmt]
         fmt = '{}'
     _info(fmt, *args, **kwargs)
+
+def root_debug(fmt, *args, **kwargs):
+    if _verbose:
+        root_info(fmt, *args, **kwargs)
 
 # Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
@@ -95,6 +114,31 @@ def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
 def running_in_mpi():
     return 'MPICH_INTERFACE_HOSTNAME' in os.environ
 
+_profiling_enabled = False
+def profile(filename=None, comm=MPI.COMM_WORLD):
+    def prof_decorator(f):
+        def wrap_f(*args, **kwargs):
+            if not _profiling_enabled:
+                return f(*args, **kwargs)
+
+            pr = cProfile.Profile()
+            pr.enable()
+            result = f(*args, **kwargs)
+            pr.disable()
+
+            if filename is None:
+                pr.print_stats()
+            else:
+                filename_r = filename + ".{}".format(comm.rank)
+                pr.dump_stats(filename_r)
+            return result
+        return wrap_f
+    return prof_decorator
+
+def toggle_profiling(enabled=True):
+    global _profiling_enabled
+    _profiling_enabled = enabled
+
 # Train and test a model using k-fold cross validation (default is 10-fold).
 # Return a dictionary of statistics, which can be passed to prettify_train_and_test_k_fold_results
 # to get a readable performance summary.
@@ -102,8 +146,9 @@ def running_in_mpi():
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model. In addition, kwargs passed to train_and_test_k_fold will be
 # forwarded train.
-def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=MPI.COMM_WORLD, **kwargs):
-    kwargs.update(verbose=verbose, k=k, comm=comm)
+@profile('train_and_test_k_fold_prof')
+def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
+    kwargs.update(k=k, comm=comm)
 
     runs = 0
     fp_accum = 0
@@ -120,10 +165,9 @@ def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=M
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
         train_y_orig = train_y
 
-        if use_mpi:
+        if running_in_mpi():
             train_X, train_y = get_mpi_task_data(train_X, train_y)
-        if verbose:
-            info('training with {} samples'.format(comm.rank, train_X.shape[0]))
+        debug('training with {} samples', train_X.shape[0])
 
         start_train = time.time()
         clf = train(train_X, train_y, **kwargs)
@@ -154,9 +198,8 @@ def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=M
             RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
 
             runs += 1
-            if verbose:
-                root_info('run {}: {} false positives, {} false negatives', runs, fp, fn)
-                root_info('final model: {}', clf)
+            root_debug('run {}: {} false positives, {} false negatives', runs, fp, fn)
+            root_debug('final model: {}', clf)
 
         comm.barrier()
 
@@ -178,10 +221,8 @@ def train_and_test_k_fold(X, y, train, use_mpi=True, verbose=False, k=10, comm=M
     else:
         return {}
 
-def output_model_info(MLtype, mpi, online):
-    output_str = ""
-    
-    output_str += \
+def output_model_info(MLtype, online):
+    output_str = \
 """
 ---------------------------
 ML model:  {ml_type}
@@ -191,14 +232,14 @@ online:    {use_online}
 ---------------------------
 """.format(ml_type=MLtype,
            num_cores=config.comm.size,
-           use_mpi=mpi, use_online=online)
+           use_mpi=running_in_mpi(), use_online=online)
 
     if 'rf' in MLtype:
         output_str += \
 """
 num trees: {num_trees}
 ---------------------------
-""".format(num_trees=config.NumTrees)   
+""".format(num_trees=config.NumTrees)
 
     return output_str
 
@@ -237,20 +278,18 @@ methods = [
     'online'
 ]
 
-def train_with_method(clf, X, y, **kwargs):
-    if 'method' not in kwargs:
-        kwargs['method'] = 'batch'
-    if not isinstance(clf, online_classifiers) or kwargs['method'] == 'batch':
-        if not isinstance(clf, online_classifiers) and kwargs['method'] != 'batch':
-            print('Forcing batch training for non-online classifier method')
+def train_with_method(clf, X, y, method='batch', online_pool=1):
+    if not isinstance(clf, online_classifiers) or method == 'batch':
+        if not isinstance(clf, online_classifiers) and method != 'batch':
+            root_info('Forcing batch training for non-online classifier method')
         clf.fit(X,y)
-    elif kwargs['method'] == 'online':
-        if 'online_pool' not in kwargs:
-            kwargs['online_pool'] = 1
-        online_pool = kwargs['online_pool']
+    elif method == 'online':
         for i in xrange(0,X.shape[0],online_pool):
             clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
     else:
         raise ValueError("Invalid argument supplied for --method flag. \
                  Please use one of the following: %s", methods)
     return clf
+
+if not running_in_mpi():
+    root_info("WARNING: NOT RUNNING WITH MPI")

@@ -14,13 +14,13 @@ def reduce(rf):
         super_forest = []
         for forest in all_estimators:
             super_forest.extend(forest)
-        rf.estimators_ = super_forest    
+        rf.estimators_ = super_forest
 
 #trains on segment of data, then places final model in 0th process
-def train(X, y, mpi=False, **kwargs):
+def train(X, y, **kwargs):
     rf = RandomForestRegressor(n_estimators=config.NumTrees, n_jobs=config.parallelism, random_state=config.rand_seed)
     rf.fit(X, y)
-    if mpi:
+    if running_in_mpi():
         reduce(rf)
     return rf
 
@@ -34,20 +34,14 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    verbose = args.verbose
-    use_mpi = running_in_mpi()
 
-    if verbose and comm.rank == 0:
-        if use_mpi:
-            info('training using MPI')
-        else:
-            info('training on one processor')
+    toggle_verbose(args.verbose)
 
     runs = 0
     acc_accum = 0
 
     data, target = prepare_dataset('iris')
-    result = train_and_test_k_fold(data, target, train, verbose=verbose)
+    result = train_and_test_k_fold(data, target, train)
 
     if comm.rank == 0:
         info('average accuracy: {}'.format(result))
