@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+nb#! /usr/bin/env python
 
 import argparse
 import numpy as np
@@ -16,7 +16,7 @@ from datasets import get_bubbleshock, discretize, output_feature_importance, shu
 from utils import *
 from config import *
 
-def wrapper(ML_type, k, data_path, use_online=False, use_mpi=False):
+def wrapper(ML_type, k, data_path, use_online=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
@@ -25,7 +25,7 @@ def wrapper(ML_type, k, data_path, use_online=False, use_mpi=False):
     shuffle_data(X, y)
     discretized_y = discretize(y)
 
-    root_info('{}',output_model_info(ML_type, mpi=use_mpi, online=use_online))
+    root_info('{}',output_model_info(ML_type, online=use_online))
 
     if ML_type == NAIVE_BAYES:
         if comm.rank == 0:
@@ -40,12 +40,12 @@ def wrapper(ML_type, k, data_path, use_online=False, use_mpi=False):
     elif ML_type == NAIVE_BAYES_MPI:
         y = discretized_y
 
-        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, online=use_online, mpi=use_mpi)
+        result = train_and_test_k_fold(X, y, nbmpi.train, k=k, online=use_online)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     elif ML_type == RANDOM_FOREST_MPI:
 
-        result = train_and_test_k_fold(X, y, rfmpi.train, k=k, online=use_online, mpi=use_mpi)
+        result = train_and_test_k_fold(X, y, rfmpi.train, k=k, online=use_online)
         root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     else:
@@ -73,7 +73,6 @@ if __name__ == '__main__':
     toggle_profiling(args.profile)
 
     use_online = args.online
-    use_mpi = running_in_mpi()
 
     for model in args.models:
-        wrapper(model, args.num_runs, args.data_dir, use_mpi=use_mpi, use_online=use_online)
+        wrapper(model, args.num_runs, args.data_dir, use_online=use_online)

@@ -85,12 +85,12 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion=')', method='
     clf = train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
     return clf.reduce()
 
-def train(X, y, model=GaussianNB, mpi=False, **kwargs):
-    kwargs.update(model=model, mpi=mpi)
+def train(X, y, model=GaussianNB, **kwargs):
+    kwargs.update(model=model)
 
     clf = model()
 
-    if not mpi:
+    if not running_in_mpi():
         clf.fit(X, y)
         return clf
 
@@ -166,7 +166,6 @@ def parse_args():
 if __name__ == '__main__':
 
     args = parse_args()
-    use_mpi = running_in_mpi()
 
     toggle_verbose(args.verbose)
     toggle_profiling(args.profile)
@@ -209,9 +208,9 @@ if __name__ == '__main__':
         print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
         res = train_and_test_k_fold(
-            data, target, train, k=args.num_runs, use_mpi=use_mpi, mpi=use_mpi, model=model,
-            pkeep_positive=pkp, pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn,
-            criterion=args.criterion, recipients=args.recipients, method=args.method, online_pool=args.online_pool)
+            data, target, train, k=args.num_runs, model=model, pkeep_positive=pkp,
+            pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn, criterion=args.criterion,
+            recipients=args.recipients, method=args.method, online_pool=args.online_pool)
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
                 .format(args.model, fp=res['fp'], fn=res['fn'], train_time=res['time_train'],

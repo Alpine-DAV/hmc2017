@@ -221,7 +221,7 @@ def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
     else:
         return {}
 
-def output_model_info(MLtype, mpi, online):
+def output_model_info(MLtype, online):
     output_str = \
 """
 ---------------------------
@@ -232,7 +232,7 @@ online:    {use_online}
 ---------------------------
 """.format(ml_type=MLtype,
            num_cores=config.comm.size,
-           use_mpi=mpi, use_online=online)
+           use_mpi=running_in_mpi(), use_online=online)
 
     if 'rf' in MLtype:
         output_str += \
