@@ -1,5 +1,8 @@
+from __future__ import print_function
+
 from mpi4py import MPI
 import numpy as np
+import sys
 
 comm = MPI.COMM_WORLD
 
@@ -27,9 +30,18 @@ load_learning_data = False  # if true, load pre-created learning data
 #===============================================================================
 # ML MODEL NAMES
 #===============================================================================
-NAIVE_BAYES         = 'nb'
-RANDOM_FOREST       = 'rf'
-VALID_MODELS = [NAIVE_BAYES, RANDOM_FOREST]
+models = {}
+discrete_models = []
+forest_models = []
+def register_model(cli_name, cls, discrete=False, forest=False):
+    if cli_name in models:
+        print('attempted to register duplicate model "{}"'.format(cli_name), file=sys.stderr)
+        sys.exit(1)
+    models[cli_name] = cls
+    if discrete:
+        discrete_models.append(cls)
+    if forest:
+forest_models.append(cls)
 
 #===============================================================================
 # RANDOM FOREST CONFIGURATION
