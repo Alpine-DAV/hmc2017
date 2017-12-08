@@ -28,10 +28,8 @@ load_learning_data = False  # if true, load pre-created learning data
 # ML MODEL NAMES
 #===============================================================================
 NAIVE_BAYES         = 'nb'
-NAIVE_BAYES_MPI     = 'nbp'
 RANDOM_FOREST       = 'rf'
-RANDOM_FOREST_MPI   = 'rfp'
-VALID_MODELS = [NAIVE_BAYES, NAIVE_BAYES_MPI, RANDOM_FOREST, RANDOM_FOREST_MPI]
+VALID_MODELS = [NAIVE_BAYES, RANDOM_FOREST]
 
 #===============================================================================
 # RANDOM FOREST CONFIGURATION
