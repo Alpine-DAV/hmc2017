@@ -46,3 +46,5 @@ parallelism = -1 # note: -1 = number of cores on the system
 kfold = 10
 decision_boundary = 4e-6
 np.random.seed(rand_seed)
+
+TOTAL_CYCLES = 40181
