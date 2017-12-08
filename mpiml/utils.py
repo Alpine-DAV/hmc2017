@@ -9,6 +9,7 @@ import time
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestRegressor
 from skgarden.mondrian.ensemble import MondrianForestRegressor
+
 import config
 
 __all__ = [ "info"
@@ -20,10 +21,11 @@ __all__ = [ "info"
           , "get_mpi_task_data"
           , "running_in_mpi"
           , "train_and_test_k_fold"
+          , "default_trainer"
+          , "fit"
           , "output_model_info"
           , "prettify_train_and_test_k_fold_results"
           , "num_classes"
-          , "train_with_method"
           , "toggle_profiling"
           , "toggle_verbose"
           ]
@@ -138,15 +140,23 @@ def toggle_profiling(enabled=True):
     global _profiling_enabled
     _profiling_enabled = enabled
 
+def default_trainer(X, y, clf, online=False, online_pool=1, classes=None, **kwargs):
+    fit(clf, X, y, online=online, online_pool=online_pool, classes=classes)
+    if running_in_mpi():
+        clf.reduce()
+    return clf
+
 # Train and test a model using k-fold cross validation (default is 10-fold).
 # Return a dictionary of statistics, which can be passed to prettify_train_and_test_k_fold_results
 # to get a readable performance summary.
 # If running in MPI, only root (rank 0) has a meaningful return value.
-# `train` should be a function which, given a feature vector and a class vector, returns a trained
-# instance of the desired model. In addition, kwargs passed to train_and_test_k_fold will be
-# forwarded train.
-def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
-    kwargs.update(k=k, comm=comm)
+# `trainer` should be a function which, given a feature vector, a label vector, and a model, trains
+# the model on the data and returns the trained model. In addition, kwargs passed to
+# train_and_test_k_fold will be forwarded train. The default trainer calls either fit or
+# partial_fit and then reduce.
+@profile('train_and_test_k_fold_prof')
+def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COMM_WORLD, **kwargs):
+    kwargs.update(trainer=trainer, k=k, comm=comm)
 
     runs = 0
     fp_accum = 0
@@ -157,7 +167,6 @@ def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
     test_neg_accum = 0
     time_train = 0
     time_test = 0
-    clf = None
 
     classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
@@ -168,7 +177,7 @@ def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
         debug('training with {} samples', train_X.shape[0])
 
         start_train = time.time()
-        clf = train(train_X, train_y, **kwargs)
+        clf = trainer(train_X, train_y, clf, classes=classes, **kwargs)
         end_train = time.time()
         time_train += end_train - start_train
 
@@ -219,7 +228,7 @@ def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
     else:
         return {}
 
-def output_model_info(MLtype, online):
+def output_model_info(model, online):
     output_str = \
 """
 ---------------------------
@@ -228,11 +237,11 @@ num cores: {num_cores}
 MPI:       {use_mpi}
 online:    {use_online}
 ---------------------------
-""".format(ml_type=MLtype,
+""".format(ml_type=model.__class__.__name__,
            num_cores=config.comm.size,
            use_mpi=running_in_mpi(), use_online=online)
 
-    if 'rf' in MLtype:
+    if model in config.forest_models:
         output_str += \
 """
 num trees: {num_trees}
@@ -276,17 +285,15 @@ methods = [
     'online'
 ]
 
-def train_with_method(clf, X, y, method='batch', online_pool=1):
-    if not isinstance(clf, online_classifiers) or method == 'batch':
-        if not isinstance(clf, online_classifiers) and method != 'batch':
+def fit(clf, X, y, classes=None, online=False, online_pool=1):
+    if not isinstance(clf, online_classifiers) or not online:
+        if not isinstance(clf, online_classifiers) and online:
             root_info('Forcing batch training for non-online classifier method')
         clf.fit(X,y)
-    elif method == 'online':
+    elif online:
+        classes = np.unique(y) if classes is None else classes
         for i in xrange(0,X.shape[0],online_pool):
-            clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
-    else:
-        raise ValueError("Invalid argument supplied for --method flag. \
-                 Please use one of the following: %s", methods)
+            clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool], classes=classes)
     return clf
 
 if not running_in_mpi():

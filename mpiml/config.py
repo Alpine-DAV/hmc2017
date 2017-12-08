@@ -42,13 +42,14 @@ def register_model(cli_name, cls, discrete=False, forest=False):
         discrete_models.append(cls)
     if forest:
         forest_models.append(cls)
-        
+
 #===============================================================================
 # RANDOM FOREST CONFIGURATION
 #===============================================================================
 rand_seed = 0
 NumTrees = 10
 parallelism = -1 # note: -1 = number of cores on the system
+
 
 #===============================================================================
 # TESTING

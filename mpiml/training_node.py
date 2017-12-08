@@ -6,12 +6,13 @@ import itertools
 from mpi4py import MPI
 import numpy as np
 import random
+from forest import RandomForestRegressor, MondrianForestRegressor
 from nbmpi import GaussianNB
-from sklearn.ensemble import RandomForestRegressor
-from skgarden.mondrian.ensemble import MondrianForestRegressor
 from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
 import sys
+
+from config import models
 
 comm = MPI.COMM_WORLD
 
@@ -37,8 +38,10 @@ def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):
             sampled_y.extend(y[i:i+1])
     return np.array(sampled_X), np.array(sampled_y)
 
-def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', method='batch',
-                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
+def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,
+                  pcast_negative=0, pkeep_positive=1, pkeep_negative=1, online=False, online_pool=1,
+                  classes=None, **kwargs):
+    classes = np.unique(y) if classes is None else classes
     root_debug('training with parameters:\n'
               '  criterion={}\n'
               '  pcast_positive={}\n'
@@ -60,10 +63,13 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', meth
     all_X = comm.gather(sampled_X, root=root)
     all_y = comm.gather(sampled_y, root=root)
     if comm.rank == root:
-        return train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
+        return fit(clf, np.concatenate(all_X), np.concatenate(all_y),
+                    online=online, online_pool=online_pool, classes=classes)
 
-def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion=')', method='batch',
-                  pcast_positive=1, pcast_negative=0, pkeep_positive=1, pkeep_negative=1, **kwargs):
+def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,
+                 pcast_negative=0, pkeep_positive=1, pkeep_negative=1, online=False, online_pool=1,
+                 classes=None, **kwargs):
+    classes = np.unique(y) if classes is None else classes
     root_debug('training with parameters:\n'
               '  criterion={}\n'
               '  pcast_positive={}\n'
@@ -82,22 +88,27 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion=')', method='
     all_X = comm.allgather(cast_X)
     all_X.append(keep_X)
 
-    clf = train_with_method(clf, np.concatenate(all_X), np.concatenate(all_y), method=method)
+    all_y = comm.allgather(cast_y)
+    all_y.append(keep_y)
+
+    clf = fit(clf, np.concatenate(all_X), np.concatenate(all_y),
+        online=online, online_pool=online_pool, classes=classes)
     return clf.reduce()
 
-def train(X, y, model=GaussianNB, **kwargs):
+def train(X, y, clf, recipients='all', **kwargs):
     kwargs.update(model=model)
-
-    clf = model()
 
     if not running_in_mpi():
         clf.fit(X, y)
         return clf
 
-    if "recipients" in kwargs and kwargs["recipients"] == "all":
+    if recipients == "all":
         return train_on_all(clf, X, y, **kwargs)
-    else:
+    elif recipients == "root":
         return train_at_root(clf, X, y, **kwargs)
+    else:
+        root_info('Invalid value "{}" for recipients: expected "all" or "root"', recipients)
+        sys.exit(1)
 
 # Users can specify a range of parameter values to investigate using the CLI. This function parses
 # a parameter range expression and returns a list of values to try. Valid expression formats are:
@@ -119,12 +130,6 @@ def parse_range(expr, default_step=0.01):
         root_info('error: unrecognized probability range {}', expr)
         sys.exit(1)
 
-models = {
-    'nb': GaussianNB,
-    'rf': RandomForestRegressor,
-    'mf': MondrianForestRegressor
-}
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Train and test a classifier using the designated training node strategy')
@@ -132,8 +137,7 @@ def parse_args():
     parser.add_argument('--model', type=str, default='rf', help='model to test (default rf)')
     parser.add_argument('--recipients', type=str, default='root',
         help='specify whether to broadcast to the root node or all nodes')
-    parser.add_argument('--method', type=str, default='online',
-        help='specify whether to train in online mode, batch mode, or an otherwise specified mode. See train_with_method in utils')
+    parser.add_argument('--online', action='store_true', help='train in online mode')
     parser.add_argument('--online-pool', type=int, default=1,
         help='number of samples to collect in online training before a partial_fit is applied')
     parser.add_argument('--criterion', metavar='EXPRESSION', type=str, default='y > 0.5',
@@ -171,8 +175,8 @@ if __name__ == '__main__':
     toggle_profiling(args.profile)
 
     if args.model in models:
-        model = models[args.model]
-        root_debug('using model {}', model)
+        model = models[args.model]()
+        root_debug('using model {}', model.__class__.__name__)
     else:
         root_info('unknown model "{}": valid models are {}', args.model, models.keys())
         sys.exit(1)
@@ -183,7 +187,7 @@ if __name__ == '__main__':
     pkeep_negative = parse_range(args.pkeep_negative)
 
     # Super forest training; when all nodes train on only their own data
-    if 'super_forest' in args:
+    if args.super_forest:
         pcast_positive = pcast_negative = [0.]
         pkeep_positive = pkeep_negative = [1.]
         args.recipients = 'all'
@@ -200,17 +204,18 @@ if __name__ == '__main__':
     if comm.rank == 0:
         sf_fmt   = ''
         online_fmt = ''
-        if 'super_forest' in args:
+        if args.super_forest:
             sf_fmt = ', super forest'
-        if args.method == 'online':
+        if args.online:
             online_fmt = ', pooling: ' + str(args.online_pool)
-        print('Training with model: {}, method: {}{}{}'.format(args.model, args.method, online_fmt, sf_fmt))
-        print('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
+        root_info('Training with model: {}, recipients: {}, method: {}{}{}'.format(
+            args.model, args.recipients, 'online' if args.online else 'batch', online_fmt, sf_fmt))
+        root_info('model,pcp,pcn,pkp,pkn,npos,nneg,fp,fn,t_train,t_test')
     for pcp, pcn, pkp, pkn in itertools.product(pcast_positive, pcast_negative, pkeep_positive, pkeep_negative):
         res = train_and_test_k_fold(
-            data, target, train, k=args.num_runs, model=model, pkeep_positive=pkp,
+            data, target, model, k=args.num_runs, model=model, pkeep_positive=pkp,
             pkeep_negative=pkn, pcast_positive=pcp, pcast_negative=pcn, criterion=args.criterion,
-            recipients=args.recipients, method=args.method, online_pool=args.online_pool)
+            recipients=args.recipients, online=args.online, online_pool=args.online_pool)
         if comm.rank == 0:
             print('{},{pcp},{pcn},{pkp},{pkn},{num_pos},{num_neg},{fp},{fn},{train_time},{test_time}'
                 .format(args.model, fp=res['fp'], fn=res['fn'], train_time=res['time_train'],
