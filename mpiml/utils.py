@@ -1,7 +1,6 @@
 from __future__ import division
 from __future__ import print_function
 
-import cProfile
 import numpy as np
 from mpi4py import MPI
 import os
@@ -146,7 +145,6 @@ def toggle_profiling(enabled=True):
 # `train` should be a function which, given a feature vector and a class vector, returns a trained
 # instance of the desired model. In addition, kwargs passed to train_and_test_k_fold will be
 # forwarded train.
-@profile('train_and_test_k_fold_prof')
 def train_and_test_k_fold(X, y, train, k=10, comm=MPI.COMM_WORLD, **kwargs):
     kwargs.update(k=k, comm=comm)
 
