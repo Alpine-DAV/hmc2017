@@ -6,8 +6,8 @@ import sys
 
 from mpi4py import MPI
 
-import nbmpi
-import rfmpi
+from nbmpi import GaussianNB
+from forest import RandomForestRegressor, MondrianForestRegressor
 
 from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretize, output_feature_importance, shuffle_data
 
