@@ -31,17 +31,11 @@ load_learning_data = False  # if true, load pre-created learning data
 # ML MODEL NAMES
 #===============================================================================
 models = {}
-discrete_models = []
-forest_models = []
-def register_model(cli_name, cls, discrete=False, forest=False):
+def register_model(cli_name, cls):
     if cli_name in models:
         print('attempted to register duplicate model "{}"'.format(cli_name), file=sys.stderr)
         sys.exit(1)
     models[cli_name] = cls
-    if discrete:
-        discrete_models.append(cls)
-    if forest:
-        forest_models.append(cls)
 
 #===============================================================================
 # RANDOM FOREST CONFIGURATION

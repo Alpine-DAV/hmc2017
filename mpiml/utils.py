@@ -155,8 +155,9 @@ def default_trainer(X, y, clf, online=False, online_pool=1, classes=None, **kwar
 # train_and_test_k_fold will be forwarded train. The default trainer calls either fit or
 # partial_fit and then reduce.
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COMM_WORLD, **kwargs):
-    kwargs.update(trainer=trainer, k=k, comm=comm)
+def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COMM_WORLD, classes=None, **kwargs):
+    classes = np.unique(y) if classes is None else classes
+    kwargs.update(trainer=trainer, k=k, comm=comm, classes=classes)
 
     runs = 0
     fp_accum = 0
@@ -168,7 +169,6 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
     time_train = 0
     time_test = 0
 
-    classes = np.unique(y)
     for train_X, test_X, train_y, test_y in get_k_fold_data(X, y, k=k):
         train_y_orig = train_y
 
@@ -177,7 +177,7 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
         debug('training with {} samples', train_X.shape[0])
 
         start_train = time.time()
-        clf = trainer(train_X, train_y, clf, classes=classes, **kwargs)
+        clf = trainer(train_X, train_y, clf, **kwargs)
         end_train = time.time()
         time_train += end_train - start_train
 
@@ -241,12 +241,12 @@ online:    {use_online}
            num_cores=config.comm.size,
            use_mpi=running_in_mpi(), use_online=online)
 
-    if model in config.forest_models:
+    if hasattr(model, 'estimators_'):
         output_str += \
 """
 num trees: {num_trees}
 ---------------------------
-""".format(num_trees=config.NumTrees)
+""".format(num_trees=len(model.estimators_))
 
     return output_str
 
@@ -275,25 +275,13 @@ performance
            test_total = d['negative_test_samples'] + d['positive_test_samples'],
            **d)
 
-online_classifiers = (
-    GaussianNB,
-    MondrianForestRegressor
-)
-
-methods = [
-    'batch',
-    'online'
-]
-
 def fit(clf, X, y, classes=None, online=False, online_pool=1):
-    if not isinstance(clf, online_classifiers) or not online:
-        if not isinstance(clf, online_classifiers) and online:
-            root_info('Forcing batch training for non-online classifier method')
-        clf.fit(X,y)
-    elif online:
+    if online:
         classes = np.unique(y) if classes is None else classes
         for i in xrange(0,X.shape[0],online_pool):
             clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool], classes=classes)
+    else:
+        clf.fit(X,y)
     return clf
 
 if not running_in_mpi():

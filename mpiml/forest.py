@@ -5,6 +5,8 @@ import skgarden.mondrian.ensemble as skg
 import sklearn.ensemble as sk
 from datasets import prepare_dataset
 
+import sys
+
 from utils import *
 from config import comm
 import config
@@ -66,7 +68,11 @@ class RandomForestRegressor(sk.RandomForestRegressor):
     def reduce(self, root=0):
         return _reduce_forest(self, root=root)
 
-config.register_model('rf', RandomForestRegressor, forest=True)
+    def partial_fit(self, X, y, classes=None):
+        root_info('attempting online training with unsupported model type')
+        sys.exit(1)
+
+config.register_model('rf', RandomForestRegressor)
 
 class MondrianForestRegressor(skg.MondrianForestRegressor):
     def __init__(self,
@@ -90,4 +96,4 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
     def reduce(self, root=0):
         return _reduce_forest(self, root=root)
 
-config.register_model('mf', MondrianForestRegressor, forest=True)
+config.register_model('mf', MondrianForestRegressor)

@@ -14,7 +14,7 @@ from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretiz
 from utils import *
 from config import *
 
-def wrapper(model, k, data_path, discrete=False, online=False):
+def wrapper(model, k, data_path, online=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
@@ -22,8 +22,6 @@ def wrapper(model, k, data_path, discrete=False, online=False):
     X, y = get_bubbleshock(data_path)
     # X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000)
     shuffle_data(X, y)
-    if discrete:
-        y = discretize(y)
 
     root_info('{}',output_model_info(model, online=online))
 
@@ -52,5 +50,4 @@ if __name__ == '__main__':
     toggle_profiling(args.profile)
 
     for model in args.models:
-        wrapper(models[model](), args.num_runs, args.data_dir,
-            discrete=models[model] in discrete_models, online=args.online)
+        wrapper(models[model](), args.num_runs, args.data_dir, online=args.online)

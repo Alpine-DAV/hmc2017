@@ -17,7 +17,7 @@ from sklearn.utils.validation import check_is_fitted
 
 import config
 from config import comm
-from datasets import get_bubbleshock, shuffle_data
+from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
 
 __all__ = ["GaussianNB"
@@ -78,8 +78,18 @@ class GaussianNB(sk.GaussianNB):
             clf.class_prior_ = np.asarray(self.priors)
         return clf
 
+    def fit(self, X, y):
+        y = discretize(y)
+        sk.GaussianNB.fit(self, X, y)
+
+    def partial_fit(self, X, y, classes=None):
+        if classes is not None:
+            classes = discretize(classes)
+        y = discretize(y)
+        sk.GaussianNB.partial_fit(self, X, y, classes=classes)
+
     def __repr__(self):
         return 'GaussianNB(\n\tn={},\n\tmean={},\n\tvariance={}\n)'.format(
             self.class_count_, self.theta_, self.sigma_)
 
-config.register_model('nb', GaussianNB, discrete=True)
+config.register_model('nb', GaussianNB)
