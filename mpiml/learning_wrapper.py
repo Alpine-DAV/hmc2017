@@ -18,7 +18,7 @@ def wrapper(model, k, data_path, online=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
-
+    # TODO: Modify this to deal with whatever the standard dataset is, not bubbleshock 
     X, y = get_bubbleshock(data_path)
     # X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000)
     shuffle_data(X, y)
