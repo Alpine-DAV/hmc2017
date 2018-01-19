@@ -226,18 +226,20 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
     else:
         return {}
 
-def output_model_info(model, online):
+def output_model_info(model, online, sparsity):
     output_str = \
 """
 ---------------------------
 ML model:  {ml_type}
 num cores: {num_cores}
 MPI:       {use_mpi}
-online:    {use_online}
+online:    {online}
+sparsity:  {sparsity}
 ---------------------------
 """.format(ml_type=model.__class__.__name__,
            num_cores=config.comm.size,
-           use_mpi=running_in_mpi(), use_online=online)
+           use_mpi=running_in_mpi(),
+           **locals())
 
     if hasattr(model, 'estimators_'):
         output_str += \
