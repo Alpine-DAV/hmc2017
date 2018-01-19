@@ -25,8 +25,8 @@ __all__ = ["GaussianNB"
 # Gaussian naive Bayes classifier. This implementation is heavily based off of sckit learn's
 # version. However, we provide an additional method, reduce, for use with MPI.
 class GaussianNB(sk.GaussianNB):
-    def __init__(self, priors=None):
-        super(GaussianNB, self).__init__(priors=priors)
+    def __init__(self):
+        super(GaussianNB, self).__init__()
 
     # When running in MPI, coordinate with other tasks to combine each task's local model into a
     # global model. The global model is returned. Each process's local model is unchanged. Note: the
@@ -71,10 +71,7 @@ class GaussianNB(sk.GaussianNB):
         clf.theta_ = mu
         clf.sigma_ = var
         clf.classes_ = self.classes_ # N.B. assumes classes_ is the same for all local models
-        if self.priors is None:
-            clf.class_prior_ = clf.class_count_ / clf.class_count_.sum()
-        else:
-            clf.class_prior_ = np.asarray(self.priors)
+        clf.class_prior_ = clf.class_count_ / clf.class_count_.sum()
         return clf
 
     def fit(self, X, y):
