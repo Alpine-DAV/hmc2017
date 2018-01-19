@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import argparse
-import skgarden.mondrian.ensemble as skg
+# import skgarden.mondrian.ensemble as skg
 import sklearn.ensemble as sk
 
 import sys
@@ -72,24 +72,24 @@ class RandomForestRegressor(sk.RandomForestRegressor):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
 
-class MondrianForestRegressor(skg.MondrianForestRegressor):
-    def __init__(self,
-                 n_estimators=config.NumTrees,
-                 max_depth=None,
-                 min_samples_split=2,
-                 bootstrap=False,
-                 n_jobs=config.parallelism,
-                 random_state=config.rand_seed,
-                 verbose=0):
-        super(MondrianForestRegressor, self).__init__(
-            n_estimators=n_estimators,
-            max_depth=max_depth,
-            min_samples_split=min_samples_split,
-            bootstrap=bootstrap,
-            n_jobs=n_jobs,
-            random_state=random_state,
-            verbose=verbose
-        )
+# class MondrianForestRegressor(skg.MondrianForestRegressor):
+#     def __init__(self,
+#                  n_estimators=config.NumTrees,
+#                  max_depth=None,
+#                  min_samples_split=2,
+#                  bootstrap=False,
+#                  n_jobs=config.parallelism,
+#                  random_state=config.rand_seed,
+#                  verbose=0):
+#         super(MondrianForestRegressor, self).__init__(
+#             n_estimators=n_estimators,
+#             max_depth=max_depth,
+#             min_samples_split=min_samples_split,
+#             bootstrap=bootstrap,
+#             n_jobs=n_jobs,
+#             random_state=random_state,
+#             verbose=verbose
+#         )
 
-    def reduce(self, root=0):
-        return _reduce_forest(self, root=root)
+#     def reduce(self, root=0):
+#         return _reduce_forest(self, root=root)
