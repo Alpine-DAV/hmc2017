@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 import argparse
 # import skgarden.mondrian.ensemble as skg
 import sklearn.ensemble as sk

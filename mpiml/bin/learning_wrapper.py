@@ -6,11 +6,11 @@ import sys
 
 from mpi4py import MPI
 
-from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretize, output_feature_importance, shuffle_data
+from mpiml.datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretize, output_feature_importance, shuffle_data
 
-from models import get_model, model_names
-from utils import *
-from config import *
+from mpiml.models import get_model, model_names
+from mpiml.utils import *
+from mpiml.config import *
 
 def wrapper(model, k, data_path, online=False, sparsity=1.0):
     """ input: type of machine learning, type of test, amount to test, training path, test path
