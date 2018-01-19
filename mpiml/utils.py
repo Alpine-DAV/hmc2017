@@ -110,7 +110,8 @@ def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
 
 # Determine if we are running as an MPI process
 def running_in_mpi():
-    return 'MPICH_INTERFACE_HOSTNAME' in os.environ
+    return 'MPICH_INTERFACE_HOSTNAME' in os.environ or \
+           'MPIRUN_ID' in os.environ
 
 _profiling_enabled = False
 def profile(filename=None, comm=MPI.COMM_WORLD):
