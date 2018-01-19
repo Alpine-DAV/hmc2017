@@ -6,11 +6,9 @@ import sys
 
 from mpi4py import MPI
 
-from nbmpi import GaussianNB
-from forest import RandomForestRegressor, MondrianForestRegressor
-
 from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretize, output_feature_importance, shuffle_data
 
+from models import get_model, model_names
 from utils import *
 from config import *
 
@@ -37,20 +35,20 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Train and test a classifier using the bubbleShock dataset')
     parser.add_argument('data_dir', type=str)
-    parser.add_argument('models', type=str, nargs='+', help='models to test {}'.format(models.keys()))
+    parser.add_argument('models', type=str, nargs='+', help='models to test {}'.format(model_names()))
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
     parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
     parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     parser.add_argument('--online', action='store_true', help='train in online mode')
     args = parser.parse_args()
 
-    for model in args.models:
-        if model not in models:
-            root_info('error: invalid model {}; valid models are {}', model, models.keys())
-            sys.exit(1)
-
     toggle_verbose(args.verbose)
     toggle_profiling(args.profile)
 
     for model in args.models:
-        wrapper(models[model](), args.num_runs, args.data_dir, online=args.online)
+        m = get_model(model)
+        if m is None:
+            root_info('error: invalid model {}; valid models are {}', model, model_names())
+            sys.exit(1)
+        else:
+            wrapper(m, args.num_runs, args.data_dir, online=args.online)

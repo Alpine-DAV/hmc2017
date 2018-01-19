@@ -72,8 +72,6 @@ class RandomForestRegressor(sk.RandomForestRegressor):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
 
-config.register_model('rf', RandomForestRegressor)
-
 class MondrianForestRegressor(skg.MondrianForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
@@ -95,5 +93,3 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
 
     def reduce(self, root=0):
         return _reduce_forest(self, root=root)
-
-config.register_model('mf', MondrianForestRegressor)

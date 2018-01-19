@@ -15,7 +15,6 @@ from sklearn.utils import check_X_y, check_array, check_consistent_length
 from sklearn.utils.multiclass import _check_partial_fit_first_call
 from sklearn.utils.validation import check_is_fitted
 
-import config
 from config import comm
 from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
@@ -91,5 +90,3 @@ class GaussianNB(sk.GaussianNB):
     def __repr__(self):
         return 'GaussianNB(\n\tn={},\n\tmean={},\n\tvariance={}\n)'.format(
             self.class_count_, self.theta_, self.sigma_)
-
-config.register_model('nb', GaussianNB)
