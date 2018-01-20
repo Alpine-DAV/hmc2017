@@ -25,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     parser.add_argument('--online', action='store_true', help='train in online mode')
     parser.add_argument('--output', type=str, default=None, help='output path for CSV')
+    parser.add_argument('--append', action='store_true', help='append to output')
     parser.add_argument('--schema', action='store_true',
         help='include the schema as the first line of output')
     args = parser.parse_args()
@@ -37,13 +38,17 @@ if __name__ == '__main__':
         root_info('error: invalid model {}; valid models are {}', model, model_names())
         sys.exit(1)
 
-    f = open(args.output, 'wb') if args.output is not None else sys.stdout
-    writer = csv.writer(f)
+    if config.comm.rank == 0:
+        if args.output is None:
+            f = sys.stdout
+        else:
+            f = open(args.output, 'ab' if args.append  else 'wb')
+        writer = csv.writer(f)
 
     schema = ['model', 'nodes', 'sparsity', 'positive_train_samples', 'negative_train_samples',
               'positive_test_samples', 'negative_test_samples', 'time_train', 'time_test',
               'fp', 'fn', 'accuracy', 'RMSE']
-    if (args.schema):
+    if args.schema and config.comm.rank == 0:
         writer.writerow(schema)
 
     for sparsity in np.linspace(0, 1, num=args.num_points+1):
@@ -55,8 +60,9 @@ if __name__ == '__main__':
         result = train_and_test_k_fold(X, y, model, k=args.num_runs, online=args.online)
         root_debug('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-        writer.writerow(selectcols(schema,
-            model=args.model, sparsity=sparsity, nodes=config.comm.size, **result))
+        if config.comm.rank == 0:
+            writer.writerow(selectcols(schema,
+                model=args.model, sparsity=sparsity, nodes=config.comm.size, **result))
 
-    if args.output:
+    if args.output and config.comm.rank == 0:
         f.close()
