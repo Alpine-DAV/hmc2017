@@ -18,7 +18,7 @@ def wrapper(model, k, data_path, online=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
-
+    
     if 'byHand' in data_path:
         X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000)
     else:
