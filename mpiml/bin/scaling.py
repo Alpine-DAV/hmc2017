@@ -20,8 +20,8 @@ if __name__ == '__main__':
     parser.add_argument('model', type=str, help='model to test {}'.format(model_names()))
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
     parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
-    parser.add_argument('--num-points', type=int, default=10,
-        help='number of evenly spaced sparsity values to test in the range (0, 1]')
+    parser.add_argument('--num-points', type=int, default=9,
+        help='number of evenly spaced sparsity values to test in the range [0.2, 1]')
     parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     parser.add_argument('--online', action='store_true', help='train in online mode')
     parser.add_argument('--output', type=str, default=None, help='output path for CSV')
@@ -51,8 +51,7 @@ if __name__ == '__main__':
     if args.schema and config.comm.rank == 0:
         writer.writerow(schema)
 
-    for sparsity in np.linspace(0, 1, num=args.num_points+1):
-        if sparsity == 0: continue
+    for sparsity in np.linspace(0.2, 1, num=args.num_points):
         root_debug('{}',output_model_info(model, online=args.online, sparsity=sparsity))
 
         X, y = prepare_dataset(args.data_dir, sparsity=sparsity)
