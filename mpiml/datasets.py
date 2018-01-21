@@ -27,7 +27,7 @@ def shuffle_data(X, y, seed=0):
     np.random.set_state(seed)
     np.random.shuffle(y)
 
-def get_bubbleshock_byhand_by_cycle(data_dir, cycle, sparsity=1.0):
+def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0):
     dataset = None
     start = time.time()
     reader = get_reader(data_dir)
@@ -40,9 +40,7 @@ def get_bubbleshock_byhand_by_cycle(data_dir, cycle, sparsity=1.0):
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])
 
-    indices = np.random.choice(y.shape[0], y.shape[0]*sparsity, replace=False)
-
-    return X[indices], y[indices]
+    return make_sparse(X, y, density)
 
 # def get_bubbleshock_all_cycles(data_dir):
 #     dataset = np.zeros(shape=(0, 18))
@@ -61,7 +59,7 @@ def get_bubbleshock_byhand_by_cycle(data_dir, cycle, sparsity=1.0):
 
 #     return X, y
 
-def get_bubbleshock(data_dir='bubbleShock', discrete=False, sparsity=1.0):
+def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
     dataset = None
     start = time.time()
     dataset = get_learning_data(data_dir, config.start_cycle, config.end_cycle, config.sample_freq, config.decay_window)
@@ -74,10 +72,10 @@ def get_bubbleshock(data_dir='bubbleShock', discrete=False, sparsity=1.0):
     if discrete:
         y = discretize(y)
 
-    return make_sparse(X, y, sparsity)
+    return make_sparse(X, y, density)
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset(dataset, discrete=False, sparsity=1.0):
+def prepare_dataset(dataset, discrete=False, density=1.0):
     if hasattr(sk, 'load_{}'.format(dataset)):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         X = dataset.data
@@ -89,12 +87,12 @@ def prepare_dataset(dataset, discrete=False, sparsity=1.0):
         y = discretize(y)
 
     shuffle_data(X, y)
-    return make_sparse(X, y, sparsity)
+    return make_sparse(X, y, density)
 
-def make_sparse(X, y, sparsity):
-    if sparsity == 1.0:
+def make_sparse(X, y, density):
+    if density == 1.0:
         return X, y
-    indices = np.random.choice(y.shape[0], y.shape[0]*sparsity, replace=False)
+    indices = np.random.choice(y.shape[0], y.shape[0]*density, replace=False)
     return X[indices], y[indices]
 
 def discretize(v):

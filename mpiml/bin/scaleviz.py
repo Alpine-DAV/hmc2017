@@ -12,7 +12,7 @@ from uncertainties import ufloat
 
 TIME_TRAIN = 'time_train'
 NODES = 'nodes'
-DENSITY = 'sparsity'
+DENSITY = 'density'
 
 def chi_sq(expected, observed):
     return sum((o - e)**2 / e for o, e in zip(observed, expected))

@@ -226,7 +226,7 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
     else:
         return {}
 
-def output_model_info(model, online, sparsity):
+def output_model_info(model, online, density):
     output_str = \
 """
 ---------------------------
@@ -234,7 +234,7 @@ ML model:  {ml_type}
 num cores: {num_cores}
 MPI:       {use_mpi}
 online:    {online}
-sparsity:  {sparsity}
+density:   {density}
 ---------------------------
 """.format(ml_type=model.__class__.__name__,
            num_cores=config.comm.size,
