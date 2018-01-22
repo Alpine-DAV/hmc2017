@@ -37,14 +37,15 @@ class RandomForestRegressor(sk.RandomForestRegressor):
                  min_weight_fraction_leaf=0.,
                  max_features="auto",
                  max_leaf_nodes=None,
-                 min_impurity_decrease=0.,
-                 min_impurity_split=None,
+                 # min_impurity_decrease=0.,
+                 # min_impurity_split=None,
                  bootstrap=True,
                  oob_score=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
                  verbose=0,
-                 warm_start=False):
+                 warm_start=False
+                 ):
         super(RandomForestRegressor, self).__init__(
             n_estimators=n_estimators,
             criterion=criterion,
@@ -54,8 +55,8 @@ class RandomForestRegressor(sk.RandomForestRegressor):
             min_weight_fraction_leaf=min_weight_fraction_leaf,
             max_features=max_features,
             max_leaf_nodes=max_leaf_nodes,
-            min_impurity_decrease=min_impurity_decrease,
-            min_impurity_split=min_impurity_split,
+            # min_impurity_decrease=min_impurity_decrease,
+            # min_impurity_split=min_impurity_split,
             bootstrap=bootstrap,
             oob_score=oob_score,
             n_jobs=n_jobs,
