@@ -35,7 +35,8 @@ def get_bubbleshock_byhand_by_cycle(data_dir, cycle):
     zids = reader.getCycleZoneIds()
     dataset = reader.readAllZonesInCycle(0, cycle)
     end = time.time()
-    root_info("TIME load training data: {}", end-start)
+    if cycle % 5000 == 0:
+        root_info("Current cycle: {}, TIME loading cycle data {}", cycle, end-start)
 
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])

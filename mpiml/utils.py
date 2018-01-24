@@ -28,6 +28,9 @@ __all__ = [ "info"
           , "num_classes"
           , "toggle_profiling"
           , "toggle_verbose"
+          , "train_by_cycle"
+          , "test_by_cycle"
+          , "get_nth_mpi_task_data"
           ]
 
 _verbose = False
@@ -105,11 +108,17 @@ def get_k_fold_data(X, y, k=10):
         test_y = y_splits[i]
         yield (train_X, test_X, train_y, test_y)
 
-# Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
-# function, then every sample in the dataset will be distributed to exactly one task.
-def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD):
-    return np.array_split(X, comm.size)[comm.rank], \
-           np.array_split(y, comm.size)[comm.rank]
+# Get a subset of a dataset for the nth task. For retrieving other task's data without 
+# communication overhead 
+def get_nth_mpi_task_data(X, y, n, comm = MPI.COMM_WORLD): 
+    return np.array_split(X, comm.size)[n], \
+           np.array_split(y, comm.size)[n] 
+ 
+# Get a subset of a dataset for the current task. If each task in an MPI communicator calls this 
+# function, then every sample in the dataset will be distributed to exactly one task. 
+def get_mpi_task_data(X, y, comm = MPI.COMM_WORLD): 
+    return get_nth_mpi_task_data(X, y, comm.rank) 
+
 
 # Determine if we are running as an MPI process
 def running_in_mpi():
@@ -145,6 +154,10 @@ def default_trainer(X, y, clf, online=False, online_pool=1, classes=None, **kwar
     if running_in_mpi():
         clf.reduce()
     return clf
+
+def by_cycle_trainer(X, y, clf, online=False, online_pool=1, classes=None): 
+    fit(clf, X, y, online=online, online_pool=online_pool, classes=classes) 
+    return clf 
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 # Return a dictionary of statistics, which can be passed to prettify_train_and_test_k_fold_results
@@ -202,7 +215,7 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
             test_pos_accum += test_pos
             test_neg_accum += test_neg
 
-            RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
+            RMSE = np.sqrt(sum(pow(test_y - prd, 2)) / test_y.size )
 
             runs += 1
             root_debug('run {}: {} false positives, {} false negatives', runs, fp, fn)
@@ -215,7 +228,7 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
             'fp': fp_accum / runs,
             'fn': fn_accum / runs,
             'RMSE': RMSE,
-            'accuracy': 1 - ((fp_accum + fn_accum) / (train_neg_accum + train_pos_accum)),
+            'accuracy': 1 - ((fp_accum + fn_accum) / (test_pos_accum + test_neg_accum)),
             'time_train': time_train / runs,
             'time_test': time_test / runs,
             'runs': runs,
@@ -228,6 +241,27 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
     else:
         return {}
 
+def train_by_cycle(X, y, clf, trainer=by_cycle_trainer, comm=MPI.COMM_WORLD, classes=None, **kwargs): 
+    start_time = time.time() 
+    clf = trainer(X, y, clf, **kwargs) 
+    end_time = time.time() 
+    return end_time - start_time 
+
+def test_by_cycle(X, y, clf, comm=MPI.COMM_WORLD): 
+    start_time = time.time() 
+    prd = clf.predict(X) 
+    end_time = time.time() 
+    fp, fn = num_errors(y, prd)
+    RMSE_partial = sum(pow(test_y - prd, 2))
+    if comm.rank == 0:
+        return {
+            'fp': fp, 
+            'fn': fn, 
+            'RMSE_partial': RMSE_partial,
+            'cycle_test_time': end_time - start_time,
+            'clf': clf
+        }
+    
 def output_model_info(model, online):
     output_str = \
 """
