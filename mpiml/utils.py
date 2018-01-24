@@ -6,10 +6,7 @@ from mpi4py import MPI
 import os
 import sys
 import time
-from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import RandomForestRegressor
-from skgarden.mondrian.ensemble import MondrianForestRegressor
-
+import datasets
 import config
 
 __all__ = [ "info"
@@ -21,6 +18,7 @@ __all__ = [ "info"
           , "get_mpi_task_data"
           , "running_in_mpi"
           , "train_and_test_k_fold"
+          , "train_and_test_byHand"
           , "default_trainer"
           , "fit"
           , "output_model_info"
@@ -156,7 +154,7 @@ def default_trainer(X, y, clf, online=False, online_pool=1, classes=None, **kwar
 # partial_fit and then reduce.
 @profile('train_and_test_k_fold_prof')
 def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COMM_WORLD, classes=None, **kwargs):
-    classes = np.unique(y) if classes is None else classes
+    # classes = np.unique(y) if classes is None else classes
     kwargs.update(trainer=trainer, k=k, comm=comm, classes=classes)
 
     runs = 0
@@ -191,7 +189,7 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
             end_test = time.time()
             time_test += end_test - start_test
 
-            fp, fn = num_errors(test_y, prd)
+            fp, fn = num_errors(test_y, prd, config.decision_boundary)
             fp_accum += fp
             fn_accum += fn
 
@@ -228,15 +226,97 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
     else:
         return {}
 
+def train_and_test_byHand(clf, data_path, trainer=default_trainer, k=10, comm=MPI.COMM_WORLD, classes=None, **kwargs):
+    kwargs.update(trainer=trainer, k=k, comm=comm, classes=classes)
+
+    runs = 0
+    fp_accum = 0
+    fn_accum = 0
+    train_pos_accum = 0
+    train_neg_accum = 0
+    test_pos_accum = 0
+    test_neg_accum = 0
+    time_train = 0
+    time_test = 0
+
+    for k_run in range(1): # change to range(k)
+
+        for cycle in range(0, int(9*config.TOTAL_CYCLES/10)):
+            root_info(cycle)
+
+            train_X, train_y = datasets.get_bubbleshock_byhand_by_cycle(data_path, cycle)
+
+            if running_in_mpi():
+                train_X, train_y = get_mpi_task_data(train_X, train_y)
+            debug('training with {} samples', train_X.shape[0])
+
+            start_train = time.time()
+            clf = trainer(train_X, train_y, clf, **kwargs)
+            end_train = time.time()
+            time_train += end_train - start_train
+
+            if type(clf) == type([]):
+                clf = clf[0]
+
+            comm.barrier()
+
+        for cycle in range(int(9*config.TOTAL_CYCLES/10), config.TOTAL_CYCLES):
+
+            if comm.rank == 0:
+                # Only root has the final model, so only root does the predicting
+
+                test_X, test_y = datasets.get_bubbleshock_byhand_by_cycle(data_path, cycle)
+                start_test = time.time()
+                prd = clf.predict(test_X)
+                end_test = time.time()
+                time_test += end_test - start_test
+
+                fp, fn = num_errors(test_y, prd)
+                fp_accum += fp
+                fn_accum += fn
+
+                train_pos, train_neg = num_classes(train_y_orig)
+                train_pos_accum += train_pos
+                train_neg_accum += train_neg
+                test_pos, test_neg = num_classes(test_y)
+                test_pos_accum += test_pos
+                test_neg_accum += test_neg
+
+                RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
+
+                runs += 1
+                root_debug('run {}: {} false positives, {} false negatives', runs, fp, fn)
+                root_debug('final model: {}', clf)
+
+            comm.barrier()
+
+    if comm.rank == 0:
+        return {
+            'fp': fp_accum / runs,
+            'fn': fn_accum / runs,
+            'RMSE': RMSE,
+            'accuracy': 0,#1 - ((fp_accum + fn_accum) / (train_neg_accum + train_pos_accum)),
+            'time_train': time_train / runs,
+            'time_test': time_test / runs,
+            'runs': runs,
+            'negative_train_samples': 0,#train_neg_accum / runs,
+            'positive_train_samples': 0,#train_pos_accum / runs,
+            'negative_test_samples': 0,#test_neg_accum / runs,
+            'positive_test_samples': 0,#test_pos_accum / runs,
+            'clf': clf
+        }
+    else:
+        return {}
+
 def output_model_info(model, online):
     output_str = \
 """
----------------------------
+-------------------------------------
 ML model:  {ml_type}
 num cores: {num_cores}
 MPI:       {use_mpi}
 online:    {use_online}
----------------------------
+-------------------------------------
 """.format(ml_type=model.__class__.__name__,
            num_cores=config.comm.size,
            use_mpi=running_in_mpi(), use_online=online)
@@ -244,9 +324,16 @@ online:    {use_online}
     if hasattr(model, 'estimators_'):
         output_str += \
 """
-num trees: {num_trees}
----------------------------
-""".format(num_trees=len(model.estimators_))
+-------------------------------------
+n_estimators:        {n_estimators}
+len(estimators_):    {estimators_}
+n features:          {n_features_}
+n outputs:           {n_outputs_}
+-------------------------------------
+""".format(n_estimators=model.n_estimators,
+           estimators_=len(model.estimators_),
+           n_features_=model.n_features_,
+           n_outputs_=model.n_outputs_)
 
     return output_str
 
@@ -278,8 +365,9 @@ performance
 def fit(clf, X, y, classes=None, online=False, online_pool=1):
     if online:
         classes = np.unique(y) if classes is None else classes
-        for i in xrange(0,X.shape[0],online_pool):
-            clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool], classes=classes)
+        clf.partial_fit(X, y, classes=classes)
+        # for i in xrange(0,X.shape[0],online_pool):
+        #     clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool], classes=classes)
     else:
         clf.fit(X,y)
     return clf
