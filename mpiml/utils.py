@@ -249,10 +249,10 @@ def train_by_cycle(X, y, clf, trainer=by_cycle_trainer, comm=MPI.COMM_WORLD, cla
 
 def test_by_cycle(X, y, clf, comm=MPI.COMM_WORLD): 
     start_time = time.time() 
-    prd = clf.predict(X) 
+    prd = clf.predict(X)
     end_time = time.time() 
     fp, fn = num_errors(y, prd)
-    RMSE_partial = sum(pow(test_y - prd, 2))
+    RMSE_partial = sum(pow(y - prd, 2))
     if comm.rank == 0:
         return {
             'fp': fp, 
@@ -313,7 +313,10 @@ def fit(clf, X, y, classes=None, online=False, online_pool=1):
     if online:
         classes = np.unique(y) if classes is None else classes
         for i in xrange(0,X.shape[0],online_pool):
-            clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool], classes=classes)
+            if isinstance(clf, MondrianForestRegressor):
+                clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
+            else:
+                clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool], classes=classes)
     else:
         clf.fit(X,y)
     return clf

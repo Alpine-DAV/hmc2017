@@ -20,7 +20,7 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
     """
     # TODO: Modify this to deal with whatever the standard dataset is, not bubbleshock 
     result = {}
-    if "byHand" in data_path: 
+    if "byHand" in data_path:
         train_time = 0 
         test_time  = 0 
         negative_train_samples = 0
@@ -34,21 +34,18 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
             if running_in_mpi():
                 X, y = get_mpi_task_data(X, y)
             train_time += train_by_cycle(X, y, model)
-
             train_pos, train_neg = num_classes(y)
             positive_train_samples += train_pos
             negative_train_samples += train_neg
             
             cycle += 1
         
-        root_info('finished training')
-
         if running_in_mpi(): 
-            model = model.reduce() 
+            root_info('Done training by cycle, reducing and testing.')
+            model = model.reduce()
+            positive_train_samples = comm.reduce(positive_train_samples, op=MPI.SUM, root=0)
+            negative_train_samples = comm.reduce(negative_train_samples, op=MPI.SUM, root=0)
 
-        positive_train_samples = comm.reduce(positive_train_samples, op=SUM, root=0)
-        negative_train_samples = comm.reduce(negative_train_samples, op=SUM, root=0)
-        
         if comm.rank == 0:
             fp = 0
             fn = 0
@@ -59,32 +56,33 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
                 if running_in_mpi():
                     X, y = get_mpi_task_data(X, y)
                 results_partial = test_by_cycle(X, y, model)
-                
                 fp += results_partial['fp']
                 fn += results_partial['fn']
                 
                 RMSE_sum += results_partial['RMSE_partial']
                 RMSE_total += len(y)
                 
-                test_pos, test_neg = num_classes(test_y)
+                test_pos, test_neg = num_classes(y)
                 positive_test_samples += test_pos
                 negative_test_samples += test_neg
                 
                 test_time += results_partial['cycle_test_time']
+                
+                cycle += 1
 
             result = {
                 'fp': fp,
                 'fn': fn,
                 'RMSE': RMSE_sum / RMSE_total,
-                'accuracy': 1 - ((fp_accum + fn_accum) / (RMSE_total)),
-                'time_train': time_train,
-                'time_test': time_test,
+                'accuracy': 1 - ((fp + fn) / (RMSE_total)),
+                'time_train': train_time,
+                'time_test': test_time,
                 'runs': 1,
                 'negative_train_samples': negative_train_samples,
                 'positive_train_samples': positive_train_samples,
                 'negative_test_samples': negative_test_samples,
                 'positive_test_samples': positive_test_samples,
-                'clf': clf
+                'clf': model
             }
     else:
         X, y = get_bubbleshock(data_path)
