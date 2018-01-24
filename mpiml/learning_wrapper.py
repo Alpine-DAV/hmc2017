@@ -19,17 +19,21 @@ def wrapper(model, k, data_path, online=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
+    result = None
 
     if 'byHand' in data_path:
         X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000)
+        result = train_and_test_byHand(clf=model, data_path=data_path, k=k, online=True)
     else:
         X, y = get_bubbleshock(data_path)
+
         shuffle_data(X, y)
+        result = train_and_test_k_fold(X, y, model, k=k, online=online)
+
+    
+    root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
     root_info('{}',output_model_info(model, online=online))
-
-    result = train_and_test_k_fold(X, y, model, k=k, online=online)
-    root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
 if __name__ == '__main__':
 
