@@ -31,7 +31,6 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
         cycle = 0
         while cycle < TOTAL_CYCLES and cycle < training_cycles: 
             X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
-            root_info('cycle: {}'.format(cycle))
             if running_in_mpi():
                 X, y = get_mpi_task_data(X, y)
             train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
@@ -70,7 +69,7 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
                 test_time += results_partial['cycle_test_time']
                 
                 cycle += 1
-                root_info('cycle: {}'.format(cycle))
+
 
             result = {
                 'fp': fp,

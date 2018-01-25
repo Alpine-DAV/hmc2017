@@ -312,7 +312,6 @@ performance
 
 def fit(clf, X, y, classes=None, online=False, online_pool=1):
     if online:
-        root_info('training online, pool {}'.format(online_pool))
         classes = np.unique(y) if classes is None else classes
         for i in xrange(0,X.shape[0],online_pool):
             if isinstance(clf, MondrianForestRegressor):
