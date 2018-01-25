@@ -155,8 +155,8 @@ def default_trainer(X, y, clf, online=False, online_pool=1, classes=None, **kwar
         clf.reduce()
     return clf
 
-def by_cycle_trainer(X, y, clf, online=False, online_pool=1, classes=None): 
-    fit(clf, X, y, online=online, online_pool=online_pool, classes=classes) 
+def by_cycle_trainer(X, y, clf, online=False, online_pool=1, **kwargs): 
+    fit(clf, X, y, online=online, online_pool=online_pool) 
     return clf 
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
@@ -241,14 +241,15 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
     else:
         return {}
 
-def train_by_cycle(X, y, clf, trainer=by_cycle_trainer, comm=MPI.COMM_WORLD, classes=None, **kwargs): 
+def train_by_cycle(X, y, clf, trainer=by_cycle_trainer, comm=MPI.COMM_WORLD, **kwargs): 
     start_time = time.time() 
-    clf = trainer(X, y, clf, **kwargs) 
+    clf = trainer(X, y, clf, **kwargs)
     end_time = time.time() 
     return end_time - start_time 
 
-def test_by_cycle(X, y, clf, comm=MPI.COMM_WORLD): 
-    start_time = time.time() 
+def test_by_cycle(X, y, clf, comm=MPI.COMM_WORLD, **kwargs): 
+    start_time = time.time()
+    #TODO: Prediction online
     prd = clf.predict(X)
     end_time = time.time() 
     fp, fn = num_errors(y, prd)
@@ -311,6 +312,7 @@ performance
 
 def fit(clf, X, y, classes=None, online=False, online_pool=1):
     if online:
+        root_info('online')
         classes = np.unique(y) if classes is None else classes
         for i in xrange(0,X.shape[0],online_pool):
             if isinstance(clf, MondrianForestRegressor):

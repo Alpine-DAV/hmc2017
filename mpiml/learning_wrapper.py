@@ -33,7 +33,7 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
             X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
             if running_in_mpi():
                 X, y = get_mpi_task_data(X, y)
-            train_time += train_by_cycle(X, y, model)
+            train_time += train_by_cycle(X, y, model, online=online)
             train_pos, train_neg = num_classes(y)
             positive_train_samples += train_pos
             negative_train_samples += train_neg
@@ -55,7 +55,7 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
                 X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
                 if running_in_mpi():
                     X, y = get_mpi_task_data(X, y)
-                results_partial = test_by_cycle(X, y, model)
+                results_partial = test_by_cycle(X, y, model, online=online)
                 fp += results_partial['fp']
                 fn += results_partial['fn']
                 
