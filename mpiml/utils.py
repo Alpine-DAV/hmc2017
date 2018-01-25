@@ -155,7 +155,7 @@ def default_trainer(X, y, clf, online=False, online_pool=1, classes=None, **kwar
         clf.reduce()
     return clf
 
-def by_cycle_trainer(X, y, clf, online=False, online_pool=1, **kwargs): 
+def by_cycle_trainer(X, y, clf, online=False, online_pool=1, **kwargs):
     fit(clf, X, y, online=online, online_pool=online_pool) 
     return clf 
 
@@ -312,7 +312,7 @@ performance
 
 def fit(clf, X, y, classes=None, online=False, online_pool=1):
     if online:
-        root_info('online')
+        root_info('training online, pool {}'.format(online_pool))
         classes = np.unique(y) if classes is None else classes
         for i in xrange(0,X.shape[0],online_pool):
             if isinstance(clf, MondrianForestRegressor):

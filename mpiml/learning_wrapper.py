@@ -14,7 +14,7 @@ from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretiz
 from utils import *
 from config import *
 
-def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=TOTAL_CYCLES-TOTAL_CYCLES/2, online=False):
+def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=TOTAL_CYCLES-TOTAL_CYCLES/2, online=False, online_pool=1):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
@@ -31,9 +31,10 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
         cycle = 0
         while cycle < TOTAL_CYCLES and cycle < training_cycles: 
             X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
+            root_info('cycle: {}'.format(cycle))
             if running_in_mpi():
                 X, y = get_mpi_task_data(X, y)
-            train_time += train_by_cycle(X, y, model, online=online)
+            train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
             train_pos, train_neg = num_classes(y)
             positive_train_samples += train_pos
             negative_train_samples += train_neg
@@ -55,7 +56,7 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
                 X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
                 if running_in_mpi():
                     X, y = get_mpi_task_data(X, y)
-                results_partial = test_by_cycle(X, y, model, online=online)
+                results_partial = test_by_cycle(X, y, model, online=online, online_pool=online_pool)
                 fp += results_partial['fp']
                 fn += results_partial['fn']
                 
@@ -69,6 +70,7 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
                 test_time += results_partial['cycle_test_time']
                 
                 cycle += 1
+                root_info('cycle: {}'.format(cycle))
 
             result = {
                 'fp': fp,
@@ -103,6 +105,7 @@ if __name__ == '__main__':
     parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
     parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     parser.add_argument('--online', action='store_true', help='train in online mode')
+    parser.add_argument('--online-pool', type=int, default=1, help='specify the pooling of values to train the online classifier upon')
     parser.add_argument('--training-cycles', type=int, default=TOTAL_CYCLES/2,
         help='number of cycles to train on before testing for the bubbleShock_byHand dataset')
     parser.add_argument('--testing-cycles', type=int, default=TOTAL_CYCLES-TOTAL_CYCLES/2,
@@ -118,5 +121,5 @@ if __name__ == '__main__':
     toggle_profiling(args.profile)
 
     for model in args.models:
-        wrapper(models[model](), args.num_runs, args.data_dir, online=args.online,
+        wrapper(models[model](), args.num_runs, args.data_dir, online=args.online, online_pool=args.online_pool,
             training_cycles=args.training_cycles, testing_cycles=args.testing_cycles)
