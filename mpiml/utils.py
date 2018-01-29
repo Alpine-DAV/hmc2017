@@ -20,6 +20,7 @@ __all__ = [ "info"
           , "get_k_fold_data"
           , "get_mpi_task_data"
           , "running_in_mpi"
+          , "train_and_test"
           , "train_and_test_k_fold"
           , "default_trainer"
           , "fit"
@@ -231,7 +232,14 @@ def train_and_test(train_X, train_y, test_X, test_y, clf, trainer=default_traine
             'test_neg_accum': test_neg_accum,
             'test_pos_accum': test_pos_accum,
             'clf': clf,
-            'test_size': test_size
+            'test_size': test_size,
+            'fp': fp_accum / runs,
+            'fn': fn_accum / runs,
+            'accuracy': 1 - ((fp_accum + fn_accum) / (test_pos_accum + test_neg_accum)),
+            'negative_train_samples': train_neg_accum / runs,
+            'positive_train_samples': train_pos_accum / runs,
+            'negative_test_samples': test_neg_accum / runs,
+            'positive_test_samples': test_pos_accum / runs
         }
     else:
         return {}
@@ -282,7 +290,7 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
 
     if comm.rank == 0:
         return {
-            'fp': result['fp_accum'] / runs,
+            'fp': fp_accum / runs,
             'fn': fn_accum / runs,
             'RMSE': np.sqrt(RMSE_partial/test_size),
             'accuracy': 1 - ((fp_accum + fn_accum) / (test_pos_accum + test_neg_accum)),
