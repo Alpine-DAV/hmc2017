@@ -10,6 +10,7 @@ from DataReader.FeatureDataReader import FeatureDataReader
 
 __all__ = [ "get_bubbleshock"
           , "get_bubbleshock_byhand_by_cycle"
+          , "get_bubbleshock_byhand_range"
           , "prepare_dataset"
           , "shuffle_data"
           , "discretize"
@@ -59,23 +60,6 @@ def get_bubbleshock_byhand_range(data_dir, start_cycle, end_cycle):
     y = np.ravel(dataset[:,[-1]])
 
     return X, y
-
-# def get_bubbleshock_all_cycles(data_dir):
-#     dataset = np.zeros(shape=(0, 18))
-#     start = time.time()
-#     reader = get_reader(data_dir)
-#     feature_names = reader.getFeatureNames()
-#     zids = reader.getCycleZoneIds()
-
-#     for cycle in range(1000):
-#         dataset = np.concatenate((dataset,reader.readAllZonesInCycle(0, cycle)),axis=0)
-#     end = time.time()
-#     root_info("TIME load training data: {}", end-start)
-
-#     X = dataset[:,0:-1]
-#     y = np.ravel(dataset[:,[-1]])
-
-#     return X, y
 
 def get_bubbleshock(data_dir='bubbleShock', discrete=False):
     dataset = None
