@@ -9,7 +9,7 @@ from mpi4py import MPI
 from nbmpi import GaussianNB
 from forest import RandomForestRegressor, MondrianForestRegressor
 
-from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretize, output_feature_importance, shuffle_data
+from datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, get_bubbleshock_byhand_range, discretize, output_feature_importance, shuffle_data
 
 from utils import *
 from config import *
@@ -18,7 +18,6 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
-    # TODO: Modify this to deal with whatever the standard dataset is, not bubbleshock 
     result = {}
     if "byHand" in data_path:
         train_time = 0 
@@ -29,62 +28,74 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
         positive_test_samples  = 0
 
         cycle = 0
-        while cycle < TOTAL_CYCLES and cycle < training_cycles: 
-            X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
-            if running_in_mpi():
-                X, y = get_mpi_task_data(X, y)
-            train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
-            train_pos, train_neg = num_classes(y)
-            positive_train_samples += train_pos
-            negative_train_samples += train_neg
-            
-            cycle += 1
-        
-        if running_in_mpi(): 
-            root_info('Done training by cycle, reducing and testing.')
-            model = model.reduce()
-            positive_train_samples = comm.reduce(positive_train_samples, op=MPI.SUM, root=0)
-            negative_train_samples = comm.reduce(negative_train_samples, op=MPI.SUM, root=0)
+        cycles_train = [TOTAL_CYCLES-20, TOTAL_CYCLES-10]
+        cycles_test = [TOTAL_CYCLES-10, TOTAL_CYCLES]
 
-        if comm.rank == 0:
-            fp = 0
-            fn = 0
-            RMSE_sum   = 0
-            RMSE_total = 0
-            while cycle < TOTAL_CYCLES and cycle < training_cycles+testing_cycles:    
+        if True:
+            for cycle in cycles_train:
                 X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
                 if running_in_mpi():
                     X, y = get_mpi_task_data(X, y)
-                results_partial = test_by_cycle(X, y, model, online=online, online_pool=online_pool)
-                fp += results_partial['fp']
-                fn += results_partial['fn']
-                
-                RMSE_sum += results_partial['RMSE_partial']
-                RMSE_total += len(y)
-                
-                test_pos, test_neg = num_classes(y)
-                positive_test_samples += test_pos
-                negative_test_samples += test_neg
-                
-                test_time += results_partial['cycle_test_time']
+                train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
+                train_pos, train_neg = num_classes(y)
+                positive_train_samples += train_pos
+                negative_train_samples += train_neg
                 
                 cycle += 1
+            
+            if running_in_mpi(): 
+                root_info('Done training by cycle, reducing and testing.')
+                model = model.reduce()
+                positive_train_samples = comm.reduce(positive_train_samples, op=MPI.SUM, root=0)
+                negative_train_samples = comm.reduce(negative_train_samples, op=MPI.SUM, root=0)
+
+            if comm.rank == 0:
+                fp = 0
+                fn = 0
+                RMSE_sum   = 0
+                RMSE_total = 0
+                for cycle in cycles_test:    
+                    X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
+                    if running_in_mpi():
+                        X, y = get_mpi_task_data(X, y)
+                    results_partial = test_by_cycle(X, y, model, online=online, online_pool=online_pool)
+                    fp += results_partial['fp']
+                    fn += results_partial['fn']
+                    
+                    RMSE_sum += results_partial['RMSE_partial']
+                    RMSE_total += len(y)
+                    
+                    test_pos, test_neg = num_classes(y)
+                    positive_test_samples += test_pos
+                    negative_test_samples += test_neg
+
+                    print y.shape, test_pos, test_neg
+                    
+                    test_time += results_partial['cycle_test_time']
+                    
+                    cycle += 1
 
 
-            result = {
-                'fp': fp,
-                'fn': fn,
-                'RMSE': RMSE_sum / RMSE_total,
-                'accuracy': 1 - ((fp + fn) / (RMSE_total)),
-                'time_train': train_time,
-                'time_test': test_time,
-                'runs': 1,
-                'negative_train_samples': negative_train_samples,
-                'positive_train_samples': positive_train_samples,
-                'negative_test_samples': negative_test_samples,
-                'positive_test_samples': positive_test_samples,
-                'clf': model
-            }
+                result = {
+                    'fp': fp,
+                    'fn': fn,
+                    'RMSE': RMSE_sum / RMSE_total,
+                    'accuracy': 1 - ((fp + fn) / (RMSE_total)),
+                    'time_train': train_time,
+                    'time_test': test_time,
+                    'runs': 1,
+                    'negative_train_samples': negative_train_samples,
+                    'positive_train_samples': positive_train_samples,
+                    'negative_test_samples': negative_test_samples,
+                    'positive_test_samples': positive_test_samples,
+                    'clf': model
+                }
+        else:
+            train_X, train_y = get_bubbleshock_byhand_range(data_path, cycles_train[0], cycles_train[1])
+            test_X, test_y = get_bubbleshock_byhand_range(data_path, cycles_test[0], cycles_test[1])
+            if comm.rank == 0: print train_X.shape, test_X.shape
+            result = train_and_test(train_X, train_y, test_X, test_y, model)
+
     else:
         X, y = get_bubbleshock(data_path)
         shuffle_data(X, y)
