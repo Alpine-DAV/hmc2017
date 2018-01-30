@@ -31,6 +31,7 @@ __all__ = [ "info"
           , "train_by_cycle"
           , "test_by_cycle"
           , "get_nth_mpi_task_data"
+          , "get_pool_samples"
           ]
 
 _verbose = False
@@ -241,10 +242,16 @@ def train_and_test_k_fold(X, y, clf, trainer=default_trainer, k=10, comm=MPI.COM
     else:
         return {}
 
+def get_pool_samples(X, y, rem_X, rem_y, online_pool, comm=MPI.COMM_WORLD):
+    rem_X = X[online_pool*comm.size:]
+    rem_y = y[online_pool*comm.size:]
+    X = X[:online_pool*comm.size]
+    y = y[:online_pool*comm.size]
+
 def train_by_cycle(X, y, clf, trainer=by_cycle_trainer, comm=MPI.COMM_WORLD, **kwargs): 
     start_time = time.time() 
     clf = trainer(X, y, clf, **kwargs)
-    end_time = time.time() 
+    end_time = time.time()
     return end_time - start_time 
 
 def test_by_cycle(X, y, clf, comm=MPI.COMM_WORLD, **kwargs): 
@@ -313,11 +320,12 @@ performance
 def fit(clf, X, y, classes=None, online=False, online_pool=1):
     if online:
         classes = np.unique(y) if classes is None else classes
-        for i in xrange(0,X.shape[0],online_pool):
-            if isinstance(clf, MondrianForestRegressor):
-                clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
-            else:
+        for i in xrange(0, X.shape[0], online_pool):
+            if isinstance(clf, GaussianNB):
                 clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool], classes=classes)
+            else:
+                clf.partial_fit(X[i:i+online_pool], y[i:i+online_pool])
+
     else:
         clf.fit(X,y)
     return clf

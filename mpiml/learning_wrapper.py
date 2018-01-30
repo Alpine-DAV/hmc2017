@@ -21,24 +21,49 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
     # TODO: Modify this to deal with whatever the standard dataset is, not bubbleshock 
     result = {}
     if "byHand" in data_path:
-        train_time = 0 
-        test_time  = 0 
+        train_time = 0
+        test_time  = 0
         negative_train_samples = 0
         positive_train_samples = 0
         negative_test_samples  = 0
         positive_test_samples  = 0
 
         cycle = 0
+        X, y, rem_X, rem_y = [], [], [], []
         while cycle < TOTAL_CYCLES and cycle < training_cycles: 
-            X, y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
+            cycle_X, cycle_y = get_bubbleshock_byhand_by_cycle(data_path, cycle)
+            cycle += 1
+
+            X.extend(cycle_X)
+            y.extend(cycle_y)
+
+            # pool cycles until data above online_pool for all processes
+            if len(y) < online_pool*comm.size:
+                continue
+            
+            get_pool_samples(X, y, rem_X, rem_y, online_pool)
             if running_in_mpi():
                 X, y = get_mpi_task_data(X, y)
+            root_info('length of samples in X: {}'.format(len(y)))
+            train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
+            
+            train_pos, train_neg = num_classes(y)
+            positive_train_samples += train_pos
+            negative_train_samples += train_neg
+
+            X = rem_X
+            y = rem_y
+            root_info('trained through cycle: {}'.format(cycle))
+        
+        # train on remaining samples from cycles
+        while len(y) != 0:
+            get_pool_samples(X, y, rem_X, rem_y, online_pool)
             train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
             train_pos, train_neg = num_classes(y)
             positive_train_samples += train_pos
             negative_train_samples += train_neg
-            
-            cycle += 1
+            X = rem_X
+            y = rem_y
         
         if running_in_mpi(): 
             root_info('Done training by cycle, reducing and testing.')
@@ -65,7 +90,7 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
                 test_pos, test_neg = num_classes(y)
                 positive_test_samples += test_pos
                 negative_test_samples += test_neg
-                
+
                 test_time += results_partial['cycle_test_time']
                 
                 cycle += 1
