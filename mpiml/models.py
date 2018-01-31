@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from forest import RandomForestRegressor
+from forest import RandomForestRegressor, MondrianForestRegressor
 from nbmpi import GaussianNB
 
 __all__ = ["get_model"
@@ -15,7 +15,7 @@ def _register_model(cli_name, cls):
     _models[cli_name] = cls
 
 _register_model('nb', GaussianNB)
-# _register_model('mf', MondrianForestRegressor)
+_register_model('mf', MondrianForestRegressor)
 _register_model('rf', RandomForestRegressor)
 
 def model_names():

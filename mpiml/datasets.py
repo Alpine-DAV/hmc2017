@@ -92,7 +92,7 @@ def prepare_dataset(dataset, discrete=False, density=1.0):
 def make_sparse(X, y, density):
     if density == 1.0:
         return X, y
-    indices = np.random.choice(y.shape[0], y.shape[0]*density, replace=False)
+    indices = np.random.choice(y.shape[0], int(y.shape[0]*density), replace=False)
     return X[indices], y[indices]
 
 def discretize(v):
