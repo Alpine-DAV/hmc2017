@@ -8,7 +8,7 @@ import sys
 
 import mpiml.config as config
 from mpiml.datasets import prepare_dataset
-from mpiml.models import get_model, model_names
+from mpiml.models import get_model, model_names, get_cli_name
 from mpiml.utils import *
 
 def _slurm_env(key):
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Test performance of a classifier on a range of problem sizes')
     parser.add_argument('data_dir', type=str)
-    parser.add_argument('model', type=str, help='model to test {}'.format(model_names()))
+    parser.add_argument('models', type=str, nargs='+', help='models to test {}'.format(model_names()))
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
     parser.add_argument('--num-runs', type=int, default=10, help='k for k-fold validation')
     parser.add_argument('--num-points', type=int, default=9,
@@ -44,10 +44,13 @@ if __name__ == '__main__':
     nodes = _slurm_env('SLURM_NNODES')
     tasks = _slurm_env('SLURM_NTASKS')
 
-    model = get_model(args.model)
-    if model is None:
-        root_info('error: invalid model {}; valid models are {}', model, model_names())
-        sys.exit(1)
+    models = []
+    for m in args.models:
+        model = get_model(m)
+        if model is None:
+            root_info('error: invalid model {}; valid models are {}', model, model_names())
+            sys.exit(1)
+        models.append(model)
 
     if config.comm.rank == 0:
         if args.output is None:
@@ -62,17 +65,18 @@ if __name__ == '__main__':
     if args.schema and config.comm.rank == 0:
         writer.writerow(schema)
 
-    for density in np.linspace(0.2, 1, num=args.num_points):
-        root_debug('{}',output_model_info(model, online=args.online, density=density))
+    for model in models:
+        for density in np.linspace(0.2, 1, num=args.num_points):
+            root_debug('{}',output_model_info(model, online=args.online, density=density))
 
-        X, y = prepare_dataset(args.data_dir, density=density)
+            X, y = prepare_dataset(args.data_dir, density=density)
 
-        result = train_and_test_k_fold(X, y, model, k=args.num_runs, online=args.online)
-        root_debug('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
+            result = train_and_test_k_fold(X, y, model, k=args.num_runs, online=args.online)
+            root_debug('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-        if config.comm.rank == 0:
-            writer.writerow(selectcols(schema,
-                model=args.model, density=density, nodes=nodes, tasks=tasks, **result))
+            if config.comm.rank == 0:
+                writer.writerow(selectcols(schema,
+                    model=get_cli_name(model), density=density, nodes=nodes, tasks=tasks, **result))
 
     if args.output and config.comm.rank == 0:
         f.close()
