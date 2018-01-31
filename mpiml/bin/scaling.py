@@ -3,12 +3,20 @@
 import argparse
 import csv
 import numpy as np
+import os
 import sys
 
 import mpiml.config as config
 from mpiml.datasets import prepare_dataset
 from mpiml.models import get_model, model_names
 from mpiml.utils import *
+
+def _slurm_env(key):
+    if key in os.environ:
+        return os.environ[key]
+    else:
+        root_info('not running in slurm')
+        sys.exit(1)
 
 def selectcols(schema, **kwargs):
     return [kwargs[col] for col in schema]
@@ -33,6 +41,9 @@ if __name__ == '__main__':
     toggle_verbose(args.verbose)
     toggle_profiling(args.profile)
 
+    nodes = _slurm_env('SLURM_NNODES')
+    tasks = _slurm_env('SLURM_NTASKS')
+
     model = get_model(args.model)
     if model is None:
         root_info('error: invalid model {}; valid models are {}', model, model_names())
@@ -45,7 +56,7 @@ if __name__ == '__main__':
             f = open(args.output, 'ab' if args.append  else 'wb')
         writer = csv.writer(f)
 
-    schema = ['model', 'nodes', 'density', 'positive_train_samples', 'negative_train_samples',
+    schema = ['model', 'nodes', 'tasks', 'density', 'positive_train_samples', 'negative_train_samples',
               'positive_test_samples', 'negative_test_samples', 'time_train', 'time_test',
               'fp', 'fn', 'accuracy', 'RMSE']
     if args.schema and config.comm.rank == 0:
@@ -61,7 +72,7 @@ if __name__ == '__main__':
 
         if config.comm.rank == 0:
             writer.writerow(selectcols(schema,
-                model=args.model, density=density, nodes=config.comm.size, **result))
+                model=args.model, density=density, nodes=nodes, tasks=tasks, **result))
 
     if args.output and config.comm.rank == 0:
         f.close()
