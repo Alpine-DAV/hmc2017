@@ -80,7 +80,9 @@ def prepare_dataset(dataset, discrete=False, density=1.0):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         X = dataset.data
         y = dataset.target
-    else:
+    elif 'byHand' in dataset: # HACK
+        X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000)
+    else
         X, y = get_bubbleshock(data_dir=dataset)
 
     if discrete:
