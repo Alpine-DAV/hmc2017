@@ -34,4 +34,4 @@ def get_cli_name(id_or_instance):
     for k, v in _models.iteritems():
         if id_or_instance.__class__ == v:
             return k
-    return sorted(_models.keys())[int(id)]
+    return sorted(_models.keys())[int(id_or_instance)]

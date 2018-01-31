@@ -73,7 +73,7 @@ def chi_sq(expected, observed):
     return sum((o - e)**2 / e for o, e in zip(observed, expected))
 
 def group_by(key, rows):
-    srows = sorted(rows, key=lambda row: row[key])
+    srows = np.sort(rows, order=key)
     groups = []
 
     cur_key = srows[0][key]
@@ -89,8 +89,7 @@ def scalarize(arr):
     val = arr[0]
     for v in arr:
         if v != val:
-            print('scalarizing non-constant array')
-            sys.exit(1)
+            raise ValueError('Scalarizing non-constant array {}'.format(arr))
     return val
 
 class StrongScaling(object):
@@ -145,7 +144,9 @@ class StrongScaling(object):
         plt.grid()
 
         plt.savefig(os.path.join(
-            output, 'strong_scaling_{}.png'.format(self.density())), format='png')
+            output, 'strong_scaling_{}_{}_{}.png'.format(
+                self.model(), self.density(), self.tasks_per_node())),
+            format='png')
         plt.clf()
 
     def _fit(self):
@@ -194,7 +195,9 @@ class WeakScaling(object):
             self.model_, self.time_, self.tasks_per_node_))
         plt.grid()
 
-        plt.savefig(os.path.join(output, 'weak_scaling_{}.png'.format(self.time_)), format='png')
+        plt.savefig(os.path.join(output, 'weak_scaling_{}_{}_{}.png'.format(
+            self.model_, self.time_, self.tasks_per_node_)),
+            format='png')
         plt.clf()
 
     def _fit(self):
