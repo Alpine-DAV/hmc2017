@@ -12,7 +12,10 @@ from scipy.optimize import curve_fit
 import sys
 from uncertainties import ufloat
 
+from mpiml.models import get_model_id, get_cli_name
+
 # Column names
+MODEL = 'model'
 TASKS = 'tasks'
 TIME_TRAIN = 'time_train'
 NODES = 'nodes'
@@ -82,21 +85,25 @@ def group_by(key, rows):
 
     return np.split(srows, split_indices)
 
+def scalarize(arr):
+    val = arr[0]
+    for v in arr:
+        if v != val:
+            print('scalarizing non-constant array')
+            sys.exit(1)
+    return val
+
 class StrongScaling(object):
     def __init__(self, data):
-        self.density_ = data[0][DENSITY]
+        self.model_ = get_cli_name(scalarize(data[MODEL]))
+        self.density_ = scalarize(data[DENSITY])
         self.nodes_ = data[NODES]
         self.times_ = data[TIME_TRAIN]
         self.t0_ = self.times_[0]
         self.speedup_ = self.t0_ / data[TIME_TRAIN]
         self.m_ = None
         self.b_ = None
-
-        # Ensure tasks/node is constant
-        tasks_per_node = data[TASKS] / self.nodes_
-        if np.count_nonzero(tasks_per_node - tasks_per_node[0]):
-            print('Found non-constant tasks_per_node!')
-            sys.exit(1)
+        self.tasks_per_node_ = scalarize(data[TASKS] / self.nodes_)
 
         self._fit()
 
@@ -113,6 +120,12 @@ class StrongScaling(object):
         n0 = self.nodes_[0]
         return n / n0
 
+    def model(self):
+        return self.model_
+
+    def tasks_per_node(self):
+        return self.tasks_per_node_
+
     def save_plot(self, output):
         plot(self.nodes_, self.speedup_, '-o', color=(0, 0.1, 0.9), label='speedup')
 
@@ -126,7 +139,9 @@ class StrongScaling(object):
         plt.legend()
         plt.xlabel('# of Nodes')
         plt.ylabel('Speedup')
-        plt.title('Strong Scaling (Density = {})'.format(self.density()))
+        plt.suptitle('Strong Scaling'.format(self.density()))
+        plt.title('(model={}, density={}, tasks/node={})'.format(
+            self.model_, self.density_, self.tasks_per_node_))
         plt.grid()
 
         plt.savefig(os.path.join(
@@ -150,6 +165,8 @@ class WeakScaling(object):
         self.strongs_ = strong_experiments
         self.densities_ = [e.density() for e in self.strongs_]
         self.nodes_ = [e.invert(self.time_) for e in self.strongs_]
+        self.model_ = scalarize([e.model() for e in self.strongs_])
+        self.tasks_per_node_ = scalarize([e.tasks_per_node() for e in self.strongs_])
 
         self._fit()
 
@@ -172,7 +189,9 @@ class WeakScaling(object):
         plt.legend()
         plt.xlabel('Density')
         plt.ylabel('# of Nodes')
-        plt.title('Weak Scaling (Time = {} s)'.format(self.time_))
+        plt.suptitle('Weak Scaling'.format(self.time_))
+        plt.title('(model={}, time={}s, tasks/node={}'.format(
+            self.model_, self.time_, self.tasks_per_node_))
         plt.grid()
 
         plt.savefig(os.path.join(output, 'weak_scaling_{}.png'.format(self.time_)), format='png')
@@ -199,10 +218,12 @@ if __name__ == '__main__':
         '--output', type=str, default='.', help='output directory for graphs (default .)')
     args = parser.parse_args()
 
-    csv = np.genfromtxt(args.input if args.input is not None else sys.stdin, names=True, delimiter=',')
+    csv = np.genfromtxt(args.input if args.input is not None else sys.stdin,
+        names=True, delimiter=',', converters={MODEL: get_model_id})
 
-    strong_experiments = [StrongScaling(group) for group in group_by(DENSITY, csv)]
-    weak_experiments = [WeakScaling(t, strong_experiments) for t in [0.2, 0.5, 1.0]]
+    for model in group_by(MODEL, csv):
+        strong_experiments = [StrongScaling(group) for group in group_by(DENSITY, model)]
+        weak_experiments = [WeakScaling(t, strong_experiments) for t in [0.2, 0.5, 1.0]]
 
-    for e in strong_experiments + weak_experiments:
-        e.save_plot(args.output)
+        for e in strong_experiments + weak_experiments:
+            e.save_plot(args.output)

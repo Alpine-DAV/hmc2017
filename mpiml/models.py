@@ -26,3 +26,9 @@ def get_model(cli_name):
         return _models[cli_name]()
     else:
         return None
+
+def get_model_id(cli_name):
+    return sorted(_models.keys()).index(cli_name)
+
+def get_cli_name(id):
+    return sorted(_models.keys())[int(id)]
