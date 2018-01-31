@@ -30,5 +30,8 @@ def get_model(cli_name):
 def get_model_id(cli_name):
     return sorted(_models.keys()).index(cli_name)
 
-def get_cli_name(id):
+def get_cli_name(id_or_instance):
+    for k, v in _models.iteritems():
+        if id_or_instance.__class__ == v:
+            return k
     return sorted(_models.keys())[int(id)]
