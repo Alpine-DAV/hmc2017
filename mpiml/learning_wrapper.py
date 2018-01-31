@@ -44,7 +44,6 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
             get_pool_samples(X, y, rem_X, rem_y, online_pool)
             if running_in_mpi():
                 X, y = get_mpi_task_data(X, y)
-            root_info('length of samples in X: {}'.format(len(y)))
             train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
             
             train_pos, train_neg = num_classes(y)
@@ -58,6 +57,8 @@ def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES/2, testing_cycles=
         # train on remaining samples from cycles
         while len(y) != 0:
             get_pool_samples(X, y, rem_X, rem_y, online_pool)
+            if running_in_mpi():
+                X, y = get_mpi_task_data(X, y)
             train_time += train_by_cycle(X, y, model, online=online, online_pool=online_pool)
             train_pos, train_neg = num_classes(y)
             positive_train_samples += train_pos
