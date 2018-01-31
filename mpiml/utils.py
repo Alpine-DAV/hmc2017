@@ -312,6 +312,7 @@ def get_pool_samples(X, y, rem_X, rem_y, online_pool, comm=MPI.COMM_WORLD):
     rem_y = y[online_pool*comm.size:]
     X = X[:online_pool*comm.size]
     y = y[:online_pool*comm.size]
+    return X, y, rem_X, rem_y
 
 def train_by_cycle(X, y, clf, trainer=by_cycle_trainer, comm=MPI.COMM_WORLD, **kwargs): 
     start_time = time.time() 
