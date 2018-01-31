@@ -5,14 +5,66 @@ from __future__ import division
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.lib.recfunctions import append_fields
+from operator import attrgetter, methodcaller
 import os
 from scipy.optimize import curve_fit
 import sys
 from uncertainties import ufloat
 
+# Column names
+TASKS = 'tasks'
 TIME_TRAIN = 'time_train'
 NODES = 'nodes'
 DENSITY = 'density'
+SPEEDUP = 'speedup'
+SPEEDUP_M = 'speedup_m'
+SPEEDUP_M_UNC = 'speedup_m_unc'
+SPEEDUP_B = 'speedup_b'
+SPEEDUP_B_UNC = 'speedup_b_unc'
+
+def _is_iterable(x):
+    try:
+        _ = iter(x)
+        return True
+    except TypeError:
+        return False
+
+def _map_getattr(items, attr, default):
+    if _is_iterable(items):
+        return map(lambda i: _map_getattr(i, attr, default), items)
+    else:
+        return getattr(items, attr, default(items))
+
+def nominal_value(x):
+    return _map_getattr(x, 'nominal_value', lambda i: i)
+
+def std_dev(x):
+    return _map_getattr(x, 'std_dev', lambda _: 0)
+
+def has_error_bars(X):
+    return hasattr(X[0], 'std_dev')
+
+def plot(X, Y, line_format='-', **kwargs):
+    if has_error_bars(X) or has_error_bars(Y):
+        if has_error_bars(X):
+            kwargs.update(xerr=std_dev(X))
+        if has_error_bars(Y):
+            kwargs.update(yerr=std_dev(Y))
+        plt.errorbar(nominal_value(X), nominal_value(Y), fmt=line_format, **kwargs)
+    else:
+        plt.plot(nominal_value(X), nominal_value(Y), line_format, **kwargs)
+
+def plot_continuous(f, min, max, **kwargs):
+    X = np.linspace(min, max, 1000)
+    Y = map(f, X)
+
+    if has_error_bars(X) or has_error_bars(Y):
+        kwargs.update(zorder=2, alpha=0.2)
+    elif 'zorder' in kwargs and kwargs['zorder'] <= 2:
+        kwargs['zorder'] = 3
+
+    plot(X, Y, **kwargs)
 
 def chi_sq(expected, observed):
     return sum((o - e)**2 / e for o, e in zip(observed, expected))
@@ -30,94 +82,114 @@ def group_by(key, rows):
 
     return np.split(srows, split_indices)
 
-def perfect_strong_scaling(points):
-    def f(n):
-        t0 = points[0][TIME_TRAIN]
-        n0 = points[0][NODES]
-        return t0 * n0 / n
-    return f
+class StrongScaling(object):
+    def __init__(self, data):
+        self.density_ = data[0][DENSITY]
+        self.nodes_ = data[NODES]
+        self.times_ = data[TIME_TRAIN]
+        self.t0_ = self.times_[0]
+        self.speedup_ = self.t0_ / data[TIME_TRAIN]
+        self.m_ = None
+        self.b_ = None
 
-def fit_strong_scaling(points):
-    # fit function: f(n) = An^p
-    def f(n, A, p):
-        return A * n**p
+        # Ensure tasks/node is constant
+        tasks_per_node = data[TASKS] / self.nodes_
+        if np.count_nonzero(tasks_per_node - tasks_per_node[0]):
+            print('Found non-constant tasks_per_node!')
+            sys.exit(1)
 
-    (A, p), pcov = curve_fit(f, points[NODES], points[TIME_TRAIN], p0=(1,-1))
-    A_err, p_err = np.sqrt(np.diag(pcov))
+        self._fit()
 
-    return ufloat(A, A_err), ufloat(p, p_err)
+    def density(self):
+        return self.density_
 
-def perfect_weak_scaling(density, nodes):
-    def f(d):
-        slope = nodes[-1] / density[-1]
-        return slope*(d - density[0]) + nodes[0]
-    return f
+    def apply(self, n):
+        return self.m_*n + self.b_
 
-def fit_weak_scaling(X, Y):
-    # fit function: f(d) = md + b
-    def f(d, m, b):
-        return m*d + b
+    def invert(self, t):
+        return ((self.t0_ / t) - self.b_) / self.m_
 
-    (m, b), pcov = curve_fit(f, X, [y.nominal_value for y in Y], sigma = [y.std_dev for y in Y])
-    m_err, b_err = np.sqrt(np.diag(pcov))
+    def apply_perfect(self, n):
+        n0 = self.nodes_[0]
+        return n / n0
 
-    return ufloat(m, m_err), ufloat(b, b_err)
+    def save_plot(self, output):
+        plot(self.nodes_, self.speedup_, '-o', color=(0, 0.1, 0.9), label='speedup')
 
-def nodes_required(A, p, t):
-    # t = An^p
-    return (t/A)**(1/p)
+        plot_continuous(self.apply, min(self.nodes_), max(self.nodes_),
+            color=(0, 0.2, 0.6), linewidth=1, label='mx + b\nm={}\nb={}'.format(self.m_, self.b_))
 
-def plot_strong_scaling(points, dir):
-    plt.plot(points[NODES], points[TIME_TRAIN],
-        '-o', color=(0, 0.1, 0.9), label='training time')
+        chi2 = chi_sq(self.speedup_, map(self.apply_perfect, self.nodes_))
+        plot_continuous(self.apply_perfect, min(self.nodes_), max(self.nodes_),
+            color=(0.6, 0, 0.2), label='perfect scaling\nchi2={}'.format(chi2))
 
-    A, p = fit_strong_scaling(points)
-    lin_X = np.linspace(points[0][NODES], points[-1][NODES], 1000)
-    plt.plot(lin_X, [(A * n**p).nominal_value for n in lin_X],
-        color=(0, 0.2, 0.6), linewidth=1, label='Ax^p\nA={}\np={}'.format(A, p))
+        plt.legend()
+        plt.xlabel('# of Nodes')
+        plt.ylabel('Speedup')
+        plt.title('Strong Scaling (Density = {})'.format(self.density()))
+        plt.grid()
 
-    perfect_scaling = perfect_strong_scaling(points)
-    chi2 = chi_sq(points[TIME_TRAIN], [perfect_scaling(n) for n in points[NODES]])
-    plt.plot(lin_X, [perfect_scaling(x) for x in lin_X],
-        color=(0.6, 0, 0.2), label='perfect scaling\nchi2={}'.format(chi2))
+        plt.savefig(os.path.join(
+            output, 'strong_scaling_{}.png'.format(self.density())), format='png')
+        plt.clf()
 
-    plt.legend()
-    plt.xlabel('# of Nodes')
-    plt.ylabel('Time (s)')
-    plt.title('Strong Scaling (Density = {})'.format(points[0][DENSITY]))
-    plt.grid()
+    def _fit(self):
+        # fit function: speedup(n) = mn + b
+        def f(n, m, b):
+            return m*n + b
 
-    plt.savefig(os.path.join(dir, 'strong_scaling_{}.png'.format(points[0][DENSITY])), format='png')
-    plt.clf()
+        (m, b), pcov = curve_fit(f, self.nodes_, self.speedup_, p0=(1, 1))
+        m_err, b_err = np.sqrt(np.diag(pcov))
 
-    return A, p
+        self.m_ = ufloat(m, m_err)
+        self.b_ = ufloat(b, b_err)
 
-def plot_weak_scaling(fits, time, dir):
-    nodes = [nodes_required(A, p, time) for _, A, p in fits]
-    density = [density for density, _, _ in fits]
-    _, ax = plt.subplots()
-    ax.errorbar(density, [n.nominal_value for n in nodes], yerr=[n.std_dev for n in nodes],
-        color=(0, 0.1, 0.9), zorder=4, label='nodes required')
+class WeakScaling(object):
+    def __init__(self, time, strong_experiments):
+        self.time_ = time
+        self.strongs_ = strong_experiments
+        self.densities_ = [e.density() for e in self.strongs_]
+        self.nodes_ = [e.invert(self.time_) for e in self.strongs_]
 
-    m, b = fit_weak_scaling(density, nodes)
-    lin_X = np.linspace(min(density), max(density), 1000)
-    plt.plot(lin_X, [(m*d + b).nominal_value for d in lin_X],
-        color=(0, 0.2, 0.6), linewidth=1, zorder=3, label='md + b\nm={}\nb={}'.format(m, b))
+        self._fit()
 
-    perfect_scaling = perfect_weak_scaling(density, nodes)
-    chi2 = chi_sq(nodes, [perfect_scaling(d) for d in density])
-    perf = [perfect_scaling(x) for x in lin_X]
-    ax.errorbar(lin_X, [p.nominal_value for p in perf], yerr=[p.std_dev for p in perf],
-        color=(0.8, 0, 0.2), alpha=0.2, zorder=2, label='perfect scaling\nchi2={}'.format(chi2))
+    def apply(self, d):
+        return self.m_*d + self.b_
 
-    plt.legend()
-    plt.xlabel('Density')
-    plt.ylabel('# of Nodes')
-    plt.title('Weak Scaling (Time = {} s)'.format(time))
-    plt.grid()
+    def apply_perfect(self, d):
+        return self.nodes_[0] * (d / self.densities_[0])
 
-    plt.savefig(os.path.join(dir, 'weak_scaling_{}.png'.format(time)), format='png')
-    plt.clf()
+    def save_plot(self, output):
+        plot(self.densities_, self.nodes_, color=(0, 0.1, 0.9), zorder=4, label='nodes required')
+
+        plot_continuous(self.apply, min(self.densities_), max(self.densities_),
+            color=(0, 0.2, 0.6), linewidth=1, zorder=3, label='md + b\nm={}\nb={}'.format(self.m_, self.b_))
+
+        chi2 = chi_sq(self.nodes_, map(self.apply_perfect, self.densities_))
+        plot_continuous(self.apply_perfect, min(self.densities_), max(self.densities_),
+            color=(0.8, 0, 0.2), label='perfect scaling\nchi2={}'.format(chi2))
+
+        plt.legend()
+        plt.xlabel('Density')
+        plt.ylabel('# of Nodes')
+        plt.title('Weak Scaling (Time = {} s)'.format(self.time_))
+        plt.grid()
+
+        plt.savefig(os.path.join(output, 'weak_scaling_{}.png'.format(self.time_)), format='png')
+        plt.clf()
+
+    def _fit(self):
+        # fit function: f(d) = md + b
+        def f(d, m, b):
+            return m*d + b
+
+        (m, b), pcov = curve_fit(f, nominal_value(self.densities_),
+                                    nominal_value(self.nodes_),
+                                    sigma=std_dev(self.nodes_))
+        m_err, b_err = np.sqrt(np.diag(pcov))
+
+        self.m_ = ufloat(m, m_err)
+        self.b_ = ufloat(b, b_err)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Visualize data generated by scaling.py')
@@ -129,11 +201,8 @@ if __name__ == '__main__':
 
     csv = np.genfromtxt(args.input if args.input is not None else sys.stdin, names=True, delimiter=',')
 
-    fits = []
-    for group in group_by(DENSITY, csv):
-        A, p = plot_strong_scaling(group, args.output)
-        fits.append((group[0][DENSITY], A, p))
+    strong_experiments = [StrongScaling(group) for group in group_by(DENSITY, csv)]
+    weak_experiments = [WeakScaling(t, strong_experiments) for t in [0.2, 0.5, 1.0]]
 
-    plot_weak_scaling(fits, 0.2, args.output)
-    plot_weak_scaling(fits, 0.5, args.output)
-    plot_weak_scaling(fits, 1.0, args.output)
+    for e in strong_experiments + weak_experiments:
+        e.save_plot(args.output)
