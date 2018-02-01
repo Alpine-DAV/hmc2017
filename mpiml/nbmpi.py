@@ -93,7 +93,3 @@ class GaussianNB(sk.GaussianNB):
             self.class_count_, self.theta_, self.sigma_)
 
 config.register_model('nb', GaussianNB)
-
-
-if __name__ == '__main__':
-    
