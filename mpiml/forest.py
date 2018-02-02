@@ -87,3 +87,6 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
 
     def reduce(self, root=0):
         return _reduce_forest(self, root=root)
+
+    def partial_fit(self, X, y, classes=None):
+        super(MondrianForestRegressor, self).partial_fit(X, y)

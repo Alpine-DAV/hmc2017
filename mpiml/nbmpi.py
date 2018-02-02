@@ -15,7 +15,6 @@ from sklearn.utils.multiclass import _check_partial_fit_first_call
 from sklearn.utils.validation import check_is_fitted
 
 from config import comm
-from datasets import get_bubbleshock, shuffle_data, discretize
 from utils import *
 
 __all__ = ["GaussianNB"
@@ -74,13 +73,9 @@ class GaussianNB(sk.GaussianNB):
         return clf
 
     def fit(self, X, y):
-        y = discretize(y)
         sk.GaussianNB.fit(self, X, y)
 
     def partial_fit(self, X, y, classes=None):
-        if classes is not None:
-            classes = discretize(classes)
-        y = discretize(y)
         sk.GaussianNB.partial_fit(self, X, y, classes=classes)
 
     def __repr__(self):

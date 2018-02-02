@@ -1,3 +1,4 @@
+from functools import wraps
 import glob
 import numpy as np
 import sklearn.datasets as sk
@@ -10,22 +11,112 @@ from DataReader.FeatureDataReader import FeatureDataReader
 
 __all__ = [ "get_bubbleshock"
           , "get_bubbleshock_byhand_by_cycle"
+          , "get_bubbleshock_by_hand"
           , "prepare_dataset"
           , "shuffle_data"
           , "discretize"
           , "get_reader"
           , "output_feature_importance"
           , "get_num_partitions"
+          , "concatenate"
           ]
+
+def every_kth(arr, k):
+    return [arr[start::k] for start in range(k)]
+
+# Dataset wrapper which supports lazy loading
+class DataSet(object):
+    def map(self, f):
+        pass
+
+class StrictDataSet(DataSet):
+
+    def __init__(self, X, y, pool_size=1000):
+        self.X = X
+        self.y = y
+        self.pool_size_ = pool_size
+
+    def map(self, f):
+        return StrictDataSet(*f(self.X, self.y))
+
+    def classes(self):
+        return np.unique(self.y)
+
+    def cycles(self):
+        return ((self.X[i:i+self.pool_size_], self.y[i:i+self.pool_size_])
+            for i in xrange(0, self.X.shape[0], self.pool_size_))
+
+    def points(self):
+        return self.X, self.y
+
+    def split(self, k):
+        split_X = every_kth(self.X, k)
+        split_y = every_kth(self.y, k)
+        return [StrictDataSet(X, y) for X, y in zip(split_X, split_y)]
+
+    def concat(self, ds):
+        X, y = ds.points()
+
+        if y.shape[0] == 0:
+            return self
+        elif self.y.shape[0] == 0:
+            return StrictDataSet(X, y)
+        else:
+            return StrictDataSet(np.vstack((self.X, X)), np.concatenate((self.y, y)))
+
+def empty_dataset():
+    return StrictDataSet(np.array([[]]), np.array([]))
+
+class LazyDataSet(DataSet):
+    def __init__(self, gen):
+        self.gen_ = gen
+
+    def map(self, f):
+        return LazyDataSet(f(X, y) for X, y in self.gen_)
+
+    def classes(self):
+        return np.unique(np.array(ds.classes() for ds in self.gen_))
+
+    def cycles(self):
+        return self.gen_
+
+    def points(self):
+        return concatenate(self.gen_)
+
+    def split(self, k):
+        def gen(i):
+            for X, y in self.gen_:
+                yield X[i::k], y[i::k]
+        return [gen(i) for i in range(k)]
+
+    def concat(self, ds):
+        def gen():
+            for d in self.gen_:
+                yield d
+            for d in ds.cycles():
+                yield d
+        return gen()
+
+def concatenate(datasets):
+    return reduce(lambda x, y: x.concat(y), datasets, empty_dataset())
+
+# Turn a function that transforms X and y vectors into a function that transforms a DataSet
+def ds_map(f):
+    @wraps(f)
+    def mapper(ds, *args, **kwargs):
+        return ds.map(lambda X, y: f(X, y, *args, **kwargs))
+    return mapper
 
 # Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
 # constant before-hand, so the results will not vary between runs.
+@ds_map
 def shuffle_data(X, y, seed=0):
     np.random.seed(0)
     seed = np.random.get_state()
     np.random.shuffle(X)
     np.random.set_state(seed)
     np.random.shuffle(y)
+    return X, y
 
 def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0):
     dataset = None
@@ -40,24 +131,11 @@ def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0):
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])
 
-    return make_sparse(X, y, density)
+    return make_sparse(StrictDataSet(X, y), density)
 
-# def get_bubbleshock_all_cycles(data_dir):
-#     dataset = np.zeros(shape=(0, 18))
-#     start = time.time()
-#     reader = get_reader(data_dir)
-#     feature_names = reader.getFeatureNames()
-#     zids = reader.getCycleZoneIds()
-
-#     for cycle in range(1000):
-#         dataset = np.concatenate((dataset,reader.readAllZonesInCycle(0, cycle)),axis=0)
-#     end = time.time()
-#     root_info("TIME load training data: {}", end-start)
-
-#     X = dataset[:,0:-1]
-#     y = np.ravel(dataset[:,[-1]])
-
-#     return X, y
+def get_bubbleshock_by_hand(data_dir, density=1.0):
+    return LazyDataSet(get_bubbleshock_byhand_by_cycle(data_dir, cycle, density)
+        for cycle in range(config.TOTAL_CYCLES + 1))
 
 def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
     dataset = None
@@ -72,41 +150,49 @@ def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
     if discrete:
         y = discretize(y)
 
-    return make_sparse(X, y, density)
+    return make_sparse(StrictDataSet(X, y), density)
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class
 def prepare_dataset(dataset, discrete=False, density=1.0):
     if hasattr(sk, 'load_{}'.format(dataset)):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
-        X = dataset.data
-        y = dataset.target
+        ds = shuffle_data(StrictDataSet(dataset.data, dataset.target))
     elif 'byHand' in dataset: # HACK
-        X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000)
-    else
-        X, y = get_bubbleshock(data_dir=dataset)
+        ds = get_bubbleshock_byhand_by_cycle(dataset, 10000)
+    else:
+        ds = shuffle_data(get_bubbleshock(data_dir=dataset))
 
     if discrete:
-        y = discretize(y)
+        ds = discretize(ds)
 
-    shuffle_data(X, y)
-    return make_sparse(X, y, density)
+    return make_sparse(ds, density)
 
+@ds_map
 def make_sparse(X, y, density):
     if density == 1.0:
         return X, y
     indices = np.random.choice(y.shape[0], int(y.shape[0]*density), replace=False)
     return X[indices], y[indices]
 
-def discretize(v):
-    if v.ndim != 1:
-        root_info("error: can only discretize 1d array (got {})", v.ndim)
-        sys.exit(1)
-    discretized = np.zeros(v.shape[0])
-    for element in range(v.shape[0]):
-        if v[element] != 0:
+@ds_map
+def discretize(X, y):
+    if y.ndim != 1:
+        raise ValueError("can only discretize 1d array (got {})".format(y.ndim))
+    discretized = np.zeros(y.shape[0])
+    for element in range(y.shape[0]):
+        if y[element] != 0:
             discretized[element] = 1
-    return discretized
+    return X, discretized
 
+# Return a pair of the number of positive examples (class > threshold) and the number of negative
+# examples (class <= threshold)
+def threshold_count(ds, thresh):
+    npos = 0
+    nneg = 0
+    for _, y in ds.cycles():
+        npos += np.sum(y > thresh)
+        nneg += np.sum(y <= thresh)
+    return npos, nneg
 
 learning_data_cache = {}
 data_readers = {}

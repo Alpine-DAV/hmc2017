@@ -7,8 +7,9 @@ import os
 import sys
 
 import mpiml.config as config
-from mpiml.datasets import prepare_dataset
+from mpiml.datasets import *
 from mpiml.models import get_model, model_names, get_cli_name
+from mpiml.training import *
 from mpiml.utils import *
 
 def _slurm_env(key):
@@ -69,9 +70,9 @@ if __name__ == '__main__':
         for density in np.linspace(0.2, 1, num=args.num_points):
             root_debug('{}',output_model_info(model, online=args.online, density=density))
 
-            X, y = prepare_dataset(args.data_dir, density=density)
+            ds = prepare_dataset(args.data_dir, density=density)
 
-            result = train_and_test_k_fold(X, y, model, k=args.num_runs, online=args.online)
+            result = train_and_test_k_fold(ds, model, k=args.num_runs, online=args.online)
             root_debug('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
             if config.comm.rank == 0:

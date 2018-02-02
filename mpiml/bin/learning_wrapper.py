@@ -6,9 +6,9 @@ import sys
 
 from mpi4py import MPI
 
-from mpiml.datasets import get_bubbleshock, get_bubbleshock_byhand_by_cycle, discretize, output_feature_importance, shuffle_data
-
+from mpiml.datasets import prepare_dataset
 from mpiml.models import get_model, model_names
+from mpiml.training import *
 from mpiml.utils import *
 from mpiml.config import *
 
@@ -17,15 +17,11 @@ def wrapper(model, k, data_path, online=False, density=1.0):
         output: trains ML_type on training data and tests it on testing data
     """
 
-    if 'byHand' in data_path:
-        X, y = get_bubbleshock_byhand_by_cycle(data_path, 10000, density=density)
-    else:
-        X, y = get_bubbleshock(data_path, density=density)
-        shuffle_data(X, y)
+    ds = prepare_dataset(data_path, density=density)
 
-    root_info('{}',output_model_info(model, online=online, density=density))
+    root_info('{}', output_model_info(model, online=online, density=density))
 
-    result = train_and_test_k_fold(X, y, model, k=k, online=online)
+    result = train_and_test_k_fold(ds, model, k=k, online=online)
     root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
 if __name__ == '__main__':
