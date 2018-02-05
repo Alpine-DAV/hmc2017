@@ -11,6 +11,7 @@ from utils import *
 __all__ = [ "get_k_fold_data"
           , "default_trainer"
           , "train_and_test_k_fold"
+          , "train_and_test_once"
           , "prettify_train_and_test_k_fold_results"
           , "fit"
           ]
@@ -23,7 +24,7 @@ def default_trainer(ds, clf, online=False, classes=None, **kwargs):
 
     fit(clf, ds, online=online, classes=classes)
     if running_in_mpi():
-        clf.reduce()
+        clf = clf.reduce()
     return clf
 
 # Compute the accuracy of a set of predictions against the ground truth values.
@@ -61,8 +62,16 @@ def get_mpi_task_data(ds, comm=config.comm):
 # train_and_test_k_fold will be forwarded train. The default trainer calls either fit or
 # partial_fit and then reduce.
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, clf, trainer=default_trainer, k=10, comm=config.comm, **kwargs):
-    kwargs.update(trainer=trainer, k=k, comm=comm)
+def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):
+    kwargs.update(k=k, comm=comm)
+
+    if k <= 0:
+        raise ValueError("k must be positive")
+    elif k == 1:
+        splits = ds.split(10)
+        train = concatenate(splits[j] for j in range(9))
+        test = splits[9]
+        return train_and_test_once(train, test, prd, **kwargs)
 
     runs = 0
     fp_accum = 0
@@ -73,43 +82,24 @@ def train_and_test_k_fold(ds, clf, trainer=default_trainer, k=10, comm=config.co
     test_neg_accum = 0
     time_train = 0
     time_test = 0
+    rmse_accum = 0
 
     for train, test in get_k_fold_data(ds, k=k):
         if running_in_mpi():
             train = get_mpi_task_data(train)
 
-        start_train = time.time()
-        clf = trainer(ds, clf, **kwargs)
-        end_train = time.time()
-        time_train += end_train - start_train
+        res = train_and_test_once(train, test, prd, **kwargs)
 
-        if type(clf) == type([]):
-            clf = clf[0]
-
-        if comm.rank == 0:
-            # Only root has the final model, so only root does the predicting
-            start_test = time.time()
-            test_X, test_y = test.points()
-            prd = clf.predict(test_X)
-            end_test = time.time()
-            time_test += end_test - start_test
-
-            fp, fn = num_errors(test_y, prd)
-            fp_accum += fp
-            fn_accum += fn
-
-            train_pos, train_neg = threshold_count(train, 1e-6)
-            train_pos_accum += train_pos
-            train_neg_accum += train_neg
-            test_pos, test_neg = threshold_count(test, 1e-6)
-            test_pos_accum += test_pos
-            test_neg_accum += test_neg
-
-            RMSE = np.sqrt( sum(pow(test_y - prd, 2)) / test_y.size )
-
+        if comm.rank == 0: # Only root has the final model
+            time_test += res['time_test']
+            fp_accum += res['fp']
+            fn_accum += res['fn']
+            train_pos_accum += res['positive_train_samples']
+            train_neg_accum += res['negative_train_samples']
+            test_pos_accum += res['positive_test_samples']
+            test_neg_accum += res['negative_test_samples']
+            rmse_accum += res['RMSE']
             runs += 1
-            root_debug('run {}: {} false positives, {} false negatives', runs, fp, fn)
-            root_debug('final model: {}', clf)
 
         comm.barrier()
 
@@ -117,7 +107,7 @@ def train_and_test_k_fold(ds, clf, trainer=default_trainer, k=10, comm=config.co
         return {
             'fp': fp_accum / runs,
             'fn': fn_accum / runs,
-            'RMSE': RMSE,
+            'RMSE': rmse_accum / runs,
             'accuracy': 1 - ((fp_accum + fn_accum) / (train_neg_accum + train_pos_accum)),
             'time_train': time_train / runs,
             'time_test': time_test / runs,
