@@ -91,6 +91,7 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):
         res = train_and_test_once(train, test, prd, **kwargs)
 
         if comm.rank == 0: # Only root has the final model
+            time_train += res['time_train']
             time_test += res['time_test']
             fp_accum += res['fp']
             fn_accum += res['fn']
@@ -122,13 +123,13 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):
         return {}
 
 def train_and_test_once(train, test, prd, trainer=default_trainer, comm=config.comm, **kwargs):
-    kwargs.update(trainer=trainer, k=k, comm=comm)
+    kwargs.update(trainer=trainer, comm=comm)
 
     if running_in_mpi():
         train = get_mpi_task_data(train)
 
     start_train = time.time()
-    prd = trainer(ds, prd, **kwargs)
+    prd = trainer(train, prd, **kwargs)
     end_train = time.time()
     time_train = end_train - start_train
 

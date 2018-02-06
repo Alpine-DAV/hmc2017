@@ -25,6 +25,22 @@ def _reduce_forest(clf, root=0):
         clf.estimators_ = super_forest
     return clf
 
+# Return the number of estimators that the calling task should train if the superforest should
+# contain the given number
+def _n_estimators_for_forest_size(forest_size):
+    if running_in_mpi():
+        if forest_size < comm.size:
+            raise ValueError(
+                'must train at least 1 tree per task ({} < {})'.format(forest_size, comm.size))
+
+        if comm.rank == 0:
+            # However many we need to get to forest_size, after all other tasks have trained theirs
+            return forest_size - int(forest_size / comm.size)*(comm.size - 1)
+        else:
+            return int(forest_size / comm.size)
+    else:
+        return forest_size
+
 class RandomForestRegressor(sk.RandomForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
@@ -43,7 +59,7 @@ class RandomForestRegressor(sk.RandomForestRegressor):
                  warm_start=False
                  ):
         super(RandomForestRegressor, self).__init__(
-            n_estimators=n_estimators,
+            n_estimators=_n_estimators_for_forest_size(n_estimators),
             criterion=criterion,
             max_depth=max_depth,
             min_samples_split=min_samples_split,
@@ -58,6 +74,8 @@ class RandomForestRegressor(sk.RandomForestRegressor):
             verbose=verbose,
             warm_start=warm_start
         )
+
+        debug('will train {} estimators', self.n_estimators)
 
     def reduce(self, root=0):
         return _reduce_forest(self, root=root)
@@ -76,7 +94,7 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
                  random_state=config.rand_seed,
                  verbose=0):
         super(MondrianForestRegressor, self).__init__(
-            n_estimators=n_estimators,
+            n_estimators=_n_estimators_for_forest_size(n_estimators),
             max_depth=max_depth,
             min_samples_split=min_samples_split,
             bootstrap=bootstrap,
@@ -84,6 +102,8 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
             random_state=random_state,
             verbose=verbose
         )
+
+        debug('will train {} estimators', self.n_estimators)
 
     def reduce(self, root=0):
         return _reduce_forest(self, root=root)

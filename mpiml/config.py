@@ -29,7 +29,7 @@ load_learning_data = False  # if true, load pre-created learning data
 # RANDOM FOREST CONFIGURATION
 #===============================================================================
 rand_seed = 0
-NumTrees = 10
+NumTrees = 150
 parallelism = -1 # note: -1 = number of cores on the system
 
 
