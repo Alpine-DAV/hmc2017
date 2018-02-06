@@ -20,7 +20,9 @@ NumTrees = 10
 parallelism = -1 # note: -1 = number of cores on the system
 
 def _reduce_forest(clf, root=0):
+    root_info('before gather')
     all_estimators = comm.gather(clf.estimators_, root=root)
+    root_info('after gather')
     if comm.rank == root:
         super_forest = []
         for forest in all_estimators:
