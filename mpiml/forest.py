@@ -1,4 +1,5 @@
 import argparse
+import numpy as np
 import skgarden.mondrian.ensemble as skg
 import sklearn.ensemble as sk
 
@@ -33,11 +34,8 @@ def _n_estimators_for_forest_size(forest_size):
             raise ValueError(
                 'must train at least 1 tree per task ({} < {})'.format(forest_size, comm.size))
 
-        if comm.rank == 0:
-            # However many we need to get to forest_size, after all other tasks have trained theirs
-            return forest_size - int(forest_size / comm.size)*(comm.size - 1)
-        else:
-            return int(forest_size / comm.size)
+        partition = map(int, np.linspace(0, forest_size, comm.size + 1))
+        return partition[comm.rank + 1] - partition[comm.rank]
     else:
         return forest_size
 
