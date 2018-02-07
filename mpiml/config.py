@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from mpi4py import MPI
 import numpy as np
 import sys
@@ -26,16 +24,6 @@ decay_window = 100 # how many cycles back does decay function go for failed (zon
 load_learning_data = False  # if true, load pre-created learning data
                             # other wise, load raw simulation data and
                             # calculate learning data on-the-fly
-
-#===============================================================================
-# ML MODEL NAMES
-#===============================================================================
-models = {}
-def register_model(cli_name, cls):
-    if cli_name in models:
-        print('attempted to register duplicate model "{}"'.format(cli_name), file=sys.stderr)
-        sys.exit(1)
-    models[cli_name] = cls
 
 #===============================================================================
 # RANDOM FOREST CONFIGURATION

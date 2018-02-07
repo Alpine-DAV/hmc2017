@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 import argparse
 import skgarden.mondrian.ensemble as skg
 import sklearn.ensemble as sk
@@ -37,8 +35,6 @@ class RandomForestRegressor(sk.RandomForestRegressor):
                  min_weight_fraction_leaf=0.,
                  max_features="auto",
                  max_leaf_nodes=None,
-                 # min_impurity_decrease=0.,
-                 # min_impurity_split=None,
                  bootstrap=True,
                  oob_score=False,
                  n_jobs=config.parallelism,
@@ -55,8 +51,6 @@ class RandomForestRegressor(sk.RandomForestRegressor):
             min_weight_fraction_leaf=min_weight_fraction_leaf,
             max_features=max_features,
             max_leaf_nodes=max_leaf_nodes,
-            # min_impurity_decrease=min_impurity_decrease,
-            # min_impurity_split=min_impurity_split,
             bootstrap=bootstrap,
             oob_score=oob_score,
             n_jobs=n_jobs,
@@ -71,8 +65,6 @@ class RandomForestRegressor(sk.RandomForestRegressor):
     def partial_fit(self, X, y, classes=None):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
-
-config.register_model('rf', RandomForestRegressor)
 
 class MondrianForestRegressor(skg.MondrianForestRegressor):
     def __init__(self,
@@ -96,4 +88,5 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
     def reduce(self, root=0):
         return _reduce_forest(self, root=root)
 
-config.register_model('mf', MondrianForestRegressor)
+    def partial_fit(self, X, y, classes=None):
+        super(MondrianForestRegressor, self).partial_fit(X, y)

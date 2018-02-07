@@ -6,13 +6,13 @@ import itertools
 from mpi4py import MPI
 import numpy as np
 import random
-from forest import RandomForestRegressor, MondrianForestRegressor
-from nbmpi import GaussianNB
-from datasets import get_bubbleshock, shuffle_data, discretize
-from utils import *
+from mpiml.forest import RandomForestRegressor, MondrianForestRegressor
+from mpiml.nbmpi import GaussianNB
+from mpiml.datasets import get_bubbleshock, shuffle_data, discretize
+from mpiml.utils import *
 import sys
 
-from config import models
+from mpiml.config import models
 
 comm = MPI.COMM_WORLD
 

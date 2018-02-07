@@ -4,8 +4,8 @@ import argparse
 from mpi4py import MPI
 from sklearn.ensemble import RandomForestRegressor
 
-from datasets import prepare_dataset
-from utils import *
+from mpiml.datasets import prepare_dataset
+from mpiml.utils import *
 
 comm = MPI.COMM_WORLD
 
