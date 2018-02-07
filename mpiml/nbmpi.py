@@ -76,6 +76,10 @@ class GaussianNB(sk.GaussianNB):
             clf.class_prior_ = clf.class_count_ / clf.class_count_.sum()
         else:
             clf.class_prior_ = np.asarray(self.priors)
+        
+        self.class_count_ = n
+        self.theta_ = mu 
+        self.sigma_ = var
         return clf
 
     def fit(self, X, y):

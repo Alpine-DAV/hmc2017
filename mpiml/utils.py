@@ -21,6 +21,7 @@ __all__ = [ "info"
           , "get_mpi_task_data"
           , "running_in_mpi"
           , "train_and_test"
+          , "test"
           , "train_and_test_k_fold"
           , "default_trainer"
           , "fit"
@@ -193,57 +194,69 @@ def train_and_test(train_X, train_y, test_X, test_y, clf, trainer=default_traine
 
     if comm.rank == 0:
         # Only root has the final model, so only root does the predicting
-        start_test = time.time()
-        prd = clf.predict(test_X)
-        end_test = time.time()
-        time_test += end_test - start_test
-
-        fp, fn = num_errors(test_y, prd)
-        fp_accum += fp
-        fn_accum += fn
+        result = test(test_X, test_y, clf)
 
         train_pos, train_neg = num_classes(train_y_orig)
         train_pos_accum += train_pos
         train_neg_accum += train_neg
-        test_pos, test_neg = num_classes(test_y)
-        test_pos_accum += test_pos
-        test_neg_accum += test_neg
 
-        RMSE = np.sqrt(sum(pow(test_y - prd, 2)) / test_y.size )
-        RMSE_partial += sum(pow(test_y - prd, 2))
-        test_size += test_y.size
+        result['negative_train_samples'] =  train_neg_accum
+        result['positive_train_samples'] = train_pos_accum
 
-        runs += 1
-        root_debug('run {}: {} false positives, {} false negatives', runs, fp, fn)
-        root_debug('final model: {}', clf)
-
-    comm.barrier()
-
-    if comm.rank == 0:
-        return {
-            'fp_accum': fp_accum,
-            'fn_accum': fn_accum,
-            'RMSE': RMSE,
-            'RMSE_partial': RMSE_partial,
-            'time_train': time_train,
-            'time_test': time_test,
-            'runs': runs,
-            'train_neg_accum': train_neg_accum,
-            'train_pos_accum': train_pos_accum,
-            'test_neg_accum': test_neg_accum,
-            'test_pos_accum': test_pos_accum,
-            'clf': clf,
-            'test_size': test_size,
-            'fp': fp_accum / runs,
-            'fn': fn_accum / runs,
-            'accuracy': 1 - ((fp_accum + fn_accum) / (test_pos_accum + test_neg_accum)),
-            'negative_train_samples': train_neg_accum / runs,
-            'positive_train_samples': train_pos_accum / runs,
-            'negative_test_samples': test_neg_accum / runs,
-            'positive_test_samples': test_pos_accum / runs
-        }
+        return result
     else:
         return {}
+
+def test(test_X, test_y, clf, comm=MPI.COMM_WORLD, **kwargs):
+    kwargs.update(comm=comm)
+
+    runs = 0
+    fp_accum = 0
+    fn_accum = 0
+    train_pos_accum = 0
+    train_neg_accum = 0
+    test_pos_accum = 0
+    test_neg_accum = 0
+    time_train = 0
+    time_test = 0
+    RMSE_partial = 0
+    test_size =  0
+
+    start_test = time.time()
+    prd = clf.predict(test_X)
+    end_test = time.time()
+    time_test += end_test - start_test
+
+    fp, fn = num_errors(test_y, prd)
+    fp_accum += fp
+    fn_accum += fn
+
+    test_pos, test_neg = num_classes(test_y)
+    test_pos_accum += test_pos
+    test_neg_accum += test_neg
+
+    RMSE = np.sqrt(sum(pow(test_y - prd, 2)) / test_y.size )
+    RMSE_partial += sum(pow(test_y - prd, 2))
+    test_size += test_y.size
+
+    runs += 1
+
+    return {
+        'fp_accum': fp_accum,
+        'fn_accum': fn_accum,
+        'RMSE': RMSE,
+        'RMSE_partial': RMSE_partial,
+        'time_train': time_train,
+        'time_test': time_test,
+        'runs': runs,
+        'clf': clf,
+        'test_size': test_size,
+        'fp': fp_accum,
+        'fn': fn_accum,
+        'accuracy': 1 - ((fp_accum + fn_accum) / (test_pos_accum + test_neg_accum)),
+        'negative_test_samples': test_neg_accum,
+        'positive_test_samples': test_pos_accum
+    }
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 # Return a dictionary of statistics, which can be passed to prettify_train_and_test_k_fold_results
