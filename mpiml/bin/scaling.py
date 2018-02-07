@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     schema = ['model', 'nodes', 'tasks', 'density', 'positive_train_samples', 'negative_train_samples',
               'positive_test_samples', 'negative_test_samples', 'time_train', 'time_reduce', 'time_test',
-              'fp', 'fn', 'accuracy', 'RMSE']
+              'fp', 'fn', 'accuracy', 'rmse']
     if args.schema and config.comm.rank == 0:
         writer.writerow(schema)
 

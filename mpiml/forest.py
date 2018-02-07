@@ -120,7 +120,7 @@ class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
         debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
-        super(MondrianForestRegressor, self).partial_fit(X, y)
+        super(MondrianForestBase, self).partial_fit(X, y)
 
 # Create a forest regressor class combining a base forest class with mixin providing merging
 # behavior
