@@ -24,12 +24,26 @@ __all__ = [ "get_bubbleshock"
 def every_kth(arr, k):
     return [arr[start::k] for start in range(k)]
 
-# Dataset wrapper which supports lazy loading
-class DataSet(object):
+class NullDataSet(object):
     def map(self, f):
         pass
 
-class StrictDataSet(DataSet):
+    def classes(self):
+        return []
+
+    def cycles(self):
+        return []
+
+    def points(self):
+        return [],[]
+
+    def split(self, k):
+        return [self]*k
+
+    def concat(self, ds):
+        return ds
+
+class StrictDataSet(object):
 
     def __init__(self, X, y, pool_size=1000):
         self.X = X
@@ -55,50 +69,49 @@ class StrictDataSet(DataSet):
         return [StrictDataSet(X, y) for X, y in zip(split_X, split_y)]
 
     def concat(self, ds):
-        X, y = ds.points()
-
-        if y.shape[0] == 0:
+        if isinstance(ds, NullDataSet):
             return self
-        elif self.y.shape[0] == 0:
-            return StrictDataSet(X, y)
         else:
+            X, y = ds.points()
             return StrictDataSet(np.vstack((self.X, X)), np.concatenate((self.y, y)))
 
-def empty_dataset():
-    return StrictDataSet(np.array([[]]), np.array([]))
-
-class LazyDataSet(DataSet):
+class LazyDataSet(object):
+    # gen: a generator that lazily loads a DataSet object for each cycle
     def __init__(self, gen):
         self.gen_ = gen
 
     def map(self, f):
-        return LazyDataSet(f(X, y) for X, y in self.gen_)
+        return LazyDataSet(ds.map(f) for ds in self.gen_)
 
     def classes(self):
         return np.unique(np.array(ds.classes() for ds in self.gen_))
 
     def cycles(self):
-        return self.gen_
+        return (ds.points() for ds in self.gen_)
 
     def points(self):
-        return concatenate(self.gen_)
+        return concatenate(self.gen_).points()
 
     def split(self, k):
         def gen(i):
-            for X, y in self.gen_:
-                yield X[i::k], y[i::k]
-        return [gen(i) for i in range(k)]
+            for ds in self.gen_:
+                X, y = ds.points()
+                yield StrictDataSet(X[i::k], y[i::k])
+        return [LazyDataSet(gen(i)) for i in range(k)]
 
     def concat(self, ds):
+        if isinstance(ds, NullDataSet):
+            return self
+
         def gen():
             for d in self.gen_:
                 yield d
-            for d in ds.cycles():
-                yield d
-        return gen()
+            for X, y in ds.cycles():
+                yield StrictDataSet(X, y)
+        return LazyDataSet(gen())
 
 def concatenate(datasets):
-    return reduce(lambda x, y: x.concat(y), datasets, empty_dataset())
+    return reduce(lambda x, y: x.concat(y), datasets, NullDataSet())
 
 # Turn a function that transforms X and y vectors into a function that transforms a DataSet
 def ds_map(f):
@@ -120,13 +133,10 @@ def shuffle_data(X, y, seed=0):
 
 def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0):
     dataset = None
-    start = time.time()
     reader = get_reader(data_dir)
     feature_names = reader.getFeatureNames()
     zids = reader.getCycleZoneIds()
     dataset = reader.readAllZonesInCycle(0, cycle)
-    end = time.time()
-    root_info("TIME load training data: {}", end-start)
 
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])
@@ -158,7 +168,7 @@ def prepare_dataset(dataset, discrete=False, density=1.0):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         ds = shuffle_data(StrictDataSet(dataset.data, dataset.target))
     elif 'byHand' in dataset: # HACK
-        ds = get_bubbleshock_byhand_by_cycle(dataset, 10000)
+        ds = get_bubbleshock_by_hand(dataset)
     else:
         ds = shuffle_data(get_bubbleshock(data_dir=dataset))
 

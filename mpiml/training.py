@@ -5,7 +5,7 @@ import sklearn.base as sk
 import time
 
 import config
-from datasets import empty_dataset, concatenate, threshold_count, discretize
+from datasets import concatenate, threshold_count, discretize
 from utils import *
 
 __all__ = [ "get_k_fold_data"
