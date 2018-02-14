@@ -54,25 +54,7 @@ class SuperForestMixin:
         self.estimators_ = _gather_estimators(self.estimators_)
         return self
 
-# TODO Get oob score for individual trees
-# class SubForestMixin:
-
-#     def n_estimators(self, forest_size):
-#         return forest_size
-
-<<<<<<< HEAD
-
-class RandomForestRegressor(sk.RandomForestRegressor):
-=======
-#     def reduce(self, forest_size, root):
-#         root_info(self.oob_score_)
-#         sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
-#         self.estimators_ = _gather_estimators(
-#             sorted_estimators[:_n_estimators_for_forest_size(forest_size)])
-#         return self
-
 class RandomForestBase(sk.RandomForestRegressor):
->>>>>>> 1f71a9c70cb93a0a8d7c7f57f3f5966c6e539a86
     def __init__(self,
                  n_estimators=config.NumTrees,
                  criterion="mse",
