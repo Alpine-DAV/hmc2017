@@ -45,7 +45,7 @@ class NullDataSet(object):
 
 class StrictDataSet(object):
 
-    def __init__(self, X, y, pool_size=1000):
+    def __init__(self, X, y, pool_size=config.pool_size):
         self.X = X
         self.y = y
         self.pool_size_ = pool_size
@@ -131,7 +131,7 @@ def shuffle_data(X, y, seed=0):
     np.random.shuffle(y)
     return X, y
 
-def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0):
+def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0, pool_size=config.pool_size):
     dataset = None
     reader = get_reader(data_dir)
     feature_names = reader.getFeatureNames()
@@ -141,10 +141,10 @@ def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0):
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])
 
-    return make_sparse(StrictDataSet(X, y), density)
+    return make_sparse(StrictDataSet(X, y, pool_size), density)
 
-def get_bubbleshock_by_hand(data_dir, density=1.0):
-    return LazyDataSet(get_bubbleshock_byhand_by_cycle(data_dir, cycle, density)
+def get_bubbleshock_by_hand(data_dir, density=1.0, pool_size=config.pool_size):
+    return LazyDataSet(get_bubbleshock_byhand_by_cycle(data_dir, cycle, density, pool_size)
         for cycle in range(config.TOTAL_CYCLES + 1))
 
 def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
@@ -163,12 +163,12 @@ def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
     return make_sparse(StrictDataSet(X, y), density)
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset(dataset, discrete=False, density=1.0):
+def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size):
     if hasattr(sk, 'load_{}'.format(dataset)):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         ds = shuffle_data(StrictDataSet(dataset.data, dataset.target))
-    elif 'byHand' in dataset: # HACK
-        ds = get_bubbleshock_by_hand(dataset)
+    elif 'byHand' in dataset:
+        ds = get_bubbleshock_by_hand(dataset, pool_size)
     else:
         ds = shuffle_data(get_bubbleshock(data_dir=dataset))
 
@@ -179,7 +179,7 @@ def prepare_dataset(dataset, discrete=False, density=1.0):
 
 @ds_map
 def make_sparse(X, y, density):
-    if density == 1.0:
+    if 1.0 - density < 0.001:
         return X, y
     indices = np.random.choice(y.shape[0], int(y.shape[0]*density), replace=False)
     return X[indices], y[indices]

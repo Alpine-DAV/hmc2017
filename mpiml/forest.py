@@ -17,7 +17,7 @@ __all__ = ["RandomForestRegressor"
 
 rand_seed = 0
 NumTrees = 10
-parallelism = -1 # note: -1 = number of cores on the system
+parallelism = 1 # note: -1 = number of cores on the system
 
 # Return the number of estimators that the calling task should train if the superforest should
 # contain the given number

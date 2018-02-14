@@ -7,6 +7,7 @@ import time
 import config
 from datasets import concatenate, threshold_count, discretize
 from utils import *
+from config import TOTAL_CYCLES as total_cycles
 
 __all__ = [ "get_k_fold_data"
           , "train_and_test_k_fold"
@@ -29,11 +30,32 @@ def num_errors(actual, predicted, threshold=4e-6):
     return fp, fn
 
 # A generator yielding a tuple of (training set, testing set) for each run in a k-fold cross
-# validation experiment. By default, k=10.
-def get_k_fold_data(ds, k=10):
-    splits = ds.split(k)
-    for i in range(k):
-        yield (concatenate(splits[j] for j in range(k) if j != i), splits[i])
+# validation experiment. By default, k=10. If running on a subset of the data/different split
+# points with {training, testing}_split, returns datasets of sizes according to number of cycles
+# according to those splits
+def get_k_fold_data(ds, k=10, train_test_split=None):
+    if train_test_split != None:
+        splits = ds.split(total_cycles)
+        train_split = train_test_split['train_split']
+        test_split = train_test_split['test_split']
+        for i in range(k):
+            tr_start = int(total_cycles*i/k)
+            tr_end = tr_start+train_split
+            tr = wrapped_concatenate(splits, tr_start, tr_end)
+            te = wrapped_concatenate(splits, tr_end, tr_end+test_split)            
+            yield (tr, te)
+    else:
+        splits = ds.split(k)
+        for i in range(k):
+            yield (concatenate(splits[j] for j in range(k) if j != i), splits[i])
+
+# Concatenate datasets at the beginning of the split if the k-folding pattern results in train or test
+# set containing the end and beginning StrictDataSets
+def wrapped_concatenate(splits, start, end):
+    ds = concatenate(splits[j] for j in range(start, min(end, total_cycles)))
+    if end > total_cycles:
+        ds = concatenate([ds, (splits[j] for j in range(0, end%total_cycles))])
+    return ds
 
 # Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
 # function, then every sample in the dataset will be distributed to exactly one task.
@@ -121,31 +143,36 @@ def null_training_result():
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None):
+def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None):
 
     train_and_test = lambda tr, te: train_and_test_once(
         tr, te, prd, comm=comm, online=online, classes=classes)
-
+    
     if k <= 0:
         raise ValueError("k must be positive")
+    """ TODO: fairly certain this is the same
     elif k == 1:
-        splits = ds.split(10)
-        train = concatenate(splits[j] for j in range(9))
-        test = splits[9]
+        splits, train, test = None, None, None
+        
+        if train_split != None:
+            splits = ds.split(config.TOTAL_CYCLES)
+            train = concatenate(splits[j] for j in range(train_split))
+            test = concatenate(splits[j] for j in range(train_split, train_split+test_split))    
+        else:   
+            splits = ds.split(10)
+            train = concatenate(splits[j] for j in range(9))
+            test = splits[9]
 
         if running_in_mpi():
             train = get_mpi_task_data(train)
 
         return train_and_test(train, test)
-
+    """
     r = null_training_result()
-
-    for train, test in get_k_fold_data(ds, k=k):
+    for train, test in get_k_fold_data(ds, k=k, train_test_split=train_test_split):
         if running_in_mpi():
             train = get_mpi_task_data(train)
-
         r += train_and_test(train, test)
-
         comm.barrier()
 
     return r
@@ -188,7 +215,6 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
         test_pos, test_neg = threshold_count(test, 1e-6)
 
         rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
-
     comm.barrier()
 
     if comm.rank == 0:
@@ -199,7 +225,7 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
     else:
         return null_training_result()
 
-def fit(prd, ds, classes=None, online=False):
+def fit(prd, ds, classes=None, online=False, **kwargs):
     if online:
         first = True
         for X, y in ds.cycles():
