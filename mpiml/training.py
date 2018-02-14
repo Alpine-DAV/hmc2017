@@ -108,7 +108,7 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):
             'fp': fp_accum / runs,
             'fn': fn_accum / runs,
             'RMSE': rmse_accum / runs,
-            'accuracy': 1 - ((fp_accum + fn_accum) / (train_neg_accum + train_pos_accum)),
+            'accuracy': 1 - ((fp_accum + fn_accum) / (test_neg_accum + test_pos_accum)),
             'time_train': time_train / runs,
             'time_test': time_test / runs,
             'runs': runs,
@@ -122,13 +122,13 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):
         return {}
 
 def train_and_test_once(train, test, prd, trainer=default_trainer, comm=config.comm, **kwargs):
-    kwargs.update(trainer=trainer, k=k, comm=comm)
+    kwargs.update(trainer=trainer, comm=comm)
 
     if running_in_mpi():
         train = get_mpi_task_data(train)
 
     start_train = time.time()
-    prd = trainer(ds, prd, **kwargs)
+    prd = trainer(train, prd, **kwargs)
     end_train = time.time()
     time_train = end_train - start_train
 
@@ -157,7 +157,7 @@ def train_and_test_once(train, test, prd, trainer=default_trainer, comm=config.c
             'fp': fp,
             'fn': fn,
             'RMSE': RMSE,
-            'accuracy': 1 - ((fp + fn) / (train_neg + train_pos)),
+            'accuracy': 1 - ((fp + fn) / (test_neg + test_pos)),
             'time_train': time_train,
             'time_test': time_test,
             'runs': 1,
