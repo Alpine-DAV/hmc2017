@@ -61,8 +61,8 @@ if __name__ == '__main__':
         writer = csv.writer(f)
 
     schema = ['model', 'nodes', 'tasks', 'density', 'positive_train_samples', 'negative_train_samples',
-              'positive_test_samples', 'negative_test_samples', 'time_train', 'time_test',
-              'fp', 'fn', 'accuracy', 'RMSE']
+              'positive_test_samples', 'negative_test_samples', 'time_train', 'time_reduce', 'time_test',
+              'fp', 'fn', 'accuracy', 'rmse']
     if args.schema and config.comm.rank == 0:
         writer.writerow(schema)
 
@@ -73,11 +73,22 @@ if __name__ == '__main__':
             ds = prepare_dataset(args.data_dir, density=density)
 
             result = train_and_test_k_fold(ds, model, k=args.num_runs, online=args.online)
-            root_debug('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
+            root_debug('PERFORMANCE\n{}', result)
 
             if config.comm.rank == 0:
                 writer.writerow(selectcols(schema,
-                    model=get_cli_name(model), density=density, nodes=nodes, tasks=tasks, **result))
+                    model=get_cli_name(model), density=density, nodes=nodes, tasks=tasks,
+                    positive_train_samples=result.positive_train_samples,
+                    negative_train_samples=result.negative_train_samples,
+                    positive_test_samples=result.positive_test_samples,
+                    negative_test_samples=result.negative_test_samples,
+                    time_train=result.time_train,
+                    time_reduce=result.time_reduce,
+                    time_test=result.time_test,
+                    fp=result.fp,
+                    fn=result.fn,
+                    accuracy=result.accuracy,
+                    rmse=result.rmse))
 
     if args.output and config.comm.rank == 0:
         f.close()

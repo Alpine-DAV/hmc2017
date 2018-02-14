@@ -5,27 +5,14 @@ import sklearn.base as sk
 import time
 
 import config
-from datasets import empty_dataset, concatenate, threshold_count, discretize
+from datasets import concatenate, threshold_count, discretize
 from utils import *
 
 __all__ = [ "get_k_fold_data"
-          , "default_trainer"
           , "train_and_test_k_fold"
           , "train_and_test_once"
-          , "prettify_train_and_test_k_fold_results"
           , "fit"
           ]
-
-def default_trainer(ds, clf, online=False, classes=None, **kwargs):
-    if isinstance(clf, sk.ClassifierMixin):
-        ds = discretize(ds)
-    elif not isinstance(clf, sk.RegressorMixin):
-        raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
-
-    fit(clf, ds, online=online, classes=classes)
-    if running_in_mpi():
-        clf = clf.reduce()
-    return clf
 
 # Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
@@ -53,17 +40,91 @@ def get_k_fold_data(ds, k=10):
 def get_mpi_task_data(ds, comm=config.comm):
     return ds.split(comm.size)[comm.rank]
 
+class TrainingResult(object):
+
+    def __init__(self, time_train, time_reduce, time_test, fp, fn,
+                 positive_train_samples, negative_train_samples,
+                 positive_test_samples, negative_test_samples,
+                 rmse, runs=1):
+
+        self.runs = runs
+        self.time_train = time_train
+        self.time_reduce = time_reduce
+        self.time_test = time_test
+        self.fp = fp
+        self.fn = fn
+        self.positive_train_samples = positive_train_samples
+        self.negative_train_samples = negative_train_samples
+        self.positive_test_samples = positive_test_samples
+        self.negative_test_samples = negative_test_samples
+        self.rmse = rmse
+
+    @property
+    def accuracy(self):
+        return 1 - ((self.fp + self.fn) / (self.negative_train_samples + self.positive_train_samples))
+
+    def __add__(self, r):
+        def average(prop):
+            if self.runs == 0:
+                return getattr(r, prop)
+            elif r.runs == 0:
+                return getattr(self, prop)
+            else:
+                return (getattr(self, prop)*self.runs + getattr(r, prop)*r.runs) / (self.runs + r.runs)
+
+        return TrainingResult(
+            time_train=average('time_train'),
+            time_reduce=average('time_reduce'),
+            time_test=average('time_test'),
+            fp=average('fp'),
+            fn=average('fn'),
+            positive_train_samples=average('positive_train_samples'),
+            negative_train_samples=average('negative_train_samples'),
+            positive_test_samples=average('positive_test_samples'),
+            negative_test_samples=average('negative_test_samples'),
+            rmse=average('rmse'),
+            runs=self.runs + r.runs
+        )
+
+    def __str__(self):
+        return \
+"""
+timing
+    train:                      {time_train}
+    reduce:                     {time_reduce}
+    test:                       {time_test}
+dataset
+    negative training examples: {negative_train_samples}
+    positive training examples: {positive_train_samples}
+    negative testing examples:  {negative_test_samples}
+    positive testing examples:  {positive_test_samples}
+performance
+    false positives:            {fp}
+    false negatives:            {fn}
+    accuracy:                   {accuracy}
+    RMSE:                       {rmse}
+
+(statistics averaged over {runs} runs)
+""".format(time_train=self.time_train, time_reduce=self.time_reduce, time_test=self.time_test,
+           negative_train_samples=self.negative_train_samples,
+           positive_train_samples=self.positive_train_samples,
+           negative_test_samples=self.negative_test_samples,
+           positive_test_samples=self.positive_test_samples,
+           fp=self.fp,
+           fn=self.fn,
+           accuracy=self.accuracy,
+           rmse=self.rmse,
+           runs=self.runs)
+
+def null_training_result():
+    return TrainingResult(*([None]*10), runs=0)
+
 # Train and test a model using k-fold cross validation (default is 10-fold).
-# Return a dictionary of statistics, which can be passed to prettify_train_and_test_k_fold_results
-# to get a readable performance summary.
-# If running in MPI, only root (rank 0) has a meaningful return value.
-# `trainer` should be a function which, given a feature vector, a label vector, and a model, trains
-# the model on the data and returns the trained model. In addition, kwargs passed to
-# train_and_test_k_fold will be forwarded train. The default trainer calls either fit or
-# partial_fit and then reduce.
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):
-    kwargs.update(k=k, comm=comm)
+def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None):
+
+    train_and_test = lambda tr, te: train_and_test_once(
+        tr, te, prd, comm=comm, online=online, classes=classes)
 
     if k <= 0:
         raise ValueError("k must be positive")
@@ -71,66 +132,44 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):
         splits = ds.split(10)
         train = concatenate(splits[j] for j in range(9))
         test = splits[9]
-        return train_and_test_once(train, test, prd, **kwargs)
 
-    runs = 0
-    fp_accum = 0
-    fn_accum = 0
-    train_pos_accum = 0
-    train_neg_accum = 0
-    test_pos_accum = 0
-    test_neg_accum = 0
-    time_train = 0
-    time_test = 0
-    rmse_accum = 0
+        if running_in_mpi():
+            train = get_mpi_task_data(train)
+
+        return train_and_test(train, test)
+
+    r = null_training_result()
 
     for train, test in get_k_fold_data(ds, k=k):
         if running_in_mpi():
             train = get_mpi_task_data(train)
 
-        res = train_and_test_once(train, test, prd, **kwargs)
-
-        if comm.rank == 0: # Only root has the final model
-            time_test += res['time_test']
-            fp_accum += res['fp']
-            fn_accum += res['fn']
-            train_pos_accum += res['positive_train_samples']
-            train_neg_accum += res['negative_train_samples']
-            test_pos_accum += res['positive_test_samples']
-            test_neg_accum += res['negative_test_samples']
-            rmse_accum += res['RMSE']
-            runs += 1
+        r += train_and_test(train, test)
 
         comm.barrier()
 
-    if comm.rank == 0:
-        return {
-            'fp': fp_accum / runs,
-            'fn': fn_accum / runs,
-            'RMSE': rmse_accum / runs,
-            'accuracy': 1 - ((fp_accum + fn_accum) / (test_neg_accum + test_pos_accum)),
-            'time_train': time_train / runs,
-            'time_test': time_test / runs,
-            'runs': runs,
-            'negative_train_samples': train_neg_accum / runs,
-            'positive_train_samples': train_pos_accum / runs,
-            'negative_test_samples': test_neg_accum / runs,
-            'positive_test_samples': test_pos_accum / runs,
-            'prd': prd
-        }
-    else:
-        return {}
+    return r
 
-def train_and_test_once(train, test, prd, trainer=default_trainer, comm=config.comm, **kwargs):
-    kwargs.update(trainer=trainer, comm=comm)
-
+def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
     if running_in_mpi():
         train = get_mpi_task_data(train)
 
+    if isinstance(prd, sk.ClassifierMixin):
+        train = discretize(train)
+        test = discretize(test)
+    elif not isinstance(prd, sk.RegressorMixin):
+        raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
+
     start_train = time.time()
-    prd = trainer(train, prd, **kwargs)
-    end_train = time.time()
-    time_train = end_train - start_train
+    fit(prd, train, online=online, classes=classes)
+    time_train = time.time() - start_train
+
+    if running_in_mpi():
+        start_reduce = time.time()
+        prd = prd.reduce()
+        time_reduce = time.time() - start_reduce
+    else:
+        time_reduce = 0
 
     if type(prd) == type([]):
         prd = prd[0]
@@ -148,57 +187,27 @@ def train_and_test_once(train, test, prd, trainer=default_trainer, comm=config.c
         train_pos, train_neg = threshold_count(train, 1e-6)
         test_pos, test_neg = threshold_count(test, 1e-6)
 
-        RMSE = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
+        rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
 
     comm.barrier()
 
     if comm.rank == 0:
-        return {
-            'fp': fp,
-            'fn': fn,
-            'RMSE': RMSE,
-            'accuracy': 1 - ((fp + fn) / (test_neg + test_pos)),
-            'time_train': time_train,
-            'time_test': time_test,
-            'runs': 1,
-            'negative_train_samples': train_neg,
-            'positive_train_samples': train_pos,
-            'negative_test_samples': test_neg,
-            'positive_test_samples': test_pos,
-            'prd': prd
-        }
+        return TrainingResult(fp=fp, fn=fn, rmse=rmse,
+            time_train=time_train, time_reduce=time_reduce, time_test=time_test,
+            negative_train_samples=train_neg, positive_train_samples=train_pos,
+            negative_test_samples=test_neg, positive_test_samples=test_pos)
     else:
-        return {}
+        return null_training_result()
 
-def prettify_train_and_test_k_fold_results(d):
-    if d:
-        return \
-"""
-timing
-    train:                      {time_train}
-    test:                       {time_test}
-dataset
-    negative training examples: {negative_train_samples}
-    positive training examples: {positive_train_samples}
-    total training examples:    {train_total}
-    negative testing examples:  {negative_test_samples}
-    positive testing examples:  {positive_test_samples}
-    total testing examples:     {test_total}
-performance
-    false positives:            {fp}
-    false negatives:            {fn}
-    accuracy:                   {accuracy}
-    RMSE:                       {RMSE}
-
-(statistics averaged over {runs} runs)
-""".format(train_total = d['negative_train_samples'] + d['positive_train_samples'],
-           test_total = d['negative_test_samples'] + d['positive_test_samples'],
-           **d)
-
-def fit(clf, ds, classes=None, online=False):
+def fit(prd, ds, classes=None, online=False):
     if online:
+        first = True
         for X, y in ds.cycles():
-            clf.partial_fit(X, y, classes=ds.classes())
+            if first:
+                prd.fit(X, y)
+                first = False
+            else:
+                prd.partial_fit(X, y, classes=ds.classes())
     else:
-        clf.fit(*ds.points())
-    return clf
+        prd.fit(*ds.points())
+    return prd

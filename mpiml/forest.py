@@ -1,6 +1,12 @@
 import argparse
+import numpy as np
+from operator import attrgetter
 import skgarden.mondrian.ensemble as skg
+<<<<<<< HEAD
 import skgarden.mondrian.tree as skgtree
+=======
+import sklearn.base as sk_base
+>>>>>>> 1f71a9c70cb93a0a8d7c7f57f3f5966c6e539a86
 import sklearn.ensemble as sk
 from sklearn.utils import check_random_state, check_array
 from sklearn.metrics import r2_score
@@ -21,17 +27,52 @@ rand_seed = 0
 NumTrees = 10
 parallelism = -1 # note: -1 = number of cores on the system
 
-def _reduce_forest(clf, root=0):
-    all_estimators = comm.gather(clf.estimators_, root=root)
-    if comm.rank == root:
-        super_forest = []
-        for forest in all_estimators:
-            super_forest.extend(forest)
-        clf.estimators_ = super_forest
-    return clf
+# Return the number of estimators that the calling task should train if the superforest should
+# contain the given number
+def _n_estimators_for_forest_size(forest_size):
+    if running_in_mpi():
+        if forest_size < comm.size:
+            raise ValueError(
+                'must train at least 1 tree per task ({} < {})'.format(forest_size, comm.size))
 
+        partition = map(int, np.linspace(0, forest_size, comm.size + 1))
+        return partition[comm.rank + 1] - partition[comm.rank]
+    else:
+        return forest_size
+
+def _gather_estimators(estimators, root=0):
+    all_estimators = comm.gather(estimators, root=root)
+    if comm.rank == root:
+        return [tree for trees in all_estimators for tree in trees]
+
+class SuperForestMixin:
+
+    def n_estimators(self, forest_size):
+        return _n_estimators_for_forest_size(forest_size)
+
+    def reduce(self, forest_size, root):
+        self.estimators_ = _gather_estimators(self.estimators_)
+        return self
+
+# TODO Get oob score for individual trees
+# class SubForestMixin:
+
+#     def n_estimators(self, forest_size):
+#         return forest_size
+
+<<<<<<< HEAD
 
 class RandomForestRegressor(sk.RandomForestRegressor):
+=======
+#     def reduce(self, forest_size, root):
+#         root_info(self.oob_score_)
+#         sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
+#         self.estimators_ = _gather_estimators(
+#             sorted_estimators[:_n_estimators_for_forest_size(forest_size)])
+#         return self
+
+class RandomForestBase(sk.RandomForestRegressor):
+>>>>>>> 1f71a9c70cb93a0a8d7c7f57f3f5966c6e539a86
     def __init__(self,
                  n_estimators=config.NumTrees,
                  criterion="mse",
@@ -42,13 +83,12 @@ class RandomForestRegressor(sk.RandomForestRegressor):
                  max_features="auto",
                  max_leaf_nodes=None,
                  bootstrap=True,
-                 oob_score=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
                  verbose=0,
                  warm_start=False
                  ):
-        super(RandomForestRegressor, self).__init__(
+        super(RandomForestBase, self).__init__(
             n_estimators=n_estimators,
             criterion=criterion,
             max_depth=max_depth,
@@ -58,38 +98,20 @@ class RandomForestRegressor(sk.RandomForestRegressor):
             max_features=max_features,
             max_leaf_nodes=max_leaf_nodes,
             bootstrap=bootstrap,
-            oob_score=oob_score,
+            oob_score=False,
             n_jobs=n_jobs,
             random_state=random_state,
             verbose=verbose,
             warm_start=warm_start
         )
 
-    def reduce(self, root=0):
-        return _reduce_forest(self, root=root)
+        debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
 
-def _generate_sample_indices(random_state, n_samples):
-    """Private function used to _parallel_build_trees function."""
-    random_instance = check_random_state(random_state)
-    sample_indices = random_instance.randint(0, n_samples, n_samples)
-
-    return sample_indices
-
-def _generate_unsampled_indices(random_state, n_samples):
-    """Private function used to forest._set_oob_score function."""
-    sample_indices = _generate_sample_indices(random_state, n_samples)
-    sample_counts = np.bincount(sample_indices, minlength=n_samples)
-    unsampled_mask = sample_counts == 0
-    indices_range = np.arange(n_samples)
-    unsampled_indices = indices_range[unsampled_mask]
-
-    return unsampled_indices
-
-class MondrianForestRegressor(skg.MondrianForestRegressor):
+class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
@@ -97,9 +119,8 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
-                 verbose=0,
-                 oob_score=False):
-        super(MondrianForestRegressor, self).__init__(
+                 verbose=0):
+        super(MondrianForestBase, self).__init__(
             n_estimators=n_estimators,
             max_depth=max_depth,
             min_samples_split=min_samples_split,
@@ -110,12 +131,11 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
         )
         self.oob_score = oob_score
 
-    def reduce(self, root=0):
-        return _reduce_forest(self, root=root)
+        debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
-        # super(MondrianForestRegressor, self).partial_fit(X, y)
-        print("running partial_fit",comm.rank)
+        # super(MondrianForestBase, self).partial_fit(X, y)
+
         X, y = check_X_y(X, y, dtype=np.float32, multi_output=False)
         random_state = check_random_state(self.random_state)
 
@@ -167,14 +187,6 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
 
         return self
 
-    def get_oob_scores(self):
-        result = ""
-        for tree in self.estimators_:
-            result += "{tree_}".format(tree_=tree.tree_)
-            result += "\n"
-        return result
-
-
     def _set_oob_score(self, X, y):
         """Compute out-of-bag scores"""
         X = check_array(X, dtype=DTYPE, accept_sparse='csr')
@@ -223,18 +235,22 @@ class MondrianForestRegressor(skg.MondrianForestRegressor):
         self.oob_score_ /= self.n_outputs_
 
 
-class MondrianTreeRegressor(skgtree.MondrianTreeRegressor):
-    def __init__(self,
-                 max_depth=None,
-                 min_samples_split=2,
-                 random_state=None,
-                 oob_error=True
-                 ):
-        super(MondrianTreeRegressor, self).__init__(
-            criterion="mse",
-            splitter="mondrian",
-            max_depth=max_depth,
-            min_samples_split=min_samples_split,
-            random_state=random_state,
-            oob_error=oob_error
-        )
+# Create a forest regressor class combining a base forest class with mixin providing merging
+# behavior
+def _forest_regressor(base, merging_mixin):
+
+    class ForestRegressor(base, merging_mixin):
+
+        def __init__(self, forest_size=config.NumTrees, *args, **kwargs):
+            super(ForestRegressor, self).__init__(
+                *args, n_estimators=self.n_estimators(forest_size), **kwargs)
+            self.forest_size_ = forest_size
+
+        def reduce(self, root=0):
+            return super(ForestRegressor, self).reduce(self.forest_size_, root)
+
+    ForestRegressor.__name__ = base.__name__ + '_' + merging_mixin.__name__
+    return ForestRegressor
+
+RandomForestRegressor = _forest_regressor(RandomForestBase, SuperForestMixin)
+MondrianForestRegressor = _forest_regressor(MondrianForestBase, SuperForestMixin)

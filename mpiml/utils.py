@@ -107,7 +107,7 @@ density:   {density}
            use_mpi=running_in_mpi(),
            **locals())
 
-    if hasattr(model, 'estimators_'):
+    if hasattr(model, 'estimators_') and model.estimators_ is not None:
         output_str += \
 """
 -------------------------------------

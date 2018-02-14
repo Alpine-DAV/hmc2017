@@ -17,6 +17,7 @@ from mpiml.models import get_model_id, get_cli_name
 # Column names
 MODEL = 'model'
 TASKS = 'tasks'
+TIME_REDUCE = 'time_reduce'
 TIME_TRAIN = 'time_train'
 NODES = 'nodes'
 DENSITY = 'density'
@@ -97,7 +98,9 @@ class StrongScaling(object):
         self.model_ = get_cli_name(scalarize(data[MODEL]))
         self.density_ = scalarize(data[DENSITY])
         self.nodes_ = data[NODES]
-        self.times_ = data[TIME_TRAIN]
+        self.train_times_ = data[TIME_TRAIN]
+        self.reduce_times_ = data[TIME_REDUCE]
+        self.times_ = self.train_times_ + self.reduce_times_
         self.t0_ = self.times_[0]
         self.speedup_ = self.t0_ / data[TIME_TRAIN]
         self.m_ = None
