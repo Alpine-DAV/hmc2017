@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 from operator import attrgetter
 import skgarden.mondrian.ensemble as skg
+import skgarden.mondrian.tree.tree as skt
 import sklearn.base as sk_base
 import sklearn.ensemble as sk
 
@@ -32,10 +33,19 @@ def _n_estimators_for_forest_size(forest_size):
     else:
         return forest_size
 
-def _gather_estimators(estimators, root=0):
-    all_estimators = comm.gather(estimators, root=root)
+def _gather_estimators(estimators, send_to, recv_from, root=0):
     if comm.rank == root:
-        return [tree for trees in all_estimators for tree in trees]
+        for peer in range(comm.size):
+            if peer == root: continue
+
+            n_estimators = comm.recv(source=peer)
+            estimators.extend([recv_from(peer) for _ in range(n_estimators)])
+    else:
+        comm.send(len(estimators), root)
+        for e in estimators:
+            send_to(root, e)
+
+    return estimators
 
 class SuperForestMixin:
 
@@ -43,7 +53,8 @@ class SuperForestMixin:
         return _n_estimators_for_forest_size(forest_size)
 
     def reduce(self, forest_size, root):
-        self.estimators_ = _gather_estimators(self.estimators_)
+        self.estimators_ = _gather_estimators(
+            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
         return self
 
 # TODO Get oob score for individual trees
@@ -98,6 +109,12 @@ class RandomForestBase(sk.RandomForestRegressor):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
 
+    def send_estimator(self, peer, est):
+        comm.send(est, peer)
+
+    def receive_estimator(self, peer):
+        return comm.recv(source=peer)
+
 class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
     def __init__(self,
                  n_estimators=config.NumTrees,
@@ -121,6 +138,12 @@ class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
 
     def partial_fit(self, X, y, classes=None):
         super(MondrianForestBase, self).partial_fit(X, y)
+
+    def send_estimator(self, peer, est):
+        skt.mpi_send(est, comm, peer)
+
+    def receive_estimator(self, peer):
+        return skt.mpi_recv_regressor(self.n_features_, self.n_outputs_, comm, peer)
 
 # Create a forest regressor class combining a base forest class with mixin providing merging
 # behavior
