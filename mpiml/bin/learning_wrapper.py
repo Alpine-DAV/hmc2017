@@ -46,7 +46,7 @@ if __name__ == '__main__':
     toggle_profiling(args.profile)
 
     for model in args.models:
-        m = get_model(model)
+        m = get_model(model, bootstrap=True, oob_score=True)
         if m is None:
             root_info('error: invalid model {}; valid models are {}', model, model_names())
             sys.exit(1)
