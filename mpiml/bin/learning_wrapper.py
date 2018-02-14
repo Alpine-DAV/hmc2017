@@ -16,7 +16,6 @@ def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size,
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
-    root_info(train_test_split)
     ds = prepare_dataset(data_path, density=density, pool_size=pool_size)
 
     root_info('{}', output_model_info(model, online=online, density=density, pool_size=pool_size))
