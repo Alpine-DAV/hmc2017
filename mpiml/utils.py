@@ -5,12 +5,6 @@ import numpy as np
 from mpi4py import MPI
 import os
 import sys
-<<<<<<< HEAD
-import time
-import datasets
-=======
-
->>>>>>> 5e01ba205bd1e207025c9cadd8cf1450c964a0ad
 import config
 
 __all__ = [ "info"
@@ -18,13 +12,6 @@ __all__ = [ "info"
           , "root_info"
           , "root_debug"
           , "running_in_mpi"
-<<<<<<< HEAD
-          , "train_and_test_k_fold"
-          , "train_and_test_byHand"
-          , "default_trainer"
-          , "fit"
-=======
->>>>>>> 5e01ba205bd1e207025c9cadd8cf1450c964a0ad
           , "output_model_info"
           , "toggle_profiling"
           , "toggle_verbose"
@@ -125,14 +112,13 @@ density:   {density}
 """
 -------------------------------------
 n_estimators:        {n_estimators}
-len(estimators_):    {estimators_}
-n features:          {n_features_}
-n outputs:           {n_outputs_}
+total estimators:    {total_estimators}
+oob score:           {oob_score_}
 -------------------------------------
 """.format(n_estimators=model.n_estimators,
-           estimators_=len(model.estimators_),
-           n_features_=model.n_features_,
-           n_outputs_=model.n_outputs_)
+           total_estimators=len(model.estimators_),
+           oob_score_ = model.oob_score_ if hasattr(model,'oob_score_') else False,
+           estimators=model.estimators_)
 
     return output_str
 
