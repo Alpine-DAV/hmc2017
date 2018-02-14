@@ -26,7 +26,7 @@ def wrapper(model, k, data_path, online=False, density=1.0):
 
     root_info('PERFORMANCE\n{}', prettify_train_and_test_k_fold_results(result))
 
-    root_info('{}',output_model_info(model, online=online))
+    root_info('{}',output_model_info(model, online=online, density=density))
 
 if __name__ == '__main__':
 
