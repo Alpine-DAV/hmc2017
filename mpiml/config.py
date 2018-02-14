@@ -30,7 +30,7 @@ load_learning_data = False  # if true, load pre-created learning data
 #===============================================================================
 rand_seed = 0
 NumTrees = 50
-parallelism = -1 # note: -1 = number of cores on the system
+parallelism = 1 # note: -1 = number of cores on the system
 
 
 #===============================================================================
