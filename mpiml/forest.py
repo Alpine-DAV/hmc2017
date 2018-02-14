@@ -2,11 +2,7 @@ import argparse
 import numpy as np
 from operator import attrgetter
 import skgarden.mondrian.ensemble as skg
-<<<<<<< HEAD
-import skgarden.mondrian.tree as skgtree
-=======
 import sklearn.base as sk_base
->>>>>>> 1f71a9c70cb93a0a8d7c7f57f3f5966c6e539a86
 import sklearn.ensemble as sk
 from sklearn.utils import check_random_state, check_array
 from sklearn.metrics import r2_score
@@ -23,9 +19,23 @@ __all__ = ["RandomForestRegressor"
           ,"MondrianForestRegressor"
           ]
 
-rand_seed = 0
-NumTrees = 10
-parallelism = -1 # note: -1 = number of cores on the system
+def _generate_sample_indices(random_state, n_samples):
+    """Private function used to _parallel_build_trees function."""
+    random_instance = check_random_state(random_state)
+    sample_indices = random_instance.randint(0, n_samples, n_samples)
+
+    return sample_indices
+
+
+def _generate_unsampled_indices(random_state, n_samples):
+    """Private function used to forest._set_oob_score function."""
+    sample_indices = _generate_sample_indices(random_state, n_samples)
+    sample_counts = np.bincount(sample_indices, minlength=n_samples)
+    unsampled_mask = sample_counts == 0
+    indices_range = np.arange(n_samples)
+    unsampled_indices = indices_range[unsampled_mask]
+
+    return unsampled_indices
 
 # Return the number of estimators that the calling task should train if the superforest should
 # contain the given number
@@ -54,6 +64,19 @@ class SuperForestMixin:
         self.estimators_ = _gather_estimators(self.estimators_)
         return self
 
+
+class SubForestMixin:
+
+    def n_estimators(self, forest_size):
+        return forest_size
+
+    def reduce(self, forest_size, root):
+        root_info(self.oob_score_)
+        sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
+        self.estimators_ = _gather_estimators(
+            sorted_estimators[:_n_estimators_for_forest_size(forest_size)])
+        return self
+
 class RandomForestBase(sk.RandomForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
@@ -64,7 +87,8 @@ class RandomForestBase(sk.RandomForestRegressor):
                  min_weight_fraction_leaf=0.,
                  max_features="auto",
                  max_leaf_nodes=None,
-                 bootstrap=True,
+                 bootstrap=False,
+                 oob_score=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
                  verbose=0,
@@ -80,7 +104,7 @@ class RandomForestBase(sk.RandomForestRegressor):
             max_features=max_features,
             max_leaf_nodes=max_leaf_nodes,
             bootstrap=bootstrap,
-            oob_score=False,
+            oob_score=oob_score,
             n_jobs=n_jobs,
             random_state=random_state,
             verbose=verbose,
@@ -93,7 +117,7 @@ class RandomForestBase(sk.RandomForestRegressor):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
 
-class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
+class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
@@ -101,7 +125,8 @@ class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
-                 verbose=0):
+                 verbose=0,
+                 oob_score=False):
         super(MondrianForestBase, self).__init__(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -109,7 +134,7 @@ class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
             bootstrap=bootstrap,
             n_jobs=n_jobs,
             random_state=random_state,
-            verbose=verbose
+            verbose=verbose,
         )
         self.oob_score = oob_score
 
@@ -192,8 +217,8 @@ class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
 
             oob_error = r2_score(y[unsampled_indices, :], p_estimator)
             
-            # if estimator.oob_error:
-            estimator.oob_error = oob_error
+            # Set oob score of individual trees
+            estimator.oob_score_ = oob_error
 
         if (n_predictions == 0).any():
             root_info("Some inputs do not have OOB scores. "
