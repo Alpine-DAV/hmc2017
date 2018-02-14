@@ -21,9 +21,9 @@ _register_model('rf', RandomForestRegressor)
 def model_names():
     return _models.keys()
 
-def get_model(cli_name):
+def get_model(cli_name, **kwargs):
     if cli_name in _models:
-        return _models[cli_name]()
+        return _models[cli_name](**kwargs)
     else:
         return None
 
