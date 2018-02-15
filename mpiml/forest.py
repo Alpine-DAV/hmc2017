@@ -46,7 +46,8 @@ def _n_estimators_for_forest_size(forest_size):
                 'must train at least 1 tree per task ({} < {})'.format(forest_size, comm.size))
 
         partition = map(int, np.linspace(0, forest_size, comm.size + 1))
-        return partition[comm.rank + 1] - partition[comm.rank]
+        # return partition[comm.rank + 1] - partition[comm.rank]
+        return 1
     else:
         return forest_size
 
@@ -73,8 +74,11 @@ class SubForestMixin:
     def reduce(self, forest_size, root):
         root_info(self.oob_score_)
         sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
+        # self.estimators_ = _gather_estimators(
+        #     sorted_estimators[:_n_estimators_for_forest_size(forest_size)])
+
         self.estimators_ = _gather_estimators(
-            sorted_estimators[:_n_estimators_for_forest_size(forest_size)])
+            sorted_estimators[:-_n_estimators_for_forest_size(forest_size)])
         return self
 
 class RandomForestBase(sk.RandomForestRegressor):
