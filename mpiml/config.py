@@ -40,4 +40,4 @@ kfold = 10
 decision_boundary = 4e-6
 np.random.seed(rand_seed)
 
-TOTAL_CYCLES = 40181
+TOTAL_CYCLES = 40182

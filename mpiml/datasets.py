@@ -76,39 +76,41 @@ class StrictDataSet(object):
             return StrictDataSet(np.vstack((self.X, X)), np.concatenate((self.y, y)))
 
 class LazyDataSet(object):
-    # gen: a generator that lazily loads a DataSet object for each cycle
-    def __init__(self, gen):
-        self.gen_ = gen
+    # gen: a function returning a generator that lazily loads a DataSet object for each cycle
+    #      gen must be a factory function rather than a generator object so that we can reuse the
+    #      generator (by creating a new instance from the factory)
+    def __init__(self, make_gen):
+        self.make_gen_ = make_gen
 
     def map(self, f):
-        return LazyDataSet(ds.map(f) for ds in self.gen_)
+        return LazyDataSet(lambda: (ds.map(f) for ds in self.make_gen_()))
 
     def classes(self):
-        return np.unique(np.array(ds.classes() for ds in self.gen_))
+        return np.unique(np.array(ds.classes() for ds in self.make_gen_()))
 
     def cycles(self):
-        return (ds.points() for ds in self.gen_)
+        return (ds.points() for ds in self.make_gen_())
 
     def points(self):
-        return concatenate(self.gen_).points()
+        return concatenate(self.make_gen_()).points()
 
     def split(self, k):
         def gen(i):
-            for ds in self.gen_:
+            for ds in self.make_gen_():
                 X, y = ds.points()
                 yield StrictDataSet(X[i::k], y[i::k])
-        return [LazyDataSet(gen(i)) for i in range(k)]
+        return [LazyDataSet(lambda: gen(i)) for i in range(k)]
 
     def concat(self, ds):
         if isinstance(ds, NullDataSet):
             return self
 
         def gen():
-            for d in self.gen_:
+            for d in self.make_gen_():
                 yield d
             for X, y in ds.cycles():
                 yield StrictDataSet(X, y)
-        return LazyDataSet(gen())
+        return LazyDataSet(lambda: gen())
 
 def concatenate(datasets):
     return reduce(lambda x, y: x.concat(y), datasets, NullDataSet())
@@ -143,9 +145,16 @@ def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0, pool_size=conf
 
     return make_sparse(StrictDataSet(X, y, pool_size), density)
 
-def get_bubbleshock_by_hand(data_dir, density=1.0, pool_size=config.pool_size):
-    return LazyDataSet(get_bubbleshock_byhand_by_cycle(data_dir, cycle, density, pool_size)
-        for cycle in range(config.TOTAL_CYCLES + 1))
+def get_bubbleshock_by_hand(data_dir, density=1.0, pool_size=config.pool_size, train_test_split=None):
+    ds = None
+    if train_test_split == None:
+        ds = LazyDataSet(lambda: (get_bubbleshock_byhand_by_cycle(data_dir, cycle, density, pool_size)
+                                for cycle in range(config.TOTAL_CYCLES)))
+    else:
+        subset_cycles = train_test_split['train_split'] + train_test_split['test_split']
+        ds = LazyDataSet(lambda: (get_bubbleshock_byhand_by_cycle(data_dir, cycle, density, pool_size)
+                                for cycle in range(subset_cycles)))
+    return ds
 
 def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
     dataset = None
@@ -163,12 +172,12 @@ def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
     return make_sparse(StrictDataSet(X, y), density)
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size):
+def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size, train_test_split=None):
     if hasattr(sk, 'load_{}'.format(dataset)):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         ds = shuffle_data(StrictDataSet(dataset.data, dataset.target))
     elif 'byHand' in dataset:
-        ds = get_bubbleshock_by_hand(dataset, pool_size)
+        ds = get_bubbleshock_by_hand(dataset, pool_size, train_test_split=train_test_split)
     else:
         ds = shuffle_data(get_bubbleshock(data_dir=dataset))
 

@@ -64,12 +64,13 @@ def get_mpi_task_data(ds, comm=config.comm):
 
 class TrainingResult(object):
 
-    def __init__(self, time_train, time_reduce, time_test, fp, fn,
+    def __init__(self, time_load, time_train, time_reduce, time_test, fp, fn,
                  positive_train_samples, negative_train_samples,
                  positive_test_samples, negative_test_samples,
                  rmse, runs=1):
 
         self.runs = runs
+        self.time_load = time_load
         self.time_train = time_train
         self.time_reduce = time_reduce
         self.time_test = time_test
@@ -95,6 +96,7 @@ class TrainingResult(object):
                 return (getattr(self, prop)*self.runs + getattr(r, prop)*r.runs) / (self.runs + r.runs)
 
         return TrainingResult(
+            time_load=average('time_load'),
             time_train=average('time_train'),
             time_reduce=average('time_reduce'),
             time_test=average('time_test'),
@@ -112,6 +114,7 @@ class TrainingResult(object):
         return \
 """
 timing
+    load:                       {time_load}
     train:                      {time_train}
     reduce:                     {time_reduce}
     test:                       {time_test}
@@ -127,7 +130,8 @@ performance
     RMSE:                       {rmse}
 
 (statistics averaged over {runs} runs)
-""".format(time_train=self.time_train, time_reduce=self.time_reduce, time_test=self.time_test,
+""".format(time_load=self.time_load, time_train=self.time_train,
+           time_reduce=self.time_reduce, time_test=self.time_test,
            negative_train_samples=self.negative_train_samples,
            positive_train_samples=self.positive_train_samples,
            negative_test_samples=self.negative_test_samples,
@@ -139,25 +143,28 @@ performance
            runs=self.runs)
 
 def null_training_result():
-    return TrainingResult(*([None]*10), runs=0)
+    return TrainingResult(*([None]*11), runs=0)
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None):
+def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None,
+    reduce_after=None, bcast_reduction=False):
 
     train_and_test = lambda tr, te: train_and_test_once(
         tr, te, prd, comm=comm, online=online, classes=classes)
     
     if k <= 0:
         raise ValueError("k must be positive")
-    """ TODO: fairly certain this is the same
     elif k == 1:
         splits, train, test = None, None, None
         
-        if train_split != None:
-            splits = ds.split(config.TOTAL_CYCLES)
+        if train_test_split != None:
+            train_split = train_test_split['train_split']
+            test_split  = train_test_split['test_split']
+
+            splits = ds.split(train_split+test_split)
             train = concatenate(splits[j] for j in range(train_split))
-            test = concatenate(splits[j] for j in range(train_split, train_split+test_split))    
+            test = concatenate(splits[j] for j in range(train_split, train_split+test_split))  
         else:   
             splits = ds.split(10)
             train = concatenate(splits[j] for j in range(9))
@@ -167,7 +174,7 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
             train = get_mpi_task_data(train)
 
         return train_and_test(train, test)
-    """
+
     r = null_training_result()
     for train, test in get_k_fold_data(ds, k=k, train_test_split=train_test_split):
         if running_in_mpi():
@@ -187,9 +194,8 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
 
-    start_train = time.time()
-    fit(prd, train, online=online, classes=classes)
-    time_train = time.time() - start_train
+    prd, time_train, time_load = fit(
+        prd, train, online=online, classes=classes, time_training=True, time_loading=True)
 
     if running_in_mpi():
         start_reduce = time.time()
@@ -219,21 +225,51 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
     if comm.rank == 0:
         return TrainingResult(fp=fp, fn=fn, rmse=rmse,
-            time_train=time_train, time_reduce=time_reduce, time_test=time_test,
+            time_load=time_load, time_train=time_train, time_reduce=time_reduce, time_test=time_test,
             negative_train_samples=train_neg, positive_train_samples=train_pos,
             negative_test_samples=test_neg, positive_test_samples=test_pos)
     else:
         return null_training_result()
 
-def fit(prd, ds, classes=None, online=False, **kwargs):
+def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=False):
     if online:
+        train_time = 0
+        load_time = 0
         first = True
-        for X, y in ds.cycles():
+        it = iter(enumerate(ds.cycles()))
+        while True:
+            try:
+                start_load = time.time()
+                i, (X, y) = it.next()
+                load_time += time.time() - start_load
+            except StopIteration:
+                break
+
+            if i % 1000 == 0:
+                root_debug('training cycle {}', i)
             if first:
+                start_train = time.time()
                 prd.fit(X, y)
+                train_time += time.time() - start_train
                 first = False
             else:
+                start_train = time.time()
                 prd.partial_fit(X, y, classes=ds.classes())
+                train_time += time.time() - start_train
     else:
-        prd.fit(*ds.points())
-    return prd
+        start_load = time.time()
+        X, y = ds.points()
+        load_time = time.time() - start_load
+
+        start_train = time.time()
+        prd.fit(X, y)
+        train_time = time.time() - start_train
+
+    results = [prd]
+    if time_training:
+        results.append(train_time)
+    if time_loading:
+        results.append(load_time)
+    if len(results) == 0:
+        results = results[0]
+    return results
