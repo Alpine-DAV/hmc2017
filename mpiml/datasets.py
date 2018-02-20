@@ -173,6 +173,8 @@ def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class
 def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size, train_test_split=None):
+    global _dataset
+    _dataset = dataset
     if hasattr(sk, 'load_{}'.format(dataset)):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         ds = shuffle_data(StrictDataSet(dataset.data, dataset.target))

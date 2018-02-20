@@ -5,9 +5,8 @@ import sklearn.base as sk
 import time
 
 import config
-from datasets import concatenate, threshold_count, discretize
+from datasets import concatenate, threshold_count, discretize, prepare_dataset
 from utils import *
-from config import TOTAL_CYCLES as total_cycles
 
 __all__ = [ "get_k_fold_data"
           , "train_and_test_k_fold"
@@ -35,14 +34,15 @@ def num_errors(actual, predicted, threshold=4e-6):
 # according to those splits
 def get_k_fold_data(ds, k=10, train_test_split=None):
     if train_test_split != None:
-        splits = ds.split(total_cycles)
         train_split = train_test_split['train_split']
         test_split = train_test_split['test_split']
+        total_cycles = train_split+test_split
+        splits = ds.split(total_cycles)
         for i in range(k):
-            tr_start = int(total_cycles*i/k)
+            tr_start = int(train_split*i/k)
             tr_end = tr_start+train_split
-            tr = wrapped_concatenate(splits, tr_start, tr_end)
-            te = wrapped_concatenate(splits, tr_end, tr_end+test_split)            
+            tr = wrapped_concatenate(splits, tr_start, tr_end, total_cycles)
+            te = wrapped_concatenate(splits, tr_end, tr_end+test_split, total_cycles)            
             yield (tr, te)
     else:
         splits = ds.split(k)
@@ -51,11 +51,11 @@ def get_k_fold_data(ds, k=10, train_test_split=None):
 
 # Concatenate datasets at the beginning of the split if the k-folding pattern results in train or test
 # set containing the end and beginning StrictDataSets
-def wrapped_concatenate(splits, start, end):
-    ds = concatenate(splits[j] for j in range(start, min(end, total_cycles)))
+def wrapped_concatenate(splits, start, end, total_cycles):
+    rng = range(start, min(end, total_cycles))
     if end > total_cycles:
-        ds = concatenate([ds, (splits[j] for j in range(0, end%total_cycles))])
-    return ds
+        rng.extend(range(0, end%total_cycles))
+    return concatenate(splits[j] for j in rng)
 
 # Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
 # function, then every sample in the dataset will be distributed to exactly one task.
