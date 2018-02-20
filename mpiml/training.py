@@ -147,8 +147,7 @@ def null_training_result():
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None,
-    reduce_after=None, bcast_reduction=False):
+def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None):
 
     train_and_test = lambda tr, te: train_and_test_once(
         tr, te, prd, comm=comm, online=online, classes=classes)

@@ -12,8 +12,7 @@ from mpiml.training import *
 from mpiml.utils import *
 from mpiml.config import *
 
-def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size, train_test_split=None,
-            reduce_after=None, bcast_reduction=False):
+def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size, train_test_split=None):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
@@ -21,9 +20,8 @@ def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size,
 
     root_info('{}', output_model_info(model, online=online, density=density, pool_size=pool_size))
 
-    result = train_and_test_k_fold(ds, model, k=k, online=online, train_test_split=train_test_split,
-        reduce_after=reduce_after, bcast_reduction=bcast_reduction)
-        
+    result = train_and_test_k_fold(ds, model, k=k, online=online, train_test_split=train_test_split)
+
     root_info('PERFORMANCE\n{}', result)
 
 def get_train_test_split(args):
@@ -56,12 +54,10 @@ if __name__ == '__main__':
     # Online Training Specific Parameters
     parser.add_argument('--train-split', type=int, help='specify a value of cycles to train on. If testing-split is left \
          unspecified, the remaining cycles will be trained upon')    
-    parser.add_argument('--reduce-after', type=int, help='number of cycles before a reduction occurs')
-    parser.add_argument('--bcast-reduction', action='store_true', help='whether to redistribute the pre-existing model from\
-         to all processes. Irrelevant to training results unless multiple reductions done during training')
     
     # Online Testing Specific Parameters
     parser.add_argument('--test-split', type=int, help='specify the number of cycles to test upon after training is completed')
+
     args = parser.parse_args()
 
     toggle_verbose(args.verbose) 
@@ -75,4 +71,4 @@ if __name__ == '__main__':
         else:
             train_test_sp = get_train_test_split
             wrapper(m, args.num_runs, args.data_dir, online=args.online, density=args.density, pool_size=args.pool_size,
-                    train_test_split=get_train_test_split(args), reduce_after=args.reduce_after, bcast_reduction=args.bcast_reduction) 
+                    train_test_split=get_train_test_split(args)) 
