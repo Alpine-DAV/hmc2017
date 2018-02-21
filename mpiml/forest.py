@@ -14,6 +14,7 @@ import sys
 from utils import *
 from config import comm
 import config
+import csv
 
 __all__ = ["RandomForestRegressor"
           ,"MondrianForestRegressor"
@@ -46,8 +47,7 @@ def _n_estimators_for_forest_size(forest_size):
                 'must train at least 1 tree per task ({} < {})'.format(forest_size, comm.size))
 
         partition = map(int, np.linspace(0, forest_size, comm.size + 1))
-        # return partition[comm.rank + 1] - partition[comm.rank]
-        return 1
+        return partition[comm.rank + 1] - partition[comm.rank]
     else:
         return forest_size
 
@@ -72,13 +72,20 @@ class SubForestMixin:
         return forest_size
 
     def reduce(self, forest_size, root):
-        root_info(self.oob_score_)
+        root_debug(self.oob_score_)
         sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
-        # self.estimators_ = _gather_estimators(
-        #     sorted_estimators[:_n_estimators_for_forest_size(forest_size)])
 
-        self.estimators_ = _gather_estimators(
-            sorted_estimators[:-_n_estimators_for_forest_size(forest_size)])
+        # Get best X% of estimators by oob score
+        # self.estimators_ = _gather_estimators(
+        #     sorted_estimators[:_n_estimators_for_forest_size(forest_size)/4])
+
+        ## Get last X% of estimators by oob score
+        # self.estimators_ = _gather_estimators(
+        #     sorted_estimators[(len(sorted_estimators)-_n_estimators_for_forest_size(forest_size)/4):])
+        
+        ## Get random X% of estimators
+        # self.estimators_ = _gather_estimators(self.estimators_[:_n_estimators_for_forest_size(forest_size)])
+        self.estimators_ = _gather_estimators(self.estimators_[-1:])
         return self
 
 class RandomForestBase(sk.RandomForestRegressor):
@@ -145,58 +152,58 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
         debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
-        # super(MondrianForestBase, self).partial_fit(X, y)
+        super(MondrianForestBase, self).partial_fit(X, y)
 
-        X, y = check_X_y(X, y, dtype=np.float32, multi_output=False)
-        random_state = check_random_state(self.random_state)
+        # X, y = check_X_y(X, y, dtype=np.float32, multi_output=False)
+        # random_state = check_random_state(self.random_state)
 
-        # Wipe out estimators if partial_fit is called after fit.
-        first_call = not hasattr(self, "first_")
-        if first_call:
-            self.first_ = True
+        # # Wipe out estimators if partial_fit is called after fit.
+        # first_call = not hasattr(self, "first_")
+        # if first_call:
+        #     self.first_ = True
 
-        if isinstance(self, ClassifierMixin):
-            if first_call:
-                if classes is None:
-                    classes = LabelEncoder().fit(y).classes_
+        # if isinstance(self, ClassifierMixin):
+        #     if first_call:
+        #         if classes is None:
+        #             classes = LabelEncoder().fit(y).classes_
 
-                self.classes_ = classes
-                self.n_classes_ = len(self.classes_)
+        #         self.classes_ = classes
+        #         self.n_classes_ = len(self.classes_)
 
-        # Remap output
-        n_samples, self.n_features_ = X.shape
+        # # Remap output
+        # n_samples, self.n_features_ = X.shape
 
-        y = np.atleast_1d(y)
-        if y.ndim == 2 and y.shape[1] == 1:
-            warn("A column-vector y was passed when a 1d array was"
-                 " expected. Please change the shape of y to "
-                 "(n_samples,), for example using ravel().",
-                 DataConversionWarning, stacklevel=2)
+        # y = np.atleast_1d(y)
+        # if y.ndim == 2 and y.shape[1] == 1:
+        #     warn("A column-vector y was passed when a 1d array was"
+        #          " expected. Please change the shape of y to "
+        #          "(n_samples,), for example using ravel().",
+        #          DataConversionWarning, stacklevel=2)
 
-        self.n_outputs_ = 1
+        # self.n_outputs_ = 1
 
-        # Initialize estimators at first call to partial_fit.
-        if first_call:
-            # Check estimators
-            self._validate_estimator()
-            self.estimators_ = []
+        # # Initialize estimators at first call to partial_fit.
+        # if first_call:
+        #     # Check estimators
+        #     self._validate_estimator()
+        #     self.estimators_ = []
 
-            for _ in range(self.n_estimators):
-                tree = self._make_estimator(append=False, random_state=random_state)
-                self.estimators_.append(tree)
+        #     for _ in range(self.n_estimators):
+        #         tree = self._make_estimator(append=False, random_state=random_state)
+        #         self.estimators_.append(tree)
 
-        # XXX: Switch to threading backend when GIL is released.
-        if isinstance(self, ClassifierMixin):
-            self.estimators_ = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-                delayed(_single_tree_pfit)(t, X, y, classes) for t in self.estimators_)
-        else:
-            self.estimators_ = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-                delayed(_single_tree_pfit)(t, X, y) for t in self.estimators_)
+        # # XXX: Switch to threading backend when GIL is released.
+        # if isinstance(self, ClassifierMixin):
+        #     self.estimators_ = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+        #         delayed(_single_tree_pfit)(t, X, y, classes) for t in self.estimators_)
+        # else:
+        #     self.estimators_ = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+        #         delayed(_single_tree_pfit)(t, X, y) for t in self.estimators_)
 
-        if self.oob_score:
-            self._set_oob_score(X, y)
+        # if self.oob_score:
+        #     self._set_oob_score(X, y)
 
-        return self
+        # return self
 
     def _set_oob_score(self, X, y):
         """Compute out-of-bag scores"""
@@ -206,6 +213,9 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
 
         predictions = np.zeros((n_samples, self.n_outputs_))
         n_predictions = np.zeros((n_samples, self.n_outputs_))
+
+        # for computing variance in oob scores
+        all_oob_errors = []
 
         for estimator in self.estimators_:
             unsampled_indices = _generate_unsampled_indices(
@@ -219,10 +229,22 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
             predictions[unsampled_indices, :] += p_estimator
             n_predictions[unsampled_indices, :] += 1
 
-            oob_error = r2_score(y[unsampled_indices, :], p_estimator)
+            if p_estimator.size != 0:
+                oob_error = r2_score(y[unsampled_indices, :], p_estimator)
+                all_oob_errors.append(oob_error) # compute variance
             
-            # Set oob score of individual trees
-            estimator.oob_score_ = oob_error
+                # Set oob score of individual trees
+                estimator.oob_score_ = oob_error
+
+
+        ### CODE FOR OUTPUTTING OOB ERRORS TO A CSV FILE
+        # variance = np.var(np.array(all_oob_errors))
+        # if comm.rank == 0:
+        #     root_info("{}".format(all_oob_errors))
+        #     fname = "oob_error_rank0_density1.csv"
+        #     with open(fname, 'ab') as f:
+        #         np.savetxt(f, np.array([all_oob_errors]).T, delimiter=",")
+
 
         if (n_predictions == 0).any():
             root_info("Some inputs do not have OOB scores. "
@@ -264,4 +286,4 @@ def _forest_regressor(base, merging_mixin):
     return ForestRegressor
 
 RandomForestRegressor = _forest_regressor(RandomForestBase, SuperForestMixin)
-MondrianForestRegressor = _forest_regressor(MondrianForestBase, SuperForestMixin)
+MondrianForestRegressor = _forest_regressor(MondrianForestBase, SubForestMixin)
