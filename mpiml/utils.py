@@ -93,20 +93,24 @@ def toggle_profiling(enabled=True):
     global _profiling_enabled
     _profiling_enabled = enabled
 
-def output_model_info(model, online, density):
+def output_model_info(model, online, density, pool_size=None):
     output_str = \
 """
--------------------------------------
-ML model:  {ml_type}
-num cores: {num_cores}
-MPI:       {use_mpi}
-online:    {online}
-density:   {density}
 ---------------------------
+ML model:    {ml_type}
+num cores:   {num_cores}
+MPI:         {use_mpi}
+online:      {online}
+density:     {density}
 """.format(ml_type=model.__class__.__name__,
            num_cores=config.comm.size,
            use_mpi=running_in_mpi(),
            **locals())
+    
+    if pool_size != None:
+        output_str += "pool size: {}\n".format(pool_size)
+
+    output_str += "---------------------------"
 
     if hasattr(model, 'estimators_') and model.estimators_ is not None:
         output_str += \

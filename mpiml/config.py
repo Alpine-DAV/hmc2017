@@ -31,7 +31,7 @@ load_learning_data = False  # if true, load pre-created learning data
 rand_seed = 0
 NumTrees = 50
 parallelism = 1 # note: -1 = number of cores on the system
-
+pool_size = 1000
 
 #===============================================================================
 # TESTING
@@ -40,4 +40,4 @@ kfold = 10
 decision_boundary = 4e-6
 np.random.seed(rand_seed)
 
-TOTAL_CYCLES = 40181
+TOTAL_CYCLES = 40182
