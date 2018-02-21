@@ -84,7 +84,7 @@ class TrainingResult(object):
 
     @property
     def accuracy(self):
-        return 1 - ((self.fp + self.fn) / (self.negative_train_samples + self.positive_train_samples))
+        return 1 - ((self.fp + self.fn) / (self.negative_test_samples + self.positive_test_samples))
 
     def __add__(self, r):
         def average(prop):
@@ -151,7 +151,7 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
 
     train_and_test = lambda tr, te: train_and_test_once(
         tr, te, prd, comm=comm, online=online, classes=classes)
-    
+
     if k <= 0:
         raise ValueError("k must be positive")
     elif k == 1:
@@ -161,9 +161,12 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
             train_split = train_test_split['train_split']
             test_split  = train_test_split['test_split']
 
-            splits = ds.split(train_split+test_split)
-            train = concatenate(splits[j] for j in range(train_split))
-            test = concatenate(splits[j] for j in range(train_split, train_split+test_split))  
+            splits = ds.split_vert(train_split, train_split+test_split)
+            train = splits[0]
+            test = splits[1]
+
+            print len(list(train.cycles()))
+
         else:   
             splits = ds.split(10)
             train = concatenate(splits[j] for j in range(9))
@@ -236,6 +239,7 @@ def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=F
         load_time = 0
         first = True
         it = iter(enumerate(ds.cycles()))
+        count = 0
         while True:
             try:
                 start_load = time.time()

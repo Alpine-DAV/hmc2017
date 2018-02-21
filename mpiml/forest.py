@@ -72,8 +72,8 @@ class SubForestMixin:
         return forest_size
 
     def reduce(self, forest_size, root):
-        root_debug(self.oob_score_)
-        sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
+        # root_debug(self.oob_score_)
+        # sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
 
         # Get best X% of estimators by oob score
         # self.estimators_ = _gather_estimators(
@@ -85,7 +85,7 @@ class SubForestMixin:
         
         ## Get random X% of estimators
         # self.estimators_ = _gather_estimators(self.estimators_[:_n_estimators_for_forest_size(forest_size)])
-        self.estimators_ = _gather_estimators(self.estimators_[-1:])
+        # self.estimators_ = _gather_estimators(self.estimators_[-1:])
         return self
 
 class RandomForestBase(sk.RandomForestRegressor):

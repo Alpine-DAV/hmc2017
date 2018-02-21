@@ -26,6 +26,7 @@ def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size,
 
 def get_train_test_split(args):
     val = None
+
     if args.train_split != None or args.test_split != None:
         train_split = args.train_split if args.train_split != None else TOTAL_CYCLES - args.test_split
         test_split = args.test_split if args.test_split != None else TOTAL_CYCLES - args.train_split
@@ -36,7 +37,6 @@ def get_train_test_split(args):
             sys.exit(1)
         val = {'train_split': train_split, 'test_split': test_split}
     return val
->>>>>>> f383bc19a6ac3a803101d309a62b28666a063799
 
 if __name__ == '__main__':
 

@@ -101,6 +101,15 @@ class LazyDataSet(object):
                 yield StrictDataSet(X[i::k], y[i::k])
         return [LazyDataSet(lambda: gen(i)) for i in range(k)]
 
+    def split_vert(self, split, vert_len):
+        def gen(start, end):
+            for i, ds in enumerate(self.make_gen_()):
+                if i == end:
+                    break
+                if i >= start:
+                    yield StrictDataSet(*ds.points())    
+        return [LazyDataSet(lambda: gen(sp, vl)) for (sp,vl) in [(0, split), (split, vert_len)]]
+
     def concat(self, ds):
         if isinstance(ds, NullDataSet):
             return self
@@ -153,7 +162,7 @@ def get_bubbleshock_by_hand(data_dir, density=1.0, pool_size=config.pool_size, t
     else:
         subset_cycles = train_test_split['train_split'] + train_test_split['test_split']
         ds = LazyDataSet(lambda: (get_bubbleshock_byhand_by_cycle(data_dir, cycle, density, pool_size)
-                                for cycle in range(subset_cycles)))
+                                for cycle in range(config.TOTAL_CYCLES-subset_cycles, config.TOTAL_CYCLES))) # HACK TO GET LAST 20 CYCLES
     return ds
 
 def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
@@ -179,7 +188,7 @@ def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         ds = shuffle_data(StrictDataSet(dataset.data, dataset.target))
     elif 'byHand' in dataset:
-        ds = get_bubbleshock_by_hand(dataset, pool_size, train_test_split=train_test_split)
+        ds = get_bubbleshock_by_hand(dataset, density=density, pool_size=pool_size, train_test_split=train_test_split)
     else:
         ds = shuffle_data(get_bubbleshock(data_dir=dataset))
 
