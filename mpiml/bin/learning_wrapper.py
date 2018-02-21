@@ -20,6 +20,9 @@ def wrapper(model, k, data_path, online=False, density=1.0):
 
     ds = prepare_dataset(data_path, density=density)
 
+    # for testing purposes: specify what is running
+    root_info('')
+
     root_info('{}', output_model_info(model, online=online, density=density))
 
     result = train_and_test_k_fold(ds, model, k=k, online=online)
