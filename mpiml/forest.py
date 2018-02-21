@@ -4,16 +4,14 @@ from operator import attrgetter
 import skgarden.mondrian.ensemble as skg
 import sklearn.base as sk_base
 import sklearn.ensemble as sk
-
 import sys
 
 from utils import *
-from config import comm
 import config
+from config import comm
 
 __all__ = ["RandomForestRegressor"
-          ,"MondrianForestRegressor"
-          ]
+          ,"MondrianForestRegressor"]
 
 rand_seed = 0
 NumTrees = 10
@@ -32,8 +30,24 @@ def _n_estimators_for_forest_size(forest_size):
     else:
         return forest_size
 
-def _gather_estimators(estimators, root=0):
-    all_estimators = comm.gather(estimators, root=root)
+def _gather_estimators(estimators, root=0, pool_trees_at_root=False, async_reduce=False):
+    #if async_reduce:
+    #    all_estimators = []
+    #    if comm.rank == root:
+    #        for rank in comm.size:
+    #            if rank == root:
+    #                estimators[root] = estimators
+    #            else:
+    #                estimators[rank] = comm.irecv(dest=rank)
+    #    else:
+    #        comm.isend(estimators, dest=root)
+    #    if comm.rank == 0:
+    #        comm.Wait
+    all_estimators = np.empty_like(comm.size, dtype=np.dtype('O'))
+    root_info('all_estimators: {}'.format(all_estimators))
+    req = comm.Igather(np.asarray(estimators), all_estimators, root=root) 
+    if async_reduce and comm.rank == root:
+        req.wait()
     if comm.rank == root:
         return [tree for trees in all_estimators for tree in trees]
 
@@ -42,8 +56,8 @@ class SuperForestMixin:
     def n_estimators(self, forest_size):
         return _n_estimators_for_forest_size(forest_size)
 
-    def reduce(self, forest_size, root):
-        self.estimators_ = _gather_estimators(self.estimators_)
+    def reduce(self, forest_size, root, pool_trees_at_root=False, async_reduce=False, gather_all=False):
+        self.estimators_ = _gather_estimators(self.estimators_, pool_trees_at_root=pool_trees_at_root, async_reduce=async_reduce)
         return self
 
 # TODO Get oob score for individual trees
@@ -133,8 +147,9 @@ def _forest_regressor(base, merging_mixin):
                 *args, n_estimators=self.n_estimators(forest_size), **kwargs)
             self.forest_size_ = forest_size
 
-        def reduce(self, root=0):
-            return super(ForestRegressor, self).reduce(self.forest_size_, root)
+        def reduce(self, root=0, pool_trees_at_root=False, async_reduce=False):
+            return super(ForestRegressor, self).reduce(self.forest_size_, root,
+                            pool_trees_at_root=pool_trees_at_root, async_reduce=async_reduce)
 
     ForestRegressor.__name__ = base.__name__ + '_' + merging_mixin.__name__
     return ForestRegressor

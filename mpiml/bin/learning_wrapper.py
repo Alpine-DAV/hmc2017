@@ -12,15 +12,17 @@ from mpiml.training import *
 from mpiml.utils import *
 from mpiml.config import *
 
-def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size, train_test_split=None):
+def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size, train_test_split=None,
+        async_reduce=False, reduce_after=None):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
     ds = prepare_dataset(data_path, density=density, pool_size=pool_size, train_test_split=train_test_split)
-
+        
     root_info('{}', output_model_info(model, online=online, density=density, pool_size=pool_size))
 
-    result = train_and_test_k_fold(ds, model, k=k, online=online, train_test_split=train_test_split)
+    result = train_and_test_k_fold(ds, model, k=k, online=online, train_test_split=train_test_split,
+        async_reduce=async_reduce, reduce_after=reduce_after)
 
     root_info('PERFORMANCE\n{}', result)
 
@@ -50,10 +52,13 @@ if __name__ == '__main__':
     parser.add_argument('--online', action='store_true', help='train in online mode')
     parser.add_argument('--density', type=float, help='fraction of dataset to train on (default 1)', default=1.0)
     parser.add_argument('--pool-size', type=int, help='specify pooling values for online to be trained upon', default=None)
-    
+
     # Online Training Specific Parameters
     parser.add_argument('--train-split', type=int, help='specify a value of cycles to train on. If testing-split is left \
          unspecified, the remaining cycles will be trained upon')    
+    parser.add_argument('--async-reduce', action='store_true', help='asynchronously reduce the trees continuously throughout training \
+         to a designated root node whose purpose is to [receive, send] trees [in training, in testing]. Requires --reduce-after to be set > 0.')
+    parser.add_argument('--reduce-after', type=int, help='specify the number of cycles to reduce after in training')
     
     # Online Testing Specific Parameters
     parser.add_argument('--test-split', type=int, help='specify the number of cycles to test upon after training is completed')
@@ -62,7 +67,10 @@ if __name__ == '__main__':
 
     toggle_verbose(args.verbose) 
     toggle_profiling(args.profile)
-
+    
+    if hasattr(args, 'async_reduce') and not hasattr(args, 'reduce_after'):
+        root_info('must specify number of cycles to --reduce-after during training while using --async-reduce')
+        sys.exit(1)
     for model in args.models:
         m = get_model(model)
         if m is None:
@@ -71,4 +79,4 @@ if __name__ == '__main__':
         else:
             train_test_sp = get_train_test_split
             wrapper(m, args.num_runs, args.data_dir, online=args.online, density=args.density, pool_size=args.pool_size,
-                    train_test_split=get_train_test_split(args)) 
+                    train_test_split=get_train_test_split(args), async_reduce=args.async_reduce, reduce_after=args.reduce_after) 

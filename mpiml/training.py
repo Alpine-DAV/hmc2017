@@ -7,6 +7,7 @@ import time
 import config
 from datasets import concatenate, threshold_count, discretize, prepare_dataset
 from utils import *
+from config import comm
 
 __all__ = [ "get_k_fold_data"
           , "train_and_test_k_fold"
@@ -59,7 +60,9 @@ def wrapped_concatenate(splits, start, end, total_cycles):
 
 # Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
 # function, then every sample in the dataset will be distributed to exactly one task.
-def get_mpi_task_data(ds, comm=config.comm):
+def get_mpi_task_data(ds, comm=config.comm, async_reduce=False):
+    if async_reduce:
+        return ds.split(comm.size-1)[comm.rank-1]
     return ds.split(comm.size)[comm.rank]
 
 class TrainingResult(object):
@@ -147,10 +150,11 @@ def null_training_result():
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None):
+def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None,
+    async_reduce=False, reduce_after=None):
 
     train_and_test = lambda tr, te: train_and_test_once(
-        tr, te, prd, comm=comm, online=online, classes=classes)
+        tr, te, prd, comm=comm, online=online, classes=classes, async_reduce=async_reduce, reduce_after=reduce_after)
     
     if k <= 0:
         raise ValueError("k must be positive")
@@ -163,27 +167,29 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
 
             splits = ds.split(train_split+test_split)
             train = concatenate(splits[j] for j in range(train_split))
-            test = concatenate(splits[j] for j in range(train_split, train_split+test_split))  
+            test = concatenate(splits[j] for j in range(train_split, train_split+test_split))
         else:   
             splits = ds.split(10)
             train = concatenate(splits[j] for j in range(9))
             test = splits[9]
 
         if running_in_mpi():
-            train = get_mpi_task_data(train)
+            train = get_mpi_task_data(train, async_reduce=async_reduce)
 
         return train_and_test(train, test)
 
     r = null_training_result()
     for train, test in get_k_fold_data(ds, k=k, train_test_split=train_test_split):
         if running_in_mpi():
-            train = get_mpi_task_data(train)
+            train = get_mpi_task_data(train, async_reduce=async_reduce)
         r += train_and_test(train, test)
         comm.barrier()
 
     return r
 
-def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
+def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None,
+    async_reduce=False, reduce_after=None):
+
     if running_in_mpi():
         train = get_mpi_task_data(train)
 
@@ -194,8 +200,10 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
 
     prd, time_train, time_load = fit(
-        prd, train, online=online, classes=classes, time_training=True, time_loading=True)
+        prd, train, online=online, classes=classes, time_training=True, time_loading=True,
+        async_reduce=async_reduce, reduce_after=reduce_after)
 
+    # If there is training occuring 
     if running_in_mpi():
         start_reduce = time.time()
         prd = prd.reduce()
@@ -230,20 +238,38 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
     else:
         return null_training_result()
 
-def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=False):
+def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=False,
+    reduce_after=None, async_reduce=False, root=0):
+
     if online:
         train_time = 0
         load_time = 0
         first = True
+        at_root = comm.rank == root
+
+        # TODO: Some measurement of length of generator
+        #it = iter(range(len(ds.cycles()))) if async_reduce and at_root else iter(enumerate(ds.cycles()))
         it = iter(enumerate(ds.cycles()))
         while True:
             try:
+                #if async_reduce and at_root:
+                #    pass
+                #else:
                 start_load = time.time()
                 i, (X, y) = it.next()
                 load_time += time.time() - start_load
             except StopIteration:
                 break
+            
+            root_info('i: {}'.format(i))
+            if reduce_after != None and (i % reduce_after) == 0 and i != 0:
+                prd.reduce(root=root, pool_trees_at_root=True, async_reduce=async_reduce)
+                first = True
+            
+            if async_reduce and at_root:
+                continue
 
+            # TODO: made non-sensical by async_reduce, as root is asynchronously collecting trees 
             if i % 1000 == 0:
                 root_debug('training cycle {}', i)
             if first:
