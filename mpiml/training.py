@@ -181,6 +181,9 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
     return r
 
 def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
+    root_info(len(list(train.cycles())[0][0]))
+    root_info(len(list(test.cycles())[0][0]))
+
     if running_in_mpi():
         train = get_mpi_task_data(train)
 
@@ -249,11 +252,13 @@ def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=F
                     len(prd.estimators_), sum([e.tree_.node_count for e in prd.estimators_]))
             if first:
                 start_train = time.time()
+                root_info("FITTING")
                 prd.fit(X, y)
                 train_time += time.time() - start_train
                 first = False
             else:
                 start_train = time.time()
+                root_info("PARTIAL FITTING")
                 prd.partial_fit(X, y, classes=ds.classes())
                 train_time += time.time() - start_train
             del X
