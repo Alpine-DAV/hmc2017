@@ -28,6 +28,16 @@ def num_errors(actual, predicted, threshold=4e-6):
             fn += 1
     return fp, fn
 
+def get_max_time_vals(train_results):
+    t_tr, t_te, t_lo, t_re = 0, 0, 0, 0
+    for tres in train_results:
+        t_tr = max(t_tr, train_results.time_train)
+        t_te = max(t_tr, train_results.time_train)
+        t_lo = max(t_tr, train_results.time_train)
+        t_re = max(t_tr, train_results.time_train)
+    return t_tr, t_te, t_lo, t_re
+
+
 # A generator yielding a tuple of (training set, testing set) for each run in a k-fold cross
 # validation experiment. By default, k=10. If running on a subset of the data/different split
 # points with {training, testing}_split, returns datasets of sizes according to number of cycles
@@ -217,15 +227,20 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
     train_pos, train_neg = threshold_count(train, 1e-6)
     test_pos, test_neg = threshold_count(test, 1e-6)
 
-    rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
+    rmse = sum(pow(test_y - out, 2))
 
     train_results = comm.gather(TrainingResult(fp=fp, fn=fn, rmse=rmse,
         time_load=time_load, time_train=time_train, time_reduce=time_reduce, time_test=time_test,
         negative_train_samples=train_neg, positive_train_samples=train_pos,
         negative_test_samples=test_neg, positive_test_samples=test_pos), root=0)
-        
+
     if comm.rank == 0:
-        return reduce((lambda x, y: x+y), train_results)
+        max_train_time, max_test_time, max_load_time, max_reduce_time = get_max_time_vals(train_results)
+        train_results = reduce((lambda x, y: x+y), train_results)
+        train_results.rmse = np.sqrt(train_results.rmse)/(train_results.negative_test_samples+train_results.positive_test_samples)
+        train_results.time_train, train_results.time_test = max_train_time, max_test_time
+        train_results.time_load, train_results.time_reduce = max_load_time, max_reduce_time
+        return train_results
     else:
         return null_training_result()
 
