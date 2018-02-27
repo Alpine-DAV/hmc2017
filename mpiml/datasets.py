@@ -190,7 +190,7 @@ def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_
 
 @ds_map
 def make_sparse(X, y, density):
-    if 1.0 - density < 0.001:
+    if density == None or 1.0 - density < 0.001:
         return X, y
     indices = np.random.choice(y.shape[0], int(y.shape[0]*density), replace=False)
     return X[indices], y[indices]
