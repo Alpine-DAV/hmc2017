@@ -19,7 +19,7 @@ def accuracy(actual, predicted):
     return np.sum(predicted == actual) / actual.shape[0]
 
 # Compute number of false positives and false negatives in a set of predictions
-def num_errors(actual, predicted, threshold=1e-3):
+def num_errors(actual, predicted, threshold=config.decision_boundary):
     fp = fn = 0
     for i in range(len(actual)):
         if actual[i] <= threshold and predicted[i] > threshold:
@@ -156,8 +156,6 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
         return r
 
 def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
-    root_info(len(list(train.cycles())[0][0]))
-    root_info(len(list(test.cycles())[0][0]))
 
     if running_in_mpi():
         train = get_mpi_task_data(train)
@@ -191,8 +189,8 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
         fp, fn = num_errors(test_y, out)
 
-        train_pos, train_neg = threshold_count(train, 1e-3)
-        test_pos, test_neg = threshold_count(test, 1e-3)
+        train_pos, train_neg = threshold_count(train, config.decision_boundary)
+        test_pos, test_neg = threshold_count(test, config.decision_boundary)
 
         rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
 
