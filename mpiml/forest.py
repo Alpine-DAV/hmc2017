@@ -1,10 +1,11 @@
-import argparse
+import cPickle
 import numpy as np
 from operator import attrgetter
 import skgarden.mondrian.ensemble as skg
 import skgarden.mondrian.tree.tree as skt
 import sklearn.base as sk_base
 import sklearn.ensemble as sk
+import zlib
 
 import sys
 
@@ -14,6 +15,8 @@ import config
 
 __all__ = ["RandomForestRegressor"
           ,"MondrianForestRegressor"
+          ,"MondrianForestPickleRegressor"
+          ,"SizeUpMondrianForestRegressor"
           ]
 
 rand_seed = 0
@@ -51,6 +54,16 @@ class SuperForestMixin:
 
     def n_estimators(self, forest_size):
         return _n_estimators_for_forest_size(forest_size)
+
+    def reduce(self, forest_size, root):
+        self.estimators_ = _gather_estimators(
+            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
+        return self
+
+class SizeUpSuperForestMixin:
+
+    def n_estimators(self, forest_size):
+        return forest_size
 
     def reduce(self, forest_size, root):
         self.estimators_ = _gather_estimators(
@@ -115,15 +128,16 @@ class RandomForestBase(sk.RandomForestRegressor):
     def receive_estimator(self, peer):
         return comm.recv(source=peer)
 
-class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
+class MondrianForestBase(skg.MondrianForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
-                 min_samples_split=2,
+                 min_samples_split=10000,
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
-                 verbose=0):
+                 verbose=0,
+                 compression=0):
         super(MondrianForestBase, self).__init__(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -134,16 +148,67 @@ class MondrianForestBase(skg.MondrianForestRegressor, SuperForestMixin):
             verbose=verbose
         )
 
+        self.compression_ = compression
+
         debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
         super(MondrianForestBase, self).partial_fit(X, y)
 
     def send_estimator(self, peer, est):
-        skt.mpi_send(est, comm, peer)
+        skt.mpi_send(comm, peer, est, compression=self.compression_)
 
     def receive_estimator(self, peer):
-        return skt.mpi_recv_regressor(self.n_features_, self.n_outputs_, comm, peer)
+        return skt.mpi_recv_regressor(comm, peer, self.n_features_, self.n_outputs_)
+
+class MondrianForestPickleBase(skg.MondrianForestRegressor):
+    def __init__(self,
+                 n_estimators=config.NumTrees,
+                 max_depth=None,
+                 min_samples_split=2,
+                 bootstrap=False,
+                 n_jobs=config.parallelism,
+                 random_state=config.rand_seed,
+                 verbose=0,
+                 compression=0):
+        super(MondrianForestPickleBase, self).__init__(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            bootstrap=bootstrap,
+            n_jobs=n_jobs,
+            random_state=random_state,
+            verbose=verbose
+        )
+
+        self.compression_ = compression
+
+        debug('will train {} estimators', self.n_estimators)
+
+    def partial_fit(self, X, y, classes=None):
+        super(MondrianForestBase, self).partial_fit(X, y)
+
+    def send_estimator(self, peer, est):
+        pkl = cPickle.dumps(est, cPickle.HIGHEST_PROTOCOL)
+        if self.compression_ > 0:
+            pkl = zlib.compress(pkl, self.compression_)
+        buf = np.frombuffer(pkl, dtype=np.dtype('b'))
+        nbytes = buf.shape[0]
+
+        comm.send(nbytes, peer)
+        comm.Send(buf, peer)
+
+    def receive_estimator(self, peer):
+        nbytes = comm.recv(source=peer)
+        buf = np.empty(nbytes, dtype=np.dtype('b'))
+
+        comm.Recv(buf, source=peer)
+
+        pkl = buf.tobytes()
+        if self.compression_ > 0:
+            pkl = zlib.decompress(pkl)
+
+        return cPickle.loads(pkl)
 
 # Create a forest regressor class combining a base forest class with mixin providing merging
 # behavior
@@ -164,3 +229,8 @@ def _forest_regressor(base, merging_mixin):
 
 RandomForestRegressor = _forest_regressor(RandomForestBase, SuperForestMixin)
 MondrianForestRegressor = _forest_regressor(MondrianForestBase, SuperForestMixin)
+MondrianForestPickleRegressor = _forest_regressor(MondrianForestPickleBase, SuperForestMixin)
+
+# Like a Mondrian superforest, but the size of the superforest scales up with the number of tasks,
+# so that each task trains a fixed number of trees
+SizeUpMondrianForestRegressor = _forest_regressor(MondrianForestBase, SizeUpSuperForestMixin)

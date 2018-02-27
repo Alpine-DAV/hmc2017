@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 
 import cProfile
+import memory_profiler as mprof
 import numpy as np
 from mpi4py import MPI
 import os
@@ -76,10 +77,11 @@ def profile(filename=None, comm=MPI.COMM_WORLD):
             if not _profiling_enabled:
                 return f(*args, **kwargs)
 
-            pr = cProfile.Profile()
-            pr.enable()
-            result = f(*args, **kwargs)
-            pr.disable()
+            with open("{}.{}.mem".format(filename, comm.rank), 'a') as memlog:
+                pr = cProfile.Profile()
+                pr.enable()
+                result = mprof.profile(f, stream=memlog)(*args, **kwargs)
+                pr.disable()
 
             if filename is None:
                 pr.print_stats()

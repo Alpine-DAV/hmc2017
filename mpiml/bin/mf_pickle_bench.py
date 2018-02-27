@@ -1,99 +1,51 @@
 #!/usr/bin/env python2
 
 import argparse
-import cPickle
-import numpy as np
-from skgarden.mondrian.tree.tree import mpi_send, mpi_recv_regressor
-from sklearn.model_selection import ShuffleSplit
-import sys
-import time
-import zlib
 
 from mpiml.config import comm
 from mpiml.datasets import prepare_dataset
-from mpiml.forest import MondrianForestRegressor
-from mpiml.training import fit
-from mpiml.utils import profile, toggle_verbose, toggle_profiling, info, debug
-
-@profile('mf-pickle-producer')
-def producer(forests, send_to=1):
-    start = time.time()
-
-    for forest in forests:
-        comm.send(len(forest.estimators_), send_to)
-        for tree in forest.estimators_:
-            mpi_send(tree, comm, send_to)
-
-    end = time.time()
-
-    info('producer: {} s', end - start)
-    comm.barrier()
-
-
-@profile('mf-pickle-consumer')
-def consumer(n_features, n_outputs, iterations, recv_from=0):
-    start = time.time()
-
-    forests = []
-    for _ in range(iterations):
-        n_trees = comm.recv(source=recv_from)
-        prd = MondrianForestRegressor()
-        prd.estimators_ = []
-        for i in range(n_trees):
-            prd.estimators_.append(mpi_recv_regressor(n_features, n_outputs, comm, recv_from))
-        forests.append(prd)
-
-    end = time.time()
-
-    comm.barrier()
-    info('consumer: {} s', end - start)
-
-    return forests
+from mpiml.forest import *
+from mpiml.output import CSVOutput
+from mpiml.training import train_and_test_k_fold
+from mpiml.utils import toggle_verbose, toggle_profiling
 
 if __name__ == '__main__':
-    if comm.size != 2:
-        print('{} requires 2 MPI tasks to run'.format(sys.argv[0]))
-        sys.exit(1)
+    if comm.size < 2:
+        raise ValueError('{} requires at least 2 MPI tasks to run'.format(sys.argv[0]))
 
     parser = argparse.ArgumentParser(
-        description='Benchmark and optionally profile pickling and communicating of Mondrian forests')
+        description='Benchmark reduction of Mondrian forests')
+    parser.add_argument('--dataset', type=str, default='boston')
+    parser.add_argument('--density', type=float, default=1.0)
+    parser.add_argument('--num-forests', type=int, default=10)
+    parser.add_argument('--output', type=str, default=None, help='output path for CSV (default stdout)')
+    parser.add_argument('--append', action='store_true', help='append to output')
+    parser.add_argument('--schema', action='store_true',
+        help='include the schema as the first line of output')
     parser.add_argument('--verbose', action='store_true', help='enable verbose output')
-    parser.add_argument('--num-runs', type=int, default=10, help='number of forests to send over MPI')
     parser.add_argument('--profile', action='store_true', help='enable performance profiling')
     args = parser.parse_args()
 
     toggle_verbose(args.verbose)
     toggle_profiling(args.profile)
 
-    producer_rank = 0
-    consumer_rank = 1
+    ds = prepare_dataset(args.dataset, density=args.density)
 
-    X, y = prepare_dataset('boston').points() # sklearn toy regression problem
-    splitter = ShuffleSplit(n_splits=args.num_runs)
+    forest_types = [
+        ('f', MondrianForestRegressor),
+        ('t', MondrianForestPickleRegressor)
+    ]
 
-    splits = [(X[train_index], y[train_index], X[test_index], y[test_index]) \
-        for train_index, test_index in splitter.split(X)]
+    schema = ['pickle', 'n_tasks', 'compression', 'n_forests', 't_reduce']
+    if comm.rank == 0:
+        writer = CSVOutput(schema, output=args.output, write_schema=args.schema, append=args.append)
 
-    if comm.rank == producer_rank:
-        forests = []
-        for train_X, train_y, _, _ in splits:
-            f = MondrianForestRegressor(min_samples_split=5)
-            f.fit(train_X, train_y)
-            forests.append(f)
+    for pickle_flag, forest in forest_types:
+        for compression in range(10):
+            r = train_and_test_k_fold(ds, forest(compression=compression), k=args.num_forests)
 
-        producer(forests, send_to=consumer_rank)
-        comm.barrier()
-
-        for (f, (_, _, test_X, test_y)) in zip(forests, splits):
-            debug('producer score: {}', f.score(test_X, test_y))
-            comm.barrier()
-            comm.barrier()
-
-    else:
-        forests = consumer(X.shape[1], 1, args.num_runs, recv_from=producer_rank)
-        comm.barrier()
-
-        for (f, (_, _, test_X, test_y)) in zip(forests, splits):
-            comm.barrier()
-            debug('consumer score: {}', f.score(test_X, test_y))
-            comm.barrier()
+            if comm.rank == 0:
+                writer.writerow(
+                    pickle=pickle_flag, compression=compression, n_forests=args.num_forests,
+                    n_tasks=comm.size, t_reduce=r.time_reduce
+                )
