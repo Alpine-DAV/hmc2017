@@ -32,6 +32,7 @@ rand_seed = 0
 NumTrees = 50
 parallelism = 1 # note: -1 = number of cores on the system
 pool_size = 1000
+min_samples_split = 1000
 
 #===============================================================================
 # TESTING
