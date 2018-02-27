@@ -1,13 +1,18 @@
-import argparse
+import cPickle
 import numpy as np
 from operator import attrgetter
 import skgarden.mondrian.ensemble as skg
+import skgarden.mondrian.tree.tree as skt
 import sklearn.base as sk_base
 import sklearn.ensemble as sk
+<<<<<<< HEAD
 from sklearn.utils import check_random_state, check_array
 from sklearn.metrics import r2_score
 from sklearn.tree._tree import DTYPE, DOUBLE
 import numpy as np
+=======
+import zlib
+>>>>>>> 64027f991ad80cd4035aaab5ce5c1458d522f215
 
 import sys
 
@@ -18,6 +23,8 @@ import csv
 
 __all__ = ["RandomForestRegressor"
           ,"MondrianForestRegressor"
+          ,"MondrianForestPickleRegressor"
+          ,"SizeUpMondrianForestRegressor"
           ]
 
 def _generate_sample_indices(random_state, n_samples):
@@ -51,10 +58,19 @@ def _n_estimators_for_forest_size(forest_size):
     else:
         return forest_size
 
-def _gather_estimators(estimators, root=0):
-    all_estimators = comm.gather(estimators, root=root)
+def _gather_estimators(estimators, send_to, recv_from, root=0):
     if comm.rank == root:
-        return [tree for trees in all_estimators for tree in trees]
+        for peer in range(comm.size):
+            if peer == root: continue
+
+            n_estimators = comm.recv(source=peer)
+            estimators.extend([recv_from(peer) for _ in range(n_estimators)])
+    else:
+        comm.send(len(estimators), root)
+        for e in estimators:
+            send_to(root, e)
+
+    return estimators
 
 class SuperForestMixin:
 
@@ -62,7 +78,18 @@ class SuperForestMixin:
         return _n_estimators_for_forest_size(forest_size)
 
     def reduce(self, forest_size, root):
-        self.estimators_ = _gather_estimators(self.estimators_)
+        self.estimators_ = _gather_estimators(
+            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
+        return self
+
+class SizeUpSuperForestMixin:
+
+    def n_estimators(self, forest_size):
+        return forest_size
+
+    def reduce(self, forest_size, root):
+        self.estimators_ = _gather_estimators(
+            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
         return self
 
 
@@ -128,16 +155,23 @@ class RandomForestBase(sk.RandomForestRegressor):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
 
-class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
+    def send_estimator(self, peer, est):
+        comm.send(est, peer)
+
+    def receive_estimator(self, peer):
+        return comm.recv(source=peer)
+
+class MondrianForestBase(skg.MondrianForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
-                 min_samples_split=2,
+                 min_samples_split=10000,
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
                  verbose=0,
-                 oob_score=False):
+                 oob_score=False,
+                 compression=0):
         super(MondrianForestBase, self).__init__(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -149,61 +183,12 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
         )
         self.oob_score = oob_score
 
+        self.compression_ = compression
+
         debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
         super(MondrianForestBase, self).partial_fit(X, y)
-
-        # X, y = check_X_y(X, y, dtype=np.float32, multi_output=False)
-        # random_state = check_random_state(self.random_state)
-
-        # # Wipe out estimators if partial_fit is called after fit.
-        # first_call = not hasattr(self, "first_")
-        # if first_call:
-        #     self.first_ = True
-
-        # if isinstance(self, ClassifierMixin):
-        #     if first_call:
-        #         if classes is None:
-        #             classes = LabelEncoder().fit(y).classes_
-
-        #         self.classes_ = classes
-        #         self.n_classes_ = len(self.classes_)
-
-        # # Remap output
-        # n_samples, self.n_features_ = X.shape
-
-        # y = np.atleast_1d(y)
-        # if y.ndim == 2 and y.shape[1] == 1:
-        #     warn("A column-vector y was passed when a 1d array was"
-        #          " expected. Please change the shape of y to "
-        #          "(n_samples,), for example using ravel().",
-        #          DataConversionWarning, stacklevel=2)
-
-        # self.n_outputs_ = 1
-
-        # # Initialize estimators at first call to partial_fit.
-        # if first_call:
-        #     # Check estimators
-        #     self._validate_estimator()
-        #     self.estimators_ = []
-
-        #     for _ in range(self.n_estimators):
-        #         tree = self._make_estimator(append=False, random_state=random_state)
-        #         self.estimators_.append(tree)
-
-        # # XXX: Switch to threading backend when GIL is released.
-        # if isinstance(self, ClassifierMixin):
-        #     self.estimators_ = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-        #         delayed(_single_tree_pfit)(t, X, y, classes) for t in self.estimators_)
-        # else:
-        #     self.estimators_ = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-        #         delayed(_single_tree_pfit)(t, X, y) for t in self.estimators_)
-
-        # if self.oob_score:
-        #     self._set_oob_score(X, y)
-
-        # return self
 
     def _set_oob_score(self, X, y):
         """Compute out-of-bag scores"""
@@ -267,6 +252,60 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
 
         self.oob_score_ /= self.n_outputs_
 
+    def send_estimator(self, peer, est):
+        skt.mpi_send(comm, peer, est, compression=self.compression_)
+
+    def receive_estimator(self, peer):
+        return skt.mpi_recv_regressor(comm, peer, self.n_features_, self.n_outputs_)
+
+class MondrianForestPickleBase(skg.MondrianForestRegressor):
+    def __init__(self,
+                 n_estimators=config.NumTrees,
+                 max_depth=None,
+                 min_samples_split=2,
+                 bootstrap=False,
+                 n_jobs=config.parallelism,
+                 random_state=config.rand_seed,
+                 verbose=0,
+                 compression=0):
+        super(MondrianForestPickleBase, self).__init__(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            bootstrap=bootstrap,
+            n_jobs=n_jobs,
+            random_state=random_state,
+            verbose=verbose
+        )
+
+        self.compression_ = compression
+
+        debug('will train {} estimators', self.n_estimators)
+
+    def partial_fit(self, X, y, classes=None):
+        super(MondrianForestBase, self).partial_fit(X, y)
+
+    def send_estimator(self, peer, est):
+        pkl = cPickle.dumps(est, cPickle.HIGHEST_PROTOCOL)
+        if self.compression_ > 0:
+            pkl = zlib.compress(pkl, self.compression_)
+        buf = np.frombuffer(pkl, dtype=np.dtype('b'))
+        nbytes = buf.shape[0]
+
+        comm.send(nbytes, peer)
+        comm.Send(buf, peer)
+
+    def receive_estimator(self, peer):
+        nbytes = comm.recv(source=peer)
+        buf = np.empty(nbytes, dtype=np.dtype('b'))
+
+        comm.Recv(buf, source=peer)
+
+        pkl = buf.tobytes()
+        if self.compression_ > 0:
+            pkl = zlib.decompress(pkl)
+
+        return cPickle.loads(pkl)
 
 # Create a forest regressor class combining a base forest class with mixin providing merging
 # behavior
@@ -286,4 +325,9 @@ def _forest_regressor(base, merging_mixin):
     return ForestRegressor
 
 RandomForestRegressor = _forest_regressor(RandomForestBase, SuperForestMixin)
-MondrianForestRegressor = _forest_regressor(MondrianForestBase, SubForestMixin)
+MondrianForestRegressor = _forest_regressor(MondrianForestBase, SuperForestMixin)
+MondrianForestPickleRegressor = _forest_regressor(MondrianForestPickleBase, SuperForestMixin)
+
+# Like a Mondrian superforest, but the size of the superforest scales up with the number of tasks,
+# so that each task trains a fixed number of trees
+SizeUpMondrianForestRegressor = _forest_regressor(MondrianForestBase, SizeUpSuperForestMixin)

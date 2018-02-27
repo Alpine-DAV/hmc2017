@@ -17,6 +17,7 @@ def _register_model(cli_name, cls):
 _register_model('nb', GaussianNB)
 _register_model('rf', RandomForestRegressor)
 _register_model('mf', MondrianForestRegressor)
+_register_model('mfp', MondrianForestPickleRegressor)
 
 def model_names():
     return _models.keys()
