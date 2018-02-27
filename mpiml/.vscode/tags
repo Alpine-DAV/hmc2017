@@ -1,0 +1,291 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+DENSITY	../bin/scaleviz.py	/^DENSITY = 'density'$/;"	kind:variable	line:22
+DataSet	../datasets.py	/^class DataSet(object):$/;"	kind:class	line:32
+FeatureDataReader	../DataReader/FeatureDataReader.py	/^class FeatureDataReader(object):$/;"	kind:class	line:5
+FeatureDataReader.py	../DataReader/FeatureDataReader.py	1;"	kind:file	line:1
+GaussianNB	../nbmpi.py	/^class GaussianNB(sk.GaussianNB):$/;"	kind:class	line:25
+LazyDataSet	../datasets.py	/^class LazyDataSet(DataSet):$/;"	kind:class	line:74
+MODEL	../bin/scaleviz.py	/^MODEL = 'model'$/;"	kind:variable	line:18
+MondrianForestRegressor	../forest.py	/^class MondrianForestRegressor(skg.MondrianForestRegressor):$/;"	kind:class	line:68
+NODES	../bin/scaleviz.py	/^NODES = 'nodes'$/;"	kind:variable	line:21
+NumTrees	../DataReader/learning_example.py	/^NumTrees = 1000$/;"	kind:variable	line:41
+NumTrees	../config.py	/^NumTrees = 10$/;"	kind:variable	line:32
+NumTrees	../forest.py	/^NumTrees = 10$/;"	kind:variable	line:16
+RandomForestRegressor	../forest.py	/^class RandomForestRegressor(sk.RandomForestRegressor):$/;"	kind:class	line:27
+SPEEDUP	../bin/scaleviz.py	/^SPEEDUP = 'speedup'$/;"	kind:variable	line:23
+SPEEDUP_B	../bin/scaleviz.py	/^SPEEDUP_B = 'speedup_b'$/;"	kind:variable	line:26
+SPEEDUP_B_UNC	../bin/scaleviz.py	/^SPEEDUP_B_UNC = 'speedup_b_unc'$/;"	kind:variable	line:27
+SPEEDUP_M	../bin/scaleviz.py	/^SPEEDUP_M = 'speedup_m'$/;"	kind:variable	line:24
+SPEEDUP_M_UNC	../bin/scaleviz.py	/^SPEEDUP_M_UNC = 'speedup_m_unc'$/;"	kind:variable	line:25
+StrictDataSet	../datasets.py	/^class StrictDataSet(DataSet):$/;"	kind:class	line:36
+StrongScaling	../bin/scaleviz.py	/^class StrongScaling(object):$/;"	kind:class	line:95
+TASKS	../bin/scaleviz.py	/^TASKS = 'tasks'$/;"	kind:variable	line:19
+TEST_ON_FAIL_ONLY	../DataReader/learning_example.py	/^TEST_ON_FAIL_ONLY = 1$/;"	kind:variable	line:21
+TEST_ON_FAIL_ONLY	../config.py	/^TEST_ON_FAIL_ONLY = 1$/;"	kind:variable	line:11
+TEST_ON_FAIL_PLUS_CYCLE_MAX	../DataReader/learning_example.py	/^TEST_ON_FAIL_PLUS_CYCLE_MAX = 3$/;"	kind:variable	line:23
+TEST_ON_FAIL_PLUS_CYCLE_MAX	../config.py	/^TEST_ON_FAIL_PLUS_CYCLE_MAX = 3$/;"	kind:variable	line:13
+TEST_ON_FAIL_PLUS_CYCLE_ZERO	../DataReader/learning_example.py	/^TEST_ON_FAIL_PLUS_CYCLE_ZERO = 2$/;"	kind:variable	line:22
+TEST_ON_FAIL_PLUS_CYCLE_ZERO	../config.py	/^TEST_ON_FAIL_PLUS_CYCLE_ZERO = 2$/;"	kind:variable	line:12
+TEST_ON_TRAIN_SPEC	../DataReader/learning_example.py	/^TEST_ON_TRAIN_SPEC = 4$/;"	kind:variable	line:24
+TEST_ON_TRAIN_SPEC	../config.py	/^TEST_ON_TRAIN_SPEC = 4$/;"	kind:variable	line:14
+TIME_TRAIN	../bin/scaleviz.py	/^TIME_TRAIN = 'time_train'$/;"	kind:variable	line:20
+TOTAL_CYCLES	../config.py	/^TOTAL_CYCLES = 40181$/;"	kind:variable	line:43
+WeakScaling	../bin/scaleviz.py	/^class WeakScaling(object):$/;"	kind:class	line:163
+__all__	../datasets.py	/^__all__ = [ "get_bubbleshock"$/;"	kind:variable	line:12
+__all__	../forest.py	/^__all__ = ["RandomForestRegressor"$/;"	kind:variable	line:11
+__all__	../models.py	/^__all__ = ["get_model"$/;"	kind:variable	line:6
+__all__	../nbmpi.py	/^__all__ = ["GaussianNB"$/;"	kind:variable	line:20
+__all__	../training.py	/^__all__ = [ "get_k_fold_data"$/;"	kind:variable	line:11
+__all__	../utils.py	/^__all__ = [ "info"$/;"	kind:variable	line:11
+__init__	../DataReader/FeatureDataReader.py	/^    def __init__(self, dataDir):$/;"	kind:member	line:19
+__init__	../bin/scaleviz.py	/^    def __init__(self, data):$/;"	kind:member	line:96
+__init__	../bin/scaleviz.py	/^    def __init__(self, time, strong_experiments):$/;"	kind:member	line:164
+__init__	../datasets.py	/^    def __init__(self, X, y, pool_size=1000):$/;"	kind:member	line:38
+__init__	../datasets.py	/^    def __init__(self, gen):$/;"	kind:member	line:75
+__init__	../forest.py	/^    def __init__(self,$/;"	kind:member	line:28
+__init__	../forest.py	/^    def __init__(self,$/;"	kind:member	line:69
+__init__	../nbmpi.py	/^    def __init__(self):$/;"	kind:member	line:26
+__init__.py	../DataReader/__init__.py	1;"	kind:file	line:1
+__init__.py	../__init__.py	1;"	kind:file	line:1
+__repr__	../nbmpi.py	/^    def __repr__(self):$/;"	kind:member	line:81
+_extract_arg	../utils.py	/^def _extract_arg(arg, default, kwargs):$/;"	kind:function	line:28
+_fit	../bin/scaleviz.py	/^    def _fit(self):$/;"	kind:member	line:152
+_fit	../bin/scaleviz.py	/^    def _fit(self):$/;"	kind:member	line:203
+_info	../utils.py	/^def _info(fmt, *args, **kwargs):$/;"	kind:function	line:36
+_is_iterable	../bin/scaleviz.py	/^def _is_iterable(x):$/;"	kind:function	line:29
+_map_getattr	../bin/scaleviz.py	/^def _map_getattr(items, attr, default):$/;"	kind:function	line:36
+_models	../models.py	/^_models = {}$/;"	kind:variable	line:10
+_profiling_enabled	../utils.py	/^_profiling_enabled = False$/;"	kind:variable	line:71
+_reduce_forest	../forest.py	/^def _reduce_forest(clf, root=0):$/;"	kind:function	line:18
+_register_model	../models.py	/^def _register_model(cli_name, cls):$/;"	kind:function	line:11
+_slurm_env	../bin/scaling.py	/^def _slurm_env(key):$/;"	kind:function	line:15
+_verbose	../utils.py	/^_verbose = False$/;"	kind:variable	line:22
+acc	../bin/no_merging.py	/^    acc = train_and_test_k_fold_no_merge(data, target, train)$/;"	kind:variable	line:36
+accuracy	../training.py	/^def accuracy(actual, predicted):$/;"	kind:function	line:31
+add_features	../DataReader/learning_example.py	/^def add_features(index):$/;"	kind:function	line:444
+add_features	../datasets.py	/^def add_features(index):$/;"	kind:function	line:494
+apply	../bin/scaleviz.py	/^    def apply(self, d):$/;"	kind:member	line:174
+apply	../bin/scaleviz.py	/^    def apply(self, n):$/;"	kind:member	line:112
+apply_perfect	../bin/scaleviz.py	/^    def apply_perfect(self, d):$/;"	kind:member	line:177
+apply_perfect	../bin/scaleviz.py	/^    def apply_perfect(self, n):$/;"	kind:member	line:118
+args	../bin/learning_wrapper.py	/^    args = parser.parse_args()$/;"	kind:variable	line:161
+args	../bin/no_merging.py	/^    args = parse_args()$/;"	kind:variable	line:31
+args	../bin/scaleviz.py	/^    args = parser.parse_args()$/;"	kind:variable	line:222
+args	../bin/training_node.py	/^    args = parse_args()$/;"	kind:variable	line:172
+chi_sq	../bin/scaleviz.py	/^def chi_sq(expected, observed):$/;"	kind:function	line:72
+classes	../datasets.py	/^    def classes(self):$/;"	kind:member	line:46
+classes	../datasets.py	/^    def classes(self):$/;"	kind:member	line:81
+comm	../bin/no_merging.py	/^comm = MPI.COMM_WORLD$/;"	kind:variable	line:10
+comm	../bin/training_node.py	/^comm = MPI.COMM_WORLD$/;"	kind:variable	line:17
+comm	../config.py	/^comm = MPI.COMM_WORLD$/;"	kind:variable	line:5
+concat	../datasets.py	/^    def concat(self, ds):$/;"	kind:member	line:61
+concat	../datasets.py	/^    def concat(self, ds):$/;"	kind:member	line:96
+concatenate	../datasets.py	/^def concatenate(datasets):$/;"	kind:function	line:104
+config.py	../config.py	1;"	kind:file	line:1
+csv	../bin/scaleviz.py	/^    csv = np.genfromtxt(args.input if args.input is not None else sys.stdin,$/;"	kind:variable	line:224
+cycles	../datasets.py	/^    def cycles(self):$/;"	kind:member	line:49
+cycles	../datasets.py	/^    def cycles(self):$/;"	kind:member	line:84
+data	../DataReader/FeatureDataReader.py	/^    data = reader.getAllFailures()$/;"	kind:variable	line:358
+data	../DataReader/FeatureDataReader.py	/^    data = reader.getCycleZoneIds()$/;"	kind:variable	line:352
+data	../DataReader/FeatureDataReader.py	/^    data = reader.getFeatureNames()$/;"	kind:variable	line:334
+data	../DataReader/FeatureDataReader.py	/^    data = reader.getPartitionZoneIds(part)$/;"	kind:variable	line:349
+data	../DataReader/FeatureDataReader.py	/^    data = reader.getRunNumbers()$/;"	kind:variable	line:355
+data	../DataReader/FeatureDataReader.py	/^    data = reader.readAllCyclesForZone(run, zone)$/;"	kind:variable	line:346
+data	../DataReader/FeatureDataReader.py	/^    data = reader.readAllZonesInCycle(run, cycle)$/;"	kind:variable	line:343
+data	../DataReader/FeatureDataReader.py	/^    data = reader.readPartition(run, part, cycle)$/;"	kind:variable	line:340
+data	../DataReader/FeatureDataReader.py	/^    data = reader.readZone(run, cycle, zone)$/;"	kind:variable	line:337
+data	../DataReader/read_failure.py	/^    data = reader.readAllCyclesForFailedZone(run,cycle,zone)$/;"	kind:variable	line:17
+data	../DataReader/read_relax.py	/^data = reader.readAllZonesInCycle(0, int(sys.argv[2]))$/;"	kind:variable	line:24
+data_readers	../DataReader/learning_example.py	/^data_readers = {}$/;"	kind:variable	line:53
+data_readers	../datasets.py	/^data_readers = {}$/;"	kind:variable	line:226
+datasets.py	../datasets.py	1;"	kind:file	line:1
+debug	../utils.py	/^def debug(fmt, *args, **kwargs):$/;"	kind:function	line:48
+decay	../DataReader/learning_example.py	/^def decay(decay_function, step, num_steps):$/;"	kind:function	line:119
+decay	../datasets.py	/^def decay(decay_function, step, num_steps):$/;"	kind:function	line:301
+decay_window	../DataReader/learning_example.py	/^decay_window = 100 # how many cycles back does decay function go for failed (zone,cycle)$/;"	kind:variable	line:35
+decay_window	../config.py	/^decay_window = 100 # how many cycles back does decay function go for failed (zone,cycle)$/;"	kind:variable	line:23
+decision_boundary	../config.py	/^decision_boundary = 4e-6$/;"	kind:variable	line:40
+default_trainer	../training.py	/^def default_trainer(ds, clf, online=False, classes=None, **kwargs):$/;"	kind:function	line:19
+density	../bin/scaleviz.py	/^    def density(self):$/;"	kind:member	line:109
+description	../bin/learning_wrapper.py	/^        description='Train and test a classifier using the bubbleShock dataset')$/;"	kind:variable	line:145
+discretize	../datasets.py	/^def discretize(X, y):$/;"	kind:function	line:206
+ds_map	../datasets.py	/^def ds_map(f):$/;"	kind:function	line:108
+empty_dataset	../datasets.py	/^def empty_dataset():$/;"	kind:function	line:71
+enable_feature_importance	../DataReader/learning_example.py	/^enable_feature_importance = True$/;"	kind:variable	line:26
+enable_feature_importance	../config.py	/^enable_feature_importance = True$/;"	kind:variable	line:16
+enable_load_pickled_model	../DataReader/learning_example.py	/^enable_load_pickled_model = False$/;"	kind:variable	line:27
+enable_load_pickled_model	../config.py	/^enable_load_pickled_model = False$/;"	kind:variable	line:17
+enable_print_predictions	../DataReader/learning_example.py	/^enable_print_predictions = False$/;"	kind:variable	line:29
+enable_print_predictions	../config.py	/^enable_print_predictions = False$/;"	kind:variable	line:19
+enable_save_pickled_model	../DataReader/learning_example.py	/^enable_save_pickled_model = False$/;"	kind:variable	line:28
+enable_save_pickled_model	../config.py	/^enable_save_pickled_model = False$/;"	kind:variable	line:18
+end_cycle	../DataReader/learning_example.py	/^end_cycle = -1    # stop sampling "good" zones at this cycle (-1 means train all cycles from run 0 - decay_window)$/;"	kind:variable	line:32
+end_cycle	../config.py	/^end_cycle = -1    # stop sampling "good" zones at this cycle (-1 means train all cycles from run 0 - decay_window)$/;"	kind:variable	line:21
+every_kth	../datasets.py	/^def every_kth(arr, k):$/;"	kind:function	line:28
+f	../bin/scaleviz.py	/^        def f(d, m, b):$/;"	kind:function	line:205
+f	../bin/scaleviz.py	/^        def f(n, m, b):$/;"	kind:function	line:154
+fails	../DataReader/read_failure.py	/^fails = reader.getAllFailures()$/;"	kind:variable	line:13
+feature_name_cache	../DataReader/learning_example.py	/^feature_name_cache = None$/;"	kind:variable	line:83
+fit	../nbmpi.py	/^    def fit(self, X, y):$/;"	kind:member	line:75
+fit	../training.py	/^def fit(clf, ds, classes=None, online=False):$/;"	kind:function	line:198
+forest.py	../forest.py	1;"	kind:file	line:1
+gen	../datasets.py	/^        def gen():$/;"	kind:function	line:97
+gen	../datasets.py	/^        def gen(i):$/;"	kind:function	line:91
+getAllFailures	../DataReader/FeatureDataReader.py	/^    def getAllFailures(self):$/;"	kind:member	line:272
+getCycleZoneIds	../DataReader/FeatureDataReader.py	/^    def getCycleZoneIds(self):$/;"	kind:member	line:145
+getFeatureNames	../DataReader/FeatureDataReader.py	/^    def getFeatureNames(self):$/;"	kind:member	line:157
+getPartitionZoneIds	../DataReader/FeatureDataReader.py	/^    def getPartitionZoneIds(self, part):$/;"	kind:member	line:129
+getRunNumbers	../DataReader/FeatureDataReader.py	/^    def getRunNumbers(self):$/;"	kind:member	line:257
+getZoneOffset	../DataReader/FeatureDataReader.py	/^    def getZoneOffset(self, zone):$/;"	kind:member	line:234
+get_bubbleshock	../datasets.py	/^def get_bubbleshock(data_dir='bubbleShock', discrete=False):$/;"	kind:function	line:167
+get_bubbleshock	../datasets.py	/^def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):$/;"	kind:function	line:146
+get_bubbleshock_by_hand	../datasets.py	/^def get_bubbleshock_by_hand(data_dir, density=1.0):$/;"	kind:function	line:142
+get_bubbleshock_byhand_by_cycle	../datasets.py	/^def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0):$/;"	kind:function	line:125
+get_bubbleshock_byhand_range	../datasets.py	/^def get_bubbleshock_byhand_range(data_dir, start_cycle, end_cycle):$/;"	kind:function	line:150
+get_cli_name	../models.py	/^def get_cli_name(id_or_instance):$/;"	kind:function	line:33
+get_failures	../DataReader/learning_example.py	/^def get_failures(data_dir):$/;"	kind:function	line:129
+get_failures	../datasets.py	/^def get_failures(data_dir):$/;"	kind:function	line:311
+get_feature_names	../DataReader/learning_example.py	/^def get_feature_names(data_dir):$/;"	kind:function	line:84
+get_k_fold_data	../training.py	/^def get_k_fold_data(ds, k=10):$/;"	kind:function	line:46
+get_learning_data	../DataReader/learning_example.py	/^def get_learning_data(data_dir, start_cycle, end_cycle, sample_freq, decay_window, num_failures=-1):$/;"	kind:function	line:175
+get_learning_data	../datasets.py	/^def get_learning_data(data_dir, start_cycle, end_cycle, sample_freq, decay_window, num_failures=-1):$/;"	kind:function	line:356
+get_learning_data_for_run	../DataReader/learning_example.py	/^def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, decay_window, run_for_good_zones, num_failures=-1):$/;"	kind:function	line:191
+get_learning_data_for_run	../datasets.py	/^def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, decay_window, run_for_good_zones, num_failures=-1):$/;"	kind:function	line:372
+get_learning_data_with_index_for_cycle_range	../DataReader/learning_example.py	/^def get_learning_data_with_index_for_cycle_range(data_dir, cycles, run):$/;"	kind:function	line:100
+get_learning_data_with_index_for_cycle_range	../datasets.py	/^def get_learning_data_with_index_for_cycle_range(data_dir, cycles, run):$/;"	kind:function	line:282
+get_model	../models.py	/^def get_model(cli_name):$/;"	kind:function	line:24
+get_model_id	../models.py	/^def get_model_id(cli_name):$/;"	kind:function	line:30
+get_mpi_task_data	../training.py	/^def get_mpi_task_data(ds, comm=config.comm):$/;"	kind:function	line:53
+get_num_partitions	../DataReader/learning_example.py	/^def get_num_partitions(data_dir):$/;"	kind:function	line:75
+get_num_partitions	../datasets.py	/^def get_num_partitions(data_dir):$/;"	kind:function	line:265
+get_reader	../DataReader/learning_example.py	/^def get_reader(data_dir):$/;"	kind:function	line:54
+get_reader	../datasets.py	/^def get_reader(data_dir):$/;"	kind:function	line:227
+get_sample	../bin/training_node.py	/^def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):$/;"	kind:function	line:27
+group_by	../bin/scaleviz.py	/^def group_by(key, rows):$/;"	kind:function	line:75
+has_error_bars	../bin/scaleviz.py	/^def has_error_bars(X):$/;"	kind:function	line:48
+help	../bin/learning_wrapper.py	/^        help='number of cycles to test on for the bubbleShock_byHand dataset')$/;"	kind:variable	line:159
+help	../bin/learning_wrapper.py	/^        help='number of cycles to train on before testing for the bubbleShock_byHand dataset')$/;"	kind:variable	line:157
+index	../DataReader/read_relax.py	/^    index = names.index('relaxDistance')$/;"	kind:variable	line:18
+info	../utils.py	/^def info(fmt, *args, **kwargs):$/;"	kind:function	line:39
+invert	../bin/scaleviz.py	/^    def invert(self, t):$/;"	kind:member	line:115
+kfold	../config.py	/^kfold = 10$/;"	kind:variable	line:39
+learning_data_cache	../DataReader/learning_example.py	/^learning_data_cache = {}$/;"	kind:variable	line:51
+learning_data_cache	../datasets.py	/^learning_data_cache = {}$/;"	kind:variable	line:225
+learning_example.py	../DataReader/learning_example.py	1;"	kind:file	line:1
+learning_wrapper.py	../bin/learning_wrapper.py	1;"	kind:file	line:1
+load_learning_data	../DataReader/learning_example.py	/^load_learning_data = False  # if true, load pre-created learning data$/;"	kind:variable	line:36
+load_learning_data	../config.py	/^load_learning_data = False  # if true, load pre-created learning data$/;"	kind:variable	line:24
+m	../bin/learning_wrapper.py	/^        m = get_model(model)$/;"	kind:variable	line:168
+main	../DataReader/learning_example.py	/^def main():$/;"	kind:function	line:472
+make_sparse	../datasets.py	/^def make_sparse(X, y, density):$/;"	kind:function	line:199
+map	../datasets.py	/^    def map(self, f):$/;"	kind:member	line:33
+map	../datasets.py	/^    def map(self, f):$/;"	kind:member	line:43
+map	../datasets.py	/^    def map(self, f):$/;"	kind:member	line:78
+mapper	../datasets.py	/^    def mapper(ds, *args, **kwargs):$/;"	kind:function	line:110
+model	../bin/scaleviz.py	/^    def model(self):$/;"	kind:member	line:122
+model	../bin/training_node.py	/^        model = models[args.model]()$/;"	kind:variable	line:178
+model_names	../models.py	/^def model_names():$/;"	kind:function	line:21
+models.py	../models.py	1;"	kind:file	line:1
+names	../DataReader/read_relax.py	/^names = reader.getFeatureNames()$/;"	kind:variable	line:14
+nbmpi.py	../nbmpi.py	1;"	kind:file	line:1
+no_merging.py	../bin/no_merging.py	1;"	kind:file	line:1
+nominal_value	../bin/scaleviz.py	/^def nominal_value(x):$/;"	kind:function	line:42
+nrows	../bin/training_node.py	/^    nrows = 0$/;"	kind:variable	line:202
+num_errors	../training.py	/^def num_errors(actual, predicted, threshold=4e-6):$/;"	kind:function	line:35
+online_fmt	../bin/training_node.py	/^            online_fmt = ', pooling: ' + str(args.online_pool)$/;"	kind:variable	line:210
+online_fmt	../bin/training_node.py	/^        online_fmt = ''$/;"	kind:variable	line:206
+output_feature_importance	../DataReader/learning_example.py	/^def output_feature_importance(rand_forest, data_dir):$/;"	kind:function	line:307
+output_feature_importance	../datasets.py	/^def output_feature_importance(result, data_dir):$/;"	kind:function	line:244
+output_model_info	../utils.py	/^def output_model_info(model, online, density):$/;"	kind:function	line:96
+parallelism	../DataReader/learning_example.py	/^parallelism = -1 # note: -1 = number of cores on the system$/;"	kind:variable	line:44
+parallelism	../config.py	/^parallelism = 1 # note: -1 = number of cores on the system$/;"	kind:variable	line:33
+parse_args	../bin/no_merging.py	/^def parse_args():$/;"	kind:function	line:23
+parse_args	../bin/training_node.py	/^def parse_args():$/;"	kind:function	line:133
+parse_range	../bin/training_node.py	/^def parse_range(expr, default_step=0.01):$/;"	kind:function	line:121
+parser	../bin/learning_wrapper.py	/^    parser = argparse.ArgumentParser($/;"	kind:variable	line:144
+parser	../bin/scaleviz.py	/^    parser = argparse.ArgumentParser(description='Visualize data generated by scaling.py')$/;"	kind:variable	line:217
+partial_fit	../forest.py	/^    def partial_fit(self, X, y, classes=None):$/;"	kind:member	line:64
+partial_fit	../forest.py	/^    def partial_fit(self, X, y, classes=None):$/;"	kind:member	line:90
+partial_fit	../nbmpi.py	/^    def partial_fit(self, X, y, classes=None):$/;"	kind:member	line:78
+pcast_negative	../bin/training_node.py	/^    pcast_negative = parse_range(args.pcast_negative)$/;"	kind:variable	line:185
+pcast_positive	../bin/training_node.py	/^    pcast_positive = parse_range(args.pcast_positive)$/;"	kind:variable	line:184
+pkeep_negative	../bin/training_node.py	/^    pkeep_negative = parse_range(args.pkeep_negative)$/;"	kind:variable	line:187
+pkeep_positive	../bin/training_node.py	/^    pkeep_positive = parse_range(args.pkeep_positive)$/;"	kind:variable	line:186
+plot	../bin/scaleviz.py	/^def plot(X, Y, line_format='-', **kwargs):$/;"	kind:function	line:51
+plot_continuous	../bin/scaleviz.py	/^def plot_continuous(f, min, max, **kwargs):$/;"	kind:function	line:61
+points	../datasets.py	/^    def points(self):$/;"	kind:member	line:53
+points	../datasets.py	/^    def points(self):$/;"	kind:member	line:87
+prepare_dataset	../datasets.py	/^def prepare_dataset(dataset, discrete=False, density=1.0):$/;"	kind:function	line:184
+prettify_train_and_test_k_fold_results	../training.py	/^def prettify_train_and_test_k_fold_results(d):$/;"	kind:function	line:173
+probable	../bin/training_node.py	/^def probable(p):$/;"	kind:function	line:24
+prof_decorator	../utils.py	/^    def prof_decorator(f):$/;"	kind:function	line:73
+profile	../utils.py	/^def profile(filename=None, comm=MPI.COMM_WORLD):$/;"	kind:function	line:72
+rand_seed	../DataReader/learning_example.py	/^rand_seed = None$/;"	kind:variable	line:42
+rand_seed	../config.py	/^rand_seed = 0$/;"	kind:variable	line:31
+rand_seed	../forest.py	/^rand_seed = 0$/;"	kind:variable	line:15
+readAllCyclesForFailedZone	../DataReader/FeatureDataReader.py	/^    def readAllCyclesForFailedZone(self,run,fail_cycle,zone):$/;"	kind:member	line:303
+readAllCyclesForZone	../DataReader/FeatureDataReader.py	/^    def readAllCyclesForZone(self, run, zone):$/;"	kind:member	line:87
+readAllZonesInCycle	../DataReader/FeatureDataReader.py	/^    def readAllZonesInCycle(self, run, cycle):$/;"	kind:member	line:114
+readFileIndex	../DataReader/FeatureDataReader.py	/^    def readFileIndex(self, run, part):$/;"	kind:member	line:170
+readMetaData	../DataReader/FeatureDataReader.py	/^    def readMetaData(self, part):$/;"	kind:member	line:196
+readPartition	../DataReader/FeatureDataReader.py	/^    def readPartition(self, run, part, cycle):$/;"	kind:member	line:63
+readZone	../DataReader/FeatureDataReader.py	/^    def readZone(self, run, cycle, zone):$/;"	kind:member	line:39
+read_failure.py	../DataReader/read_failure.py	1;"	kind:file	line:1
+read_relax.py	../DataReader/read_relax.py	1;"	kind:file	line:1
+reader	../DataReader/FeatureDataReader.py	/^    reader = FeatureDataReader(sys.argv[1])$/;"	kind:variable	line:331
+reader	../DataReader/read_failure.py	/^reader = FeatureDataReader(sys.argv[1])$/;"	kind:variable	line:12
+reader	../DataReader/read_relax.py	/^reader = FeatureDataReader(sys.argv[1])$/;"	kind:variable	line:12
+reduce	../forest.py	/^    def reduce(self, root=0):$/;"	kind:member	line:61
+reduce	../forest.py	/^    def reduce(self, root=0):$/;"	kind:member	line:87
+reduce	../nbmpi.py	/^    def reduce(self):$/;"	kind:member	line:32
+relax	../DataReader/read_relax.py	/^relax = data[:,index]$/;"	kind:variable	line:26
+res	../bin/training_node.py	/^        res = train_and_test_k_fold($/;"	kind:variable	line:215
+rids	../DataReader/read_relax.py	/^rids = zids[zones[0]]$/;"	kind:variable	line:29
+root_debug	../utils.py	/^def root_debug(fmt, *args, **kwargs):$/;"	kind:function	line:62
+root_info	../utils.py	/^def root_info(fmt, *args, **kwargs):$/;"	kind:function	line:52
+running_in_mpi	../utils.py	/^def running_in_mpi():$/;"	kind:function	line:67
+sample_freq	../DataReader/learning_example.py	/^sample_freq = 1000 # how frequently to sample "good" zones$/;"	kind:variable	line:33
+sample_freq	../config.py	/^sample_freq = 1000 # how frequently to sample "good" zones$/;"	kind:variable	line:22
+save_plot	../bin/scaleviz.py	/^    def save_plot(self, output):$/;"	kind:member	line:128
+save_plot	../bin/scaleviz.py	/^    def save_plot(self, output):$/;"	kind:member	line:180
+scalarize	../bin/scaleviz.py	/^def scalarize(arr):$/;"	kind:function	line:88
+scaleviz.py	../bin/scaleviz.py	1;"	kind:file	line:1
+scaling.py	../bin/scaling.py	1;"	kind:file	line:1
+selectcols	../bin/scaling.py	/^def selectcols(schema, **kwargs):$/;"	kind:function	line:22
+sf_fmt	../bin/training_node.py	/^            sf_fmt = ', super forest'$/;"	kind:variable	line:208
+sf_fmt	../bin/training_node.py	/^        sf_fmt   = ''$/;"	kind:variable	line:205
+shuffle_data	../datasets.py	/^def shuffle_data(X, y, seed=0):$/;"	kind:function	line:117
+split	../datasets.py	/^    def split(self, k):$/;"	kind:member	line:56
+split	../datasets.py	/^    def split(self, k):$/;"	kind:member	line:90
+start_cycle	../DataReader/learning_example.py	/^start_cycle = 0   # start sampling "good" zones at this cycle$/;"	kind:variable	line:30
+start_cycle	../config.py	/^start_cycle = 0   # start sampling "good" zones at this cycle$/;"	kind:variable	line:20
+std_dev	../bin/scaleviz.py	/^def std_dev(x):$/;"	kind:function	line:45
+target	../bin/training_node.py	/^    target = discretize(target)$/;"	kind:variable	line:199
+tasks_per_node	../bin/scaleviz.py	/^    def tasks_per_node(self):$/;"	kind:member	line:125
+test_time	../bin/training_node.py	/^                        test_time=res['time_test'], **locals()))$/;"	kind:variable	line:222
+threshold_count	../datasets.py	/^def threshold_count(ds, thresh):$/;"	kind:function	line:217
+toggle_profiling	../utils.py	/^def toggle_profiling(enabled=True):$/;"	kind:function	line:92
+toggle_verbose	../utils.py	/^def toggle_verbose(v=True):$/;"	kind:function	line:24
+total_rows	../bin/training_node.py	/^    total_rows = len(pcast_positive) * len(pcast_negative) * len(pkeep_positive) * len(pkeep_negative)$/;"	kind:variable	line:203
+train	../bin/no_merging.py	/^def train(X, y, **kwargs):$/;"	kind:function	line:13
+train	../bin/training_node.py	/^def train(X, y, clf, recipients='all', **kwargs):$/;"	kind:function	line:98
+train_and_test_k_fold	../training.py	/^def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, **kwargs):$/;"	kind:function	line:65
+train_and_test_once	../training.py	/^def train_and_test_once(train, test, prd, trainer=default_trainer, comm=config.comm, **kwargs):$/;"	kind:function	line:124
+train_at_root	../bin/training_node.py	/^def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,$/;"	kind:function	line:41
+train_many_test_many	../DataReader/learning_example.py	/^def train_many_test_many(train_data_paths, test_data_paths, test_data_spec):$/;"	kind:function	line:322
+train_on_all	../bin/training_node.py	/^def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,$/;"	kind:function	line:69
+training.py	../training.py	1;"	kind:file	line:1
+training_node.py	../bin/training_node.py	1;"	kind:file	line:1
+unzip	../bin/training_node.py	/^def unzip(xys):$/;"	kind:function	line:19
+utils.py	../utils.py	1;"	kind:file	line:1
+vals	../DataReader/read_relax.py	/^vals = data[zones[0],:]$/;"	kind:variable	line:30
+wrap_f	../utils.py	/^        def wrap_f(*args, **kwargs):$/;"	kind:function	line:74
+wrapper	../bin/learning_wrapper.py	/^def wrapper(model, k, data_path, online=False, density=1.0):$/;"	kind:function	line:16
+wrapper	../bin/learning_wrapper.py	/^def wrapper(model, k, data_path, training_cycles=TOTAL_CYCLES\/2, testing_cycles=TOTAL_CYCLES-TOTAL_CYCLES\/2, online=False, online_pool=1):$/;"	kind:function	line:35
+zids	../DataReader/read_relax.py	/^zids = reader.getCycleZoneIds()$/;"	kind:variable	line:23
+zones	../DataReader/read_relax.py	/^zones = np.where(relax > 0)$/;"	kind:variable	line:27

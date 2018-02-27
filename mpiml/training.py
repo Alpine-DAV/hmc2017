@@ -240,8 +240,10 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
         max_train_time, max_test_time, max_load_time, max_reduce_time = get_max_time_vals(train_results)
         train_results = reduce((lambda x, y: x+y), train_results)
         train_results.rmse = np.sqrt(train_results.rmse)/(train_results.negative_test_samples+train_results.positive_test_samples)
-        train_results.time_train, train_results.time_test = max_train_time, max_test_time
-        train_results.time_load, train_results.time_reduce = max_load_time, max_reduce_time
+        train_results.time_train  = max_train_time
+        train_results.time_test   = max_test_time
+        train_results.time_load   = max_load_time
+        train_results.time_reduce = max_reduce_time
         return train_results
     else:
         return null_training_result()
