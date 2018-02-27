@@ -1,10 +1,11 @@
 from functools import wraps
 import glob
+from math import ceil
 import numpy as np
 import sklearn.datasets as sk
 import sys
 import time
-from utils import root_info
+from utils import root_info, debug
 import config
 
 from DataReader.FeatureDataReader import FeatureDataReader
@@ -24,96 +25,85 @@ __all__ = [ "get_bubbleshock"
 def every_kth(arr, k):
     return [arr[start::k] for start in range(k)]
 
-class NullDataSet(object):
+class DataSet(object):
+
     def map(self, f):
-        pass
+        class MapDataSet(DataSet):
+            def __init__(self, ds, f):
+                self.ds_ = ds
+                self.f_ = f
+
+            def get_cycle(self, i):
+                return self.f_(*self.ds_.get_cycle(i))
+
+            def num_cycles(self):
+                return self.ds_.num_cycles()
+        return MapDataSet(self, f)
 
     def classes(self):
-        return []
+        return np.unique(np.array(c.classes() for c in self.cycles()))
 
     def cycles(self):
-        return []
+        return (self.get_cycle(i) for i in range(self.num_cycles()))
 
     def points(self):
-        return [],[]
+        xs, ys = zip(*self.cycles())
+        return np.vstack(xs), np.concatenate(ys)
 
     def split(self, k):
-        return [self]*k
+        class SplitDataSet(DataSet):
+            def __init__(self, ds, start):
+                self.ds_ = ds
+                self.start_ = start
+
+            def get_cycle(self, i):
+                return self.ds_.get_cycle(self.start_ + k*i)
+
+            def num_cycles(self):
+                return int((self.ds_.num_cycles() - self.start_) / k)
+
+        return [SplitDataSet(self, start) for start in range(k)]
 
     def concat(self, ds):
-        return ds
+        class ConcatDataSet(DataSet):
+            def __init__(self, ds1, ds2):
+                self.ds1_ = ds1
+                self.ds2_ = ds2
 
-class StrictDataSet(object):
+            def get_cycle(self, i):
+                if i < self.ds1_.num_cycles():
+                    return self.ds1_.get_cycle(i)
+                else:
+                    return self.ds2_.get_cycle(i - self.ds1_.num_cycles())
 
+            def num_cycles(self):
+                return self.ds1_.num_cycles() + self.ds2_.num_cycles()
+
+        return ConcatDataSet(self, ds)
+
+class InMemoryDataSet(DataSet):
     def __init__(self, X, y, pool_size=config.pool_size):
-        self.X = X
-        self.y = y
+        self.X_ = X
+        self.y_ = y
         self.pool_size_ = pool_size
 
-    def map(self, f):
-        return StrictDataSet(*f(self.X, self.y))
+    def get_cycle(self, i):
+        return self.X_[i*self.pool_size_ : (i + 1)*self.pool_size_], \
+               self.y_[i*self.pool_size_ : (i + 1)*self.pool_size_]
 
-    def classes(self):
-        return np.unique(self.y)
+    def num_cycles(self):
+        return ceil(float(self.X_.shape[0]) / config.pool_size)
 
-    def cycles(self):
-        return ((self.X[i:i+self.pool_size_], self.y[i:i+self.pool_size_])
-            for i in xrange(0, self.X.shape[0], self.pool_size_))
+class EmptyDataSet(DataSet):
+    def get_cycle(self, i):
+        raise ValueError('cannot get cycle from empty dataset')
 
-    def points(self):
-        return self.X, self.y
-
-    def split(self, k):
-        split_X = every_kth(self.X, k)
-        split_y = every_kth(self.y, k)
-        return [StrictDataSet(X, y) for X, y in zip(split_X, split_y)]
-
-    def concat(self, ds):
-        if isinstance(ds, NullDataSet):
-            return self
-        else:
-            X, y = ds.points()
-            return StrictDataSet(np.vstack((self.X, X)), np.concatenate((self.y, y)))
-
-class LazyDataSet(object):
-    # gen: a function returning a generator that lazily loads a DataSet object for each cycle
-    #      gen must be a factory function rather than a generator object so that we can reuse the
-    #      generator (by creating a new instance from the factory)
-    def __init__(self, make_gen):
-        self.make_gen_ = make_gen
-
-    def map(self, f):
-        return LazyDataSet(lambda: (ds.map(f) for ds in self.make_gen_()))
-
-    def classes(self):
-        return np.unique(np.array(ds.classes() for ds in self.make_gen_()))
-
-    def cycles(self):
-        return (ds.points() for ds in self.make_gen_())
-
-    def points(self):
-        return concatenate(self.make_gen_()).points()
-
-    def split(self, k):
-        def gen(i):
-            for ds in self.make_gen_():
-                X, y = ds.points()
-                yield StrictDataSet(X[i::k], y[i::k])
-        return [LazyDataSet(lambda: gen(i)) for i in range(k)]
-
-    def concat(self, ds):
-        if isinstance(ds, NullDataSet):
-            return self
-
-        def gen():
-            for d in self.make_gen_():
-                yield d
-            for X, y in ds.cycles():
-                yield StrictDataSet(X, y)
-        return LazyDataSet(lambda: gen())
+    def num_cycles(self):
+        return 0
 
 def concatenate(datasets):
-    return reduce(lambda x, y: x.concat(y), datasets, NullDataSet())
+    # def Concat
+    return reduce(lambda x, y: x.concat(y), datasets, EmptyDataSet())
 
 # Turn a function that transforms X and y vectors into a function that transforms a DataSet
 def ds_map(f):
@@ -133,30 +123,27 @@ def shuffle_data(X, y, seed=0):
     np.random.shuffle(y)
     return X, y
 
-def get_bubbleshock_byhand_by_cycle(data_dir, cycle, density=1.0, pool_size=config.pool_size):
-    dataset = None
-    reader = get_reader(data_dir)
-    feature_names = reader.getFeatureNames()
-    zids = reader.getCycleZoneIds()
-    dataset = reader.readAllZonesInCycle(0, cycle)
+def get_bubbleshock_by_hand(data_dir):
+    class ByHandDataSet(DataSet):
+        def __init__(self):
+            self.reader_ = get_reader(data_dir)
 
-    X = dataset[:,0:-1]
-    y = np.ravel(dataset[:,[-1]])
+        def get_cycle(self, i):
+            debug('read byHand cycle {}', i)
 
-    return make_sparse(StrictDataSet(X, y, pool_size), density)
+            dataset = self.reader_.readAllZonesInCycle(0, i)
 
-def get_bubbleshock_by_hand(data_dir, density=1.0, pool_size=config.pool_size, train_test_split=None):
-    ds = None
-    if train_test_split == None:
-        ds = LazyDataSet(lambda: (get_bubbleshock_byhand_by_cycle(data_dir, cycle, density, pool_size)
-                                for cycle in range(config.TOTAL_CYCLES)))
-    else:
-        subset_cycles = train_test_split['train_split'] + train_test_split['test_split']
-        ds = LazyDataSet(lambda: (get_bubbleshock_byhand_by_cycle(data_dir, cycle, density, pool_size)
-                                for cycle in range(subset_cycles)))
-    return ds
+            X = dataset[:,0:-1]
+            y = np.ravel(dataset[:,[-1]])
 
-def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
+            return X, y
+
+        def num_cycles(self):
+            return config.TOTAL_CYCLES
+
+    return ByHandDataSet()
+
+def get_bubbleshock(data_dir='bubbleShock', pool_size=config.pool_size):
     dataset = None
     start = time.time()
     dataset = get_learning_data(data_dir, config.start_cycle, config.end_cycle, config.sample_freq, config.decay_window)
@@ -166,34 +153,41 @@ def get_bubbleshock(data_dir='bubbleShock', discrete=False, density=1.0):
     X = dataset[:,0:-1]
     y = np.ravel(dataset[:,[-1]])
 
-    if discrete:
-        y = discretize(y)
-
-    return make_sparse(StrictDataSet(X, y), density)
+    return InMemoryDataSet(X, y, pool_size=pool_size)
 
 # Load the requested example dataset and randomly reorder it so that it is not grouped by class
-def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size, train_test_split=None):
+def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size):
     global _dataset
     _dataset = dataset
     if hasattr(sk, 'load_{}'.format(dataset)):
         dataset = getattr(sk, 'load_{}'.format(dataset))()
-        ds = shuffle_data(StrictDataSet(dataset.data, dataset.target))
+        ds = shuffle_data(InMemoryDataSet(dataset.data, dataset.target, pool_size=config.pool_size))
     elif 'byHand' in dataset:
-        ds = get_bubbleshock_by_hand(dataset, pool_size, train_test_split=train_test_split)
+        ds = get_bubbleshock_by_hand(dataset)
     else:
-        ds = shuffle_data(get_bubbleshock(data_dir=dataset))
+        ds = shuffle_data(get_bubbleshock(data_dir=dataset, pool_size=config.pool_size))
 
     if discrete:
         ds = discretize(ds)
 
     return make_sparse(ds, density)
 
-@ds_map
-def make_sparse(X, y, density):
+def make_sparse(ds, density):
     if 1.0 - density < 0.001:
-        return X, y
-    indices = np.random.choice(y.shape[0], int(y.shape[0]*density), replace=False)
-    return X[indices], y[indices]
+        return ds
+
+    class SparseDataSet(DataSet):
+        def __init__(self):
+            self.ds_ = ds
+            self.stride_ = 1.0 / density
+
+        def get_cycle(self, i):
+            return self.ds_.get_cycle(i * self.stride_)
+
+        def num_cycles(self):
+            return ceil(float(self.ds_.num_cycles()) / self.stride_)
+
+    return SparseDataSet()
 
 @ds_map
 def discretize(X, y):
