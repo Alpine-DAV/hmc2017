@@ -95,8 +95,9 @@ class SubForestMixin:
         return forest_size
 
     def reduce(self, forest_size, root):
-        root_debug(self.oob_score_)
-        sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
+        root_info(self.oob_score_)
+        root_info(dir(self.estimators_[0]))
+        # sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
 
         # Get best X% of estimators by oob score
         # self.estimators_ = _gather_estimators(
@@ -108,7 +109,8 @@ class SubForestMixin:
         
         ## Get random X% of estimators
         # self.estimators_ = _gather_estimators(self.estimators_[:_n_estimators_for_forest_size(forest_size)])
-        self.estimators_ = _gather_estimators(self.estimators_[-1:])
+        self.estimators_ = _gather_estimators(
+            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
         return self
 
 class RandomForestBase(sk.RandomForestRegressor):
@@ -216,6 +218,7 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
             
                 # Set oob score of individual trees
                 estimator.oob_score_ = oob_error
+                print oob_error
 
 
         ### CODE FOR OUTPUTTING OOB ERRORS TO A CSV FILE
