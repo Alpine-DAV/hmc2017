@@ -95,8 +95,7 @@ class SubForestMixin:
         return forest_size
 
     def reduce(self, forest_size, root):
-        root_info(self.oob_score_)
-        root_info(dir(self.estimators_[0]))
+        root_info("reducing")
         # sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
 
         # Get best X% of estimators by oob score
@@ -180,7 +179,6 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
             verbose=verbose,
         )
         self.oob_score = oob_score
-
         self.compression_ = compression
 
         debug('will train {} estimators', self.n_estimators)
@@ -188,8 +186,13 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
     def partial_fit(self, X, y, classes=None):
         super(MondrianForestBase, self).partial_fit(X, y)
 
+        if self.oob_score:
+            self._set_oob_score(X, y)
+
+
     def _set_oob_score(self, X, y):
         """Compute out-of-bag scores"""
+        root_info("setting oob score")
         X = check_array(X, dtype=DTYPE, accept_sparse='csr')
 
         n_samples = y.shape[0]
@@ -213,13 +216,14 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
             n_predictions[unsampled_indices, :] += 1
 
             if p_estimator.size != 0:
-                oob_error = r2_score(y[unsampled_indices, :], p_estimator)
-                all_oob_errors.append(oob_error) # compute variance
+                # root_info("u: {}\n".format(unsampled_indices.shape))
+                # root_info("y: {}\n".format(y.shape))
+                
+                # oob_error = r2_score(y[unsampled_indices, :], p_estimator)
+                # all_oob_errors.append(oob_error) # compute variance
             
                 # Set oob score of individual trees
-                estimator.oob_score_ = oob_error
-                print oob_error
-
+                estimator.oob_score_ = 1# oob_error
 
         ### CODE FOR OUTPUTTING OOB ERRORS TO A CSV FILE
         # variance = np.var(np.array(all_oob_errors))
@@ -228,7 +232,6 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
         #     fname = "oob_error_rank0_density1.csv"
         #     with open(fname, 'ab') as f:
         #         np.savetxt(f, np.array([all_oob_errors]).T, delimiter=",")
-
 
         if (n_predictions == 0).any():
             root_info("Some inputs do not have OOB scores. "
@@ -245,9 +248,9 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
 
         self.oob_score_ = 0.0
 
-        for k in range(self.n_outputs_):
-            self.oob_score_ += r2_score(y[:, k],
-                                        predictions[:, k])
+        # for k in range(self.n_outputs_):
+        #     self.oob_score_ += r2_score(y[:, k],
+        #                                 predictions[:, k])
 
         self.oob_score_ /= self.n_outputs_
 
