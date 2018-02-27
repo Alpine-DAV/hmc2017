@@ -76,11 +76,9 @@ class StrictDataSet(object):
             return StrictDataSet(np.vstack((self.X, X)), np.concatenate((self.y, y)))
 
 class LazyDataSet(object):
-    # gen: a function returning a generator that lazily loads a DataSet object for each cycle
-    #      gen must be a factory function rather than a generator object so that we can reuse the
-    #      generator (by creating a new instance from the factory)
-    def __init__(self, make_gen):
-        self.make_gen_ = make_gen
+    def __init__(self, get_cycle, num_cycles):
+        self.get_cycle_ = get_cycle
+        self.num_cycles_ = num_cycles
 
     def map(self, f):
         return LazyDataSet(lambda: (ds.map(f) for ds in self.make_gen_()))
