@@ -58,13 +58,16 @@ def _n_estimators_for_forest_size(forest_size):
 def _gather_estimators(estimators, send_to, recv_from, root=0, send_to_all=True):
     if send_to_all:
         for proc in range(comm.size):
+            root_info("receiving from process {}".format(proc))
+            n_estimators = comm.bcast(len(estimators), root=proc)
+            root_info("broadcasted estimators")
             if comm.rank == proc:
-                comm.bcast(len(estimators))
                 for e in estimators:
                     send_to(IGNORE_VAL, e, send_to_all=True)
+                    root_info("finished passing an estimator to all processes")
             else:
-                n_estimators = comm.recv(source=proc)
-                estimators.extend([recv_from(peer) for _ in range(n_estimators)])
+                estimators.extend([recv_from(proc) for _ in range(n_estimators)])
+                root_info("finished acquiring estimators")
     else:
         if comm.rank == root:
             for peer in range(comm.size):
@@ -263,7 +266,7 @@ class MondrianForestBase(skg.MondrianForestRegressor):
         self.oob_score_ /= self.n_outputs_
 
     def send_estimator(self, peer, est, send_to_all=False):
-        skt.mpi_send(comm, peer, est, compression=self.compression_, send_to_all)
+        skt.mpi_send(comm, peer, est, compression=self.compression_, send_to_all=send_to_all)
 
     def receive_estimator(self, peer):
         return skt.mpi_recv_regressor(comm, peer, self.n_features_, self.n_outputs_)
@@ -328,8 +331,8 @@ def _forest_regressor(base, merging_mixin):
                 *args, n_estimators=self.n_estimators(forest_size), **kwargs)
             self.forest_size_ = forest_size
 
-        def reduce(self, root=0, gather_at_root=False, send_to_all=False):
-            return super(ForestRegressor, self).reduce(self.forest_size_, root, gather_at_root, send_to_all)
+        def reduce(self, root=0, send_to_all=False):
+            return super(ForestRegressor, self).reduce(self.forest_size_, root, send_to_all)
 
     ForestRegressor.__name__ = base.__name__ + '_' + merging_mixin.__name__
     return ForestRegressor

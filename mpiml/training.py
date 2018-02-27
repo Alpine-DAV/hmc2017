@@ -201,14 +201,16 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
         test = discretize(test)
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
-
+    comm.size
     prd, time_train, time_load = fit(
         prd, train, online=online, classes=classes, time_training=True, time_loading=True)
 
     if running_in_mpi():
+        root_info("starting reduce")
         start_reduce = time.time()
-        prd = prd.reduce()
+        prd = prd.reduce(send_to_all=True)
         time_reduce = time.time() - start_reduce
+        root_info("finished reduce")
     else:
         time_reduce = 0
 
