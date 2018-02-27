@@ -11,6 +11,7 @@ from mpiml.models import get_model, model_names
 from mpiml.training import *
 from mpiml.utils import *
 from mpiml.config import *
+import mpiml.config as config
 
 def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size, train_test_split=None):
     """ input: type of machine learning, type of test, amount to test, training path, test path
@@ -64,7 +65,7 @@ if __name__ == '__main__':
     toggle_profiling(args.profile)
 
     for model in args.models:
-        m = get_model(model, bootstrap=True, oob_score=True)
+        m = get_model(model, bootstrap=True, oob_score=True, min_samples_split=config.min_samples_split)
         if m is None:
             root_info('error: invalid model {}; valid models are {}', model, model_names())
             sys.exit(1)
