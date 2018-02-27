@@ -171,15 +171,10 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
             train = concatenate(splits[j] for j in range(9))
             test = splits[9]
 
-        if running_in_mpi():
-            train = get_mpi_task_data(train)
-
         return train_and_test(train, test)
 
     r = null_training_result()
     for train, test in get_k_fold_data(ds, k=k, train_test_split=train_test_split):
-        if running_in_mpi():
-            train = get_mpi_task_data(train)
         r += train_and_test(train, test)
         comm.barrier()
 
