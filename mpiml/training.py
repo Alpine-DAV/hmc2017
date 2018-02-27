@@ -37,8 +37,10 @@ def get_k_fold_data(ds, k=10):
 
 # Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
 # function, then every sample in the dataset will be distributed to exactly one task.
-def get_mpi_task_data(ds, comm=config.comm):
-    return ds.split(comm.size)[comm.rank]
+def get_mpi_task_data(ds, comm=config.comm, task=None):
+    if task is None:
+        task = comm.rank
+    return ds.split(comm.size)[task]
 
 class TrainingResult(object):
 
@@ -192,6 +194,9 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
         rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
 
+        del test_X
+        del test_y
+
     comm.barrier()
 
     if comm.rank == 0:
@@ -202,6 +207,7 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
     else:
         return null_training_result()
 
+@profile('fit_prof')
 def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=False):
     if online:
         train_time = 0
@@ -216,8 +222,10 @@ def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=F
             except StopIteration:
                 break
 
-            if i % 1000 == 0:
+            if i > 0 and i % 1000 == 0:
                 root_debug('training cycle {}', i)
+                root_debug('model size: {} trees / {} nodes',
+                    len(prd.estimators_), sum([e.tree_.node_count for e in prd.estimators_]))
             if first:
                 start_train = time.time()
                 prd.fit(X, y)
@@ -227,6 +235,8 @@ def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=F
                 start_train = time.time()
                 prd.partial_fit(X, y, classes=ds.classes())
                 train_time += time.time() - start_train
+            del X
+            del y
     else:
         start_load = time.time()
         X, y = ds.points()
@@ -235,6 +245,9 @@ def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=F
         start_train = time.time()
         prd.fit(X, y)
         train_time = time.time() - start_train
+
+        del X
+        del y
 
     results = [prd]
     if time_training:

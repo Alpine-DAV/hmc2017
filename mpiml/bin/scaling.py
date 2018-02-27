@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import csv
 import numpy as np
 import os
 import sys
@@ -9,6 +8,7 @@ import sys
 import mpiml.config as config
 from mpiml.datasets import *
 from mpiml.models import get_model, model_names, get_cli_name
+from mpiml.output import CSVOutput
 from mpiml.training import *
 from mpiml.utils import *
 
@@ -18,9 +18,6 @@ def _slurm_env(key):
     else:
         root_info('not running in slurm')
         sys.exit(1)
-
-def selectcols(schema, **kwargs):
-    return [kwargs[col] for col in schema]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -53,18 +50,12 @@ if __name__ == '__main__':
             sys.exit(1)
         models.append(model)
 
-    if config.comm.rank == 0:
-        if args.output is None:
-            f = sys.stdout
-        else:
-            f = open(args.output, 'ab' if args.append  else 'wb')
-        writer = csv.writer(f)
-
     schema = ['model', 'nodes', 'tasks', 'density', 'positive_train_samples', 'negative_train_samples',
               'positive_test_samples', 'negative_test_samples', 'time_train', 'time_reduce', 'time_test',
               'fp', 'fn', 'accuracy', 'rmse']
-    if args.schema and config.comm.rank == 0:
-        writer.writerow(schema)
+
+    if config.comm.rank == 0:
+        writer = CSVOutput(schema, write_schema=args.schema, output=args.output, append=args.append)
 
     for model in models:
         for density in np.linspace(0.2, 1, num=args.num_points):
@@ -76,7 +67,7 @@ if __name__ == '__main__':
             root_debug('PERFORMANCE\n{}', result)
 
             if config.comm.rank == 0:
-                writer.writerow(selectcols(schema,
+                writer.writerow(
                     model=get_cli_name(model), density=density, nodes=nodes, tasks=tasks,
                     positive_train_samples=result.positive_train_samples,
                     negative_train_samples=result.negative_train_samples,
@@ -88,7 +79,8 @@ if __name__ == '__main__':
                     fp=result.fp,
                     fn=result.fn,
                     accuracy=result.accuracy,
-                    rmse=result.rmse))
+                    rmse=result.rmse
+                )
 
-    if args.output and config.comm.rank == 0:
-        f.close()
+    if config.comm.rank == 0:
+        writer.close()
