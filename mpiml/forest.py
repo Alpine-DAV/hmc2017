@@ -17,6 +17,7 @@ from config import comm
 import config
 import csv
 
+IGNORE_VAL = 999999
 __all__ = ["RandomForestRegressor"
           ,"MondrianForestRegressor"
           ,"MondrianForestPickleRegressor"
@@ -54,17 +55,30 @@ def _n_estimators_for_forest_size(forest_size):
     else:
         return forest_size
 
-def _gather_estimators(estimators, send_to, recv_from, root=0):
-    if comm.rank == root:
-        for peer in range(comm.size):
-            if peer == root: continue
-
-            n_estimators = comm.recv(source=peer)
-            estimators.extend([recv_from(peer) for _ in range(n_estimators)])
+def _gather_estimators(estimators, send_to, recv_from, root=0, send_to_all=True):
+    if send_to_all:
+        for proc in range(comm.size):
+            root_info("receiving from process {}".format(proc))
+            n_estimators = comm.bcast(len(estimators), root=proc)
+            root_info("broadcasted estimators")
+            if comm.rank == proc:
+                for e in estimators:
+                    send_to(IGNORE_VAL, e, send_to_all=True)
+                    root_info("finished passing an estimator to all processes")
+            else:
+                estimators.extend([recv_from(proc) for _ in range(n_estimators)])
+                root_info("finished acquiring estimators")
     else:
-        comm.send(len(estimators), root)
-        for e in estimators:
-            send_to(root, e)
+        if comm.rank == root:
+            for peer in range(comm.size):
+                if peer == root: continue
+
+                n_estimators = comm.recv(source=peer)
+                estimators.extend([recv_from(peer) for _ in range(n_estimators)])
+        else:
+            comm.send(len(estimators), root)
+            for e in estimators:
+                send_to(root, e)
 
     return estimators
 
@@ -73,9 +87,10 @@ class SuperForestMixin:
     def n_estimators(self, forest_size):
         return _n_estimators_for_forest_size(forest_size)
 
-    def reduce(self, forest_size, root):
+    def reduce(self, forest_size, root, send_to_all=False):
         self.estimators_ = _gather_estimators(
-            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
+            self.estimators_, self.send_estimator, self.receive_estimator,
+            root=root, send_to_all=send_to_all)
         return self
 
 class SizeUpSuperForestMixin:
@@ -83,9 +98,10 @@ class SizeUpSuperForestMixin:
     def n_estimators(self, forest_size):
         return forest_size
 
-    def reduce(self, forest_size, root):
+    def reduce(self, forest_size, root, send_to_all=False):
         self.estimators_ = _gather_estimators(
-            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
+            self.estimators_, self.send_estimator, self.receive_estimator,
+            root=root, send_to_all=send_to_all)
         return self
 
 class SubForestMixin:
@@ -93,7 +109,8 @@ class SubForestMixin:
     def n_estimators(self, forest_size):
         return forest_size
 
-    def reduce(self, forest_size, root):
+    # TODO: send_to_all currently has no effect on SubForestMixin
+    def reduce(self, forest_size, root, **kwargs):
         root_debug(self.oob_score_)
         sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
 
@@ -150,7 +167,7 @@ class RandomForestBase(sk.RandomForestRegressor):
         root_info('attempting online training with unsupported model type')
         sys.exit(1)
 
-    def send_estimator(self, peer, est):
+    def send_estimator(self, peer, est, **kwargs):
         comm.send(est, peer)
 
     def receive_estimator(self, peer):
@@ -247,8 +264,8 @@ class MondrianForestBase(skg.MondrianForestRegressor):
 
         self.oob_score_ /= self.n_outputs_
 
-    def send_estimator(self, peer, est):
-        skt.mpi_send(comm, peer, est, compression=self.compression_)
+    def send_estimator(self, peer, est, send_to_all=False):
+        skt.mpi_send(comm, peer, est, compression=self.compression_, send_to_all=send_to_all)
 
     def receive_estimator(self, peer):
         return skt.mpi_recv_regressor(comm, peer, self.n_features_, self.n_outputs_)
@@ -280,7 +297,7 @@ class MondrianForestPickleBase(skg.MondrianForestRegressor):
     def partial_fit(self, X, y, classes=None):
         super(MondrianForestBase, self).partial_fit(X, y)
 
-    def send_estimator(self, peer, est):
+    def send_estimator(self, peer, est, **kwargs):
         pkl = cPickle.dumps(est, cPickle.HIGHEST_PROTOCOL)
         if self.compression_ > 0:
             pkl = zlib.compress(pkl, self.compression_)
@@ -313,8 +330,8 @@ def _forest_regressor(base, merging_mixin):
                 *args, n_estimators=self.n_estimators(forest_size), **kwargs)
             self.forest_size_ = forest_size
 
-        def reduce(self, root=0):
-            return super(ForestRegressor, self).reduce(self.forest_size_, root)
+        def reduce(self, root=0, send_to_all=False):
+            return super(ForestRegressor, self).reduce(self.forest_size_, root, send_to_all)
 
     ForestRegressor.__name__ = base.__name__ + '_' + merging_mixin.__name__
     return ForestRegressor
