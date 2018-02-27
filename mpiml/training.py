@@ -203,28 +203,29 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
     if type(prd) == type([]):
         prd = prd[0]
 
+    # Only root has the final model, so only root does the predicting
+    start_test = time.time()
+    if running_in_mpi():
+        test = get_mpi_task_data(test)    
+    test_X, test_y = test.points()
+    out = prd.predict(test_X)
+    end_test = time.time()
+    time_test = end_test - start_test
+
+    fp, fn = num_errors(test_y, out)
+
+    train_pos, train_neg = threshold_count(train, 1e-6)
+    test_pos, test_neg = threshold_count(test, 1e-6)
+
+    rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
+
+    train_results = comm.gather(TrainingResult(fp=fp, fn=fn, rmse=rmse,
+        time_load=time_load, time_train=time_train, time_reduce=time_reduce, time_test=time_test,
+        negative_train_samples=train_neg, positive_train_samples=train_pos,
+        negative_test_samples=test_neg, positive_test_samples=test_pos), root=0)
+        
     if comm.rank == 0:
-        # Only root has the final model, so only root does the predicting
-        start_test = time.time()
-        test_X, test_y = test.points()
-        out = prd.predict(test_X)
-        end_test = time.time()
-        time_test = end_test - start_test
-
-        fp, fn = num_errors(test_y, out)
-
-        train_pos, train_neg = threshold_count(train, 1e-6)
-        test_pos, test_neg = threshold_count(test, 1e-6)
-
-        rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
-
-    comm.barrier()
-
-    if comm.rank == 0:
-        return TrainingResult(fp=fp, fn=fn, rmse=rmse,
-            time_load=time_load, time_train=time_train, time_reduce=time_reduce, time_test=time_test,
-            negative_train_samples=train_neg, positive_train_samples=train_pos,
-            negative_test_samples=test_neg, positive_test_samples=test_pos)
+        return reduce((lambda x, y: x+y), train_results)
     else:
         return null_training_result()
 
