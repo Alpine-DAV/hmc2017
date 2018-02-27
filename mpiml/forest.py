@@ -95,7 +95,7 @@ class SubForestMixin:
 
     def reduce(self, forest_size, root):
         root_info("reducing")
-        # sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
+        sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
 
         # Get best X% of estimators by oob score
         # self.estimators_ = _gather_estimators(
@@ -191,7 +191,6 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
 
     def _set_oob_score(self, X, y):
         """Compute out-of-bag scores"""
-        root_info("setting oob score")
         X = check_array(X, dtype=DTYPE, accept_sparse='csr')
 
         n_samples = y.shape[0]
@@ -214,15 +213,12 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
             predictions[unsampled_indices, :] += p_estimator
             n_predictions[unsampled_indices, :] += 1
 
-            if p_estimator.size != 0:
-                # root_info("u: {}\n".format(unsampled_indices.shape))
-                # root_info("y: {}\n".format(y.shape))
-                
-                # oob_error = r2_score(y[unsampled_indices, :], p_estimator)
+            if p_estimator.size != 0:                
+                oob_error = r2_score(y[unsampled_indices], p_estimator)
                 # all_oob_errors.append(oob_error) # compute variance
             
                 # Set oob score of individual trees
-                estimator.oob_score_ = 1# oob_error
+                estimator.oob_score_ = oob_error
 
         ### CODE FOR OUTPUTTING OOB ERRORS TO A CSV FILE
         # variance = np.var(np.array(all_oob_errors))
@@ -247,6 +243,7 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
 
         self.oob_score_ = 0.0
 
+        # UNCOMMENT LATER - need to fix for 1d array
         # for k in range(self.n_outputs_):
         #     self.oob_score_ += r2_score(y[:, k],
         #                                 predictions[:, k])
