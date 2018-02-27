@@ -36,7 +36,6 @@ def get_train_test_split(args):
             sys.exit(1)
         val = {'train_split': train_split, 'test_split': test_split}
     return val
->>>>>>> f383bc19a6ac3a803101d309a62b28666a063799
 
 if __name__ == '__main__':
 
