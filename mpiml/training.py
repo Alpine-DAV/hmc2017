@@ -28,13 +28,15 @@ def num_errors(actual, predicted, threshold=4e-6):
             fn += 1
     return fp, fn
 
+# Compute the max training time, testing time, load time, reduction time across
+# all processes.
 def get_max_time_vals(train_results):
     t_tr, t_te, t_lo, t_re = 0, 0, 0, 0
     for tres in train_results:
-        t_tr = max(t_tr, train_results.time_train)
-        t_te = max(t_tr, train_results.time_train)
-        t_lo = max(t_tr, train_results.time_train)
-        t_re = max(t_tr, train_results.time_train)
+        t_tr = max(t_tr, tres.time_train)
+        t_te = max(t_tr, tres.time_test)
+        t_lo = max(t_tr, tres.time_load)
+        t_re = max(t_tr, tres.time_reduce)
     return t_tr, t_te, t_lo, t_re
 
 
