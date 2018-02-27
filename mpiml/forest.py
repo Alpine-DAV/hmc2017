@@ -5,6 +5,9 @@ import skgarden.mondrian.ensemble as skg
 import skgarden.mondrian.tree.tree as skt
 import sklearn.base as sk_base
 import sklearn.ensemble as sk
+from sklearn.utils import check_random_state, check_array
+from sklearn.metrics import r2_score
+from sklearn.tree._tree import DTYPE, DOUBLE
 import zlib
 
 import sys
