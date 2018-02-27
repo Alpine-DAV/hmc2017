@@ -19,7 +19,7 @@ def accuracy(actual, predicted):
     return np.sum(predicted == actual) / actual.shape[0]
 
 # Compute number of false positives and false negatives in a set of predictions
-def num_errors(actual, predicted, threshold=4e-6):
+def num_errors(actual, predicted, threshold=1e-3):
     fp = fn = 0
     for i in range(len(actual)):
         if actual[i] <= threshold and predicted[i] > threshold:
@@ -29,25 +29,11 @@ def num_errors(actual, predicted, threshold=4e-6):
     return fp, fn
 
 # A generator yielding a tuple of (training set, testing set) for each run in a k-fold cross
-# validation experiment. By default, k=10. If running on a subset of the data/different split
-# points with {training, testing}_split, returns datasets of sizes according to number of cycles
-# according to those splits
-def get_k_fold_data(ds, k=10, train_test_split=None):
-    if train_test_split != None:
-        train_split = train_test_split['train_split']
-        test_split = train_test_split['test_split']
-        total_cycles = train_split+test_split
-        splits = ds.split(total_cycles)
-        for i in range(k):
-            tr_start = int(train_split*i/k)
-            tr_end = tr_start+train_split
-            tr = wrapped_concatenate(splits, tr_start, tr_end, total_cycles)
-            te = wrapped_concatenate(splits, tr_end, tr_end+test_split, total_cycles)
-            yield (tr, te)
-    else:
-        splits = ds.split(k)
-        for i in range(k):
-            yield (concatenate(splits[j] for j in range(k) if j != i), splits[i])
+# validation experiment. By default, k=10.
+def get_k_fold_data(ds, k=10):
+    splits = ds.split(k)
+    for i in range(k):
+        yield (concatenate(splits[j] for j in range(k) if j != i), splits[i])
 
 # Concatenate datasets at the beginning of the split if the k-folding pattern results in train or test
 # set containing the end and beginning StrictDataSets
@@ -149,7 +135,7 @@ def null_training_result():
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None, train_test_split=None):
+def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None):
 
     train_and_test = lambda tr, te: train_and_test_once(
         tr, te, prd, comm=comm, online=online, classes=classes)
@@ -157,28 +143,17 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
     if k <= 0:
         raise ValueError("k must be positive")
     elif k == 1:
-        splits, train, test = None, None, None
-
-        if train_test_split != None:
-            train_split = train_test_split['train_split']
-            test_split  = train_test_split['test_split']
-
-            splits = ds.split(train_split+test_split)
-            train = concatenate(splits[j] for j in range(train_split))
-            test = concatenate(splits[j] for j in range(train_split, train_split+test_split))
-        else:
-            splits = ds.split(10)
-            train = concatenate(splits[j] for j in range(9))
-            test = splits[9]
-
+        splits = ds.split(10)
+        train = concatenate(splits[j] for j in range(9))
+        test = splits[9]
         return train_and_test(train, test)
+    else:
+        r = null_training_result()
+        for train, test in get_k_fold_data(ds, k=k):
+            r += train_and_test(train, test)
+            comm.barrier()
 
-    r = null_training_result()
-    for train, test in get_k_fold_data(ds, k=k, train_test_split=train_test_split):
-        r += train_and_test(train, test)
-        comm.barrier()
-
-    return r
+        return r
 
 def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
     root_info(len(list(train.cycles())[0][0]))
@@ -216,8 +191,8 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
         fp, fn = num_errors(test_y, out)
 
-        train_pos, train_neg = threshold_count(train, 1e-6)
-        test_pos, test_neg = threshold_count(test, 1e-6)
+        train_pos, train_neg = threshold_count(train, 1e-3)
+        test_pos, test_neg = threshold_count(test, 1e-3)
 
         rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
 
@@ -233,47 +208,37 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
 @profile('fit_prof')
 def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=False):
+    # Reset the predictor
+    prd.fit(*ds.get_cycle(0))
+
     if online:
         train_time = 0
         load_time = 0
-        first = True
-        it = iter(enumerate(ds.cycles()))
-        while True:
-            try:
-                start_load = time.time()
-                i, (X, y) = it.next()
-                load_time += time.time() - start_load
-            except StopIteration:
-                break
+        for i in range(ds.num_cycles()):
+            start_load = time.time()
+            X, y = ds.get_cycle(i)
+            load_time += time.time() - start_load
 
             if i > 0 and i % 1000 == 0:
-                root_debug('training cycle {}', i)
-                root_debug('model size: {} trees / {} nodes',
-                    len(prd.estimators_), sum([e.tree_.node_count for e in prd.estimators_]))
-            if first:
-                start_train = time.time()
-                root_info("FITTING")
-                prd.fit(X, y)
-                train_time += time.time() - start_train
-                first = False
-            else:
-                start_train = time.time()
-                root_info("PARTIAL FITTING")
-                prd.partial_fit(X, y, classes=ds.classes())
-                train_time += time.time() - start_train
-            del X
-            del y
+                root_info('training cycle {}/{}', i + 1, ds.num_cycles())
+                root_info('current stats:')
+                root_info('  I/O time: {} s', load_time)
+                root_info('  train time: {} s', train_time)
+
+            start_train = time.time()
+            prd.partial_fit(X, y, classes=ds.classes())
+            train_time += time.time() - start_train
+
     else:
         start_load = time.time()
         X, y = ds.points()
         load_time = time.time() - start_load
 
+        root_info('loaded dataset in {} s', load_time)
+
         start_train = time.time()
         prd.fit(X, y)
         train_time = time.time() - start_train
-
-        del X
-        del y
 
     results = [prd]
     if time_training:

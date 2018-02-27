@@ -88,7 +88,6 @@ class SizeUpSuperForestMixin:
             self.estimators_, self.send_estimator, self.receive_estimator, root=root)
         return self
 
-
 class SubForestMixin:
 
     def n_estimators(self, forest_size):
@@ -105,7 +104,7 @@ class SubForestMixin:
         ## Get last X% of estimators by oob score
         # self.estimators_ = _gather_estimators(
         #     sorted_estimators[(len(sorted_estimators)-_n_estimators_for_forest_size(forest_size)/4):])
-        
+
         ## Get random X% of estimators
         # self.estimators_ = _gather_estimators(self.estimators_[:_n_estimators_for_forest_size(forest_size)])
         self.estimators_ = _gather_estimators(
