@@ -157,7 +157,7 @@ class RandomForestBase(sk.RandomForestRegressor):
     def receive_estimator(self, peer):
         return comm.recv(source=peer)
 
-class MondrianForestBase(skg.MondrianForestRegressor):
+class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
