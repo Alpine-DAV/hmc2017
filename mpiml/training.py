@@ -69,10 +69,17 @@ class TrainingResult(object):
         self.positive_test_samples = positive_test_samples
         self.negative_test_samples = negative_test_samples
         self.rmse = rmse
+        self.f1_score = f1_score
 
     @property
     def accuracy(self):
-        return 1 - ((self.fp + self.fn) / (self.negative_train_samples + self.positive_train_samples))
+        return 1 - ((self.fp + self.fn) / (self.negative_test_samples + self.positive_test_samples))
+
+    @property
+    def f1_score(self):
+        precision = self.positive_test_samples / (self.positive_test_samples + self.fp)
+        recall = self.positive_test_samples / (self.positive_test_samples + self.fn)
+        return 2 * (precision * recall) / (precision + recall)
 
     def __add__(self, r):
         def average(prop):
@@ -115,6 +122,7 @@ performance
     false positives:            {fp}
     false negatives:            {fn}
     accuracy:                   {accuracy}
+    f1 score:                   {f1_score}
     RMSE:                       {rmse}
 
 (statistics averaged over {runs} runs)
@@ -127,6 +135,7 @@ performance
            fp=self.fp,
            fn=self.fn,
            accuracy=self.accuracy,
+           f1_score=self.f1_score,
            rmse=self.rmse,
            runs=self.runs)
 
