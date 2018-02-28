@@ -58,16 +58,13 @@ def _n_estimators_for_forest_size(forest_size):
 def _gather_estimators(estimators, send_to, recv_from, root=0, send_to_all=True):
     if send_to_all:
         for proc in range(comm.size):
-            root_info("receiving from process {}".format(proc))
             n_estimators = comm.bcast(len(estimators), root=proc)
-            root_info("broadcasted estimators")
             if comm.rank == proc:
                 for e in estimators:
                     send_to(IGNORE_VAL, e, send_to_all=True)
-                    root_info("finished passing an estimator to all processes")
             else:
                 estimators.extend([recv_from(proc) for _ in range(n_estimators)])
-                root_info("finished acquiring estimators")
+            root_info("finished process: {}".format(proc))
     else:
         if comm.rank == root:
             for peer in range(comm.size):

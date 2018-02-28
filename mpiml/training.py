@@ -34,9 +34,9 @@ def get_max_time_vals(train_results):
     t_tr, t_te, t_lo, t_re = 0, 0, 0, 0
     for tres in train_results:
         t_tr = max(t_tr, tres.time_train)
-        t_te = max(t_tr, tres.time_test)
-        t_lo = max(t_tr, tres.time_load)
-        t_re = max(t_tr, tres.time_reduce)
+        t_te = max(t_te, tres.time_test)
+        t_lo = max(t_lo, tres.time_load)
+        t_re = max(t_re, tres.time_reduce)
     return t_tr, t_te, t_lo, t_re
 
 
@@ -173,7 +173,7 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
     if isinstance(prd, sk.ClassifierMixin):
         train = discretize(train)
-        test = discretize(test)
+
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
     comm.size
@@ -181,22 +181,25 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
         prd, train, online=online, classes=classes, time_training=True, time_loading=True)
 
     if running_in_mpi():
-        root_info("starting reduce")
         start_reduce = time.time()
         prd = prd.reduce(send_to_all=True)
         time_reduce = time.time() - start_reduce
-        root_info("finished reduce")
     else:
         time_reduce = 0
 
     if type(prd) == type([]):
         prd = prd[0]
 
-    # Only root has the final model, so only root does the predicting
-    start_test = time.time()
     if running_in_mpi():
         test = get_mpi_task_data(test)    
+
+    if isinstance(prd, sk.ClassifierMixin):
+        test = discretize(test)
+
+    # Only root has the final model, so only root does the predicting
     test_X, test_y = test.points()
+    start_test = time.time()
+
     out = prd.predict(test_X)
     end_test = time.time()
     time_test = end_test - start_test
