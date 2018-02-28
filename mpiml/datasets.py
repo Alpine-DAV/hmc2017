@@ -173,7 +173,7 @@ def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_
     return make_sparse(ds, density)
 
 def make_sparse(ds, density):
-    if 1.0 - density < 0.001:
+    if density == None or 1.0 - density < 0.001:
         return ds
 
     class SparseDataSet(DataSet):

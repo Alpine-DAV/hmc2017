@@ -29,7 +29,7 @@ class GaussianNB(sk.GaussianNB):
     # When running in MPI, coordinate with other tasks to combine each task's local model into a
     # global model. The global model is returned. Each process's local model is unchanged. Note: the
     # return value is only meaningful for root (rank == 0)
-    def reduce(self):
+    def reduce(self, send_to_all=False):
         # Variables which will collect the global results
         n = np.copy(self.class_count_)
         mu = np.copy(self.theta_)
@@ -70,6 +70,8 @@ class GaussianNB(sk.GaussianNB):
         clf.sigma_ = var
         clf.classes_ = self.classes_ # N.B. assumes classes_ is the same for all local models
         clf.class_prior_ = clf.class_count_ / clf.class_count_.sum()
+        if send_to_all:
+            clf = comm.bcast(clf, 0)
         return clf
 
     def fit(self, X, y):

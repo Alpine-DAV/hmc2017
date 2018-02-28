@@ -28,6 +28,18 @@ def num_errors(actual, predicted, threshold=config.decision_boundary):
             fn += 1
     return fp, fn
 
+# Compute the max training time, testing time, load time, reduction time across
+# all processes.
+def get_max_time_vals(train_results):
+    t_tr, t_te, t_lo, t_re = 0, 0, 0, 0
+    for tres in train_results:
+        t_tr = max(t_tr, tres.time_train)
+        t_te = max(t_te, tres.time_test)
+        t_lo = max(t_lo, tres.time_load)
+        t_re = max(t_re, tres.time_reduce)
+    return t_tr, t_te, t_lo, t_re
+
+
 # A generator yielding a tuple of (training set, testing set) for each run in a k-fold cross
 # validation experiment. By default, k=10.
 def get_k_fold_data(ds, k=10):
@@ -172,16 +184,16 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
     if isinstance(prd, sk.ClassifierMixin):
         train = discretize(train)
-        test = discretize(test)
+
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
-
+    comm.size
     prd, time_train, time_load = fit(
         prd, train, online=online, classes=classes, time_training=True, time_loading=True)
 
     if running_in_mpi():
         start_reduce = time.time()
-        prd = prd.reduce()
+        prd = prd.reduce(send_to_all=True)
         time_reduce = time.time() - start_reduce
     else:
         time_reduce = 0
@@ -189,28 +201,41 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
     if type(prd) == type([]):
         prd = prd[0]
 
+    if running_in_mpi():
+        test = get_mpi_task_data(test)    
+
+    if isinstance(prd, sk.ClassifierMixin):
+        test = discretize(test)
+
+    # Only root has the final model, so only root does the predicting
+    test_X, test_y = test.points()
+    start_test = time.time()
+
+    out = prd.predict(test_X)
+    end_test = time.time()
+    time_test = end_test - start_test
+
+    fp, fn = num_errors(test_y, out)
+
+    train_pos, train_neg = threshold_count(train, config.decision_boundary)
+    test_pos, test_neg = threshold_count(test, config.decision_boundary)
+
+    rmse = sum(pow(test_y - out, 2))
+
+    train_results = comm.gather(TrainingResult(fp=fp, fn=fn, rmse=rmse,
+        time_load=time_load, time_train=time_train, time_reduce=time_reduce, time_test=time_test,
+        negative_train_samples=train_neg, positive_train_samples=train_pos,
+        negative_test_samples=test_neg, positive_test_samples=test_pos), root=0)
+
     if comm.rank == 0:
-        # Only root has the final model, so only root does the predicting
-        start_test = time.time()
-        test_X, test_y = test.points()
-        out = prd.predict(test_X)
-        end_test = time.time()
-        time_test = end_test - start_test
-
-        fp, fn = num_errors(test_y, out)
-
-        train_pos, train_neg = threshold_count(train, config.decision_boundary)
-        test_pos, test_neg = threshold_count(test, config.decision_boundary)
-
-        rmse = np.sqrt( sum(pow(test_y - out, 2)) / test_y.size )
-
-    comm.barrier()
-
-    if comm.rank == 0:
-        return TrainingResult(fp=fp, fn=fn, rmse=rmse,
-            time_load=time_load, time_train=time_train, time_reduce=time_reduce, time_test=time_test,
-            negative_train_samples=train_neg, positive_train_samples=train_pos,
-            negative_test_samples=test_neg, positive_test_samples=test_pos)
+        max_train_time, max_test_time, max_load_time, max_reduce_time = get_max_time_vals(train_results)
+        train_results = reduce((lambda x, y: x+y), train_results)
+        train_results.rmse = np.sqrt(train_results.rmse)/(train_results.negative_test_samples+train_results.positive_test_samples)
+        train_results.time_train  = max_train_time
+        train_results.time_test   = max_test_time
+        train_results.time_load   = max_load_time
+        train_results.time_reduce = max_reduce_time
+        return train_results
     else:
         return null_training_result()
 
