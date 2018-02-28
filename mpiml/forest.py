@@ -107,7 +107,7 @@ class SubForestMixin:
         return forest_size
 
     # TODO: send_to_all currently has no effect on SubForestMixin
-    def reduce(self, forest_size, root, **kwargs):
+    def reduce(self, forest_size, root, send_to_all=False):
         root_debug(self.oob_score_)
         sorted_estimators = sorted(self.estimators_, key=attrgetter('oob_score_'))
 
@@ -122,7 +122,8 @@ class SubForestMixin:
         ## Get random X% of estimators
         # self.estimators_ = _gather_estimators(self.estimators_[:_n_estimators_for_forest_size(forest_size)])
         self.estimators_ = _gather_estimators(
-            self.estimators_[:forest_size], self.send_estimator, self.receive_estimator, root=root)
+            self.estimators_[:forest_size], self.send_estimator, self.receive_estimator,
+            root=root, send_to_all=False)
         return self
 
 class RandomForestBase(sk.RandomForestRegressor):
