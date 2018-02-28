@@ -19,7 +19,7 @@ def accuracy(actual, predicted):
     return np.sum(predicted == actual) / actual.shape[0]
 
 # Compute number of false positives and false negatives in a set of predictions
-def num_errors(actual, predicted, threshold=1e-3):
+def num_errors(actual, predicted, threshold=config.decision_boundary):
     fp = fn = 0
     for i in range(len(actual)):
         if actual[i] <= threshold and predicted[i] > threshold:
@@ -81,10 +81,17 @@ class TrainingResult(object):
         self.positive_test_samples = positive_test_samples
         self.negative_test_samples = negative_test_samples
         self.rmse = rmse
+        self.f1_score = f1_score
 
     @property
     def accuracy(self):
-        return 1 - ((self.fp + self.fn) / (self.negative_train_samples + self.positive_train_samples))
+        return 1 - ((self.fp + self.fn) / (self.negative_test_samples + self.positive_test_samples))
+
+    @property
+    def f1_score(self):
+        precision = self.positive_test_samples / (self.positive_test_samples + self.fp)
+        recall = self.positive_test_samples / (self.positive_test_samples + self.fn)
+        return 2 * (precision * recall) / (precision + recall)
 
     def __add__(self, r):
         def average(prop):
@@ -127,6 +134,7 @@ performance
     false positives:            {fp}
     false negatives:            {fn}
     accuracy:                   {accuracy}
+    f1 score:                   {f1_score}
     RMSE:                       {rmse}
 
 (statistics averaged over {runs} runs)
@@ -139,6 +147,7 @@ performance
            fp=self.fp,
            fn=self.fn,
            accuracy=self.accuracy,
+           f1_score=self.f1_score,
            rmse=self.rmse,
            runs=self.runs)
 
@@ -168,6 +177,7 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
         return r
 
 def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
+
     if running_in_mpi():
         train = get_mpi_task_data(train)
 
@@ -206,8 +216,8 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
     fp, fn = num_errors(test_y, out)
 
-    train_pos, train_neg = threshold_count(train, 1e-3)
-    test_pos, test_neg   = threshold_count(test, 1e-3)
+    train_pos, train_neg = threshold_count(train, config.decision_boundary)
+    test_pos, test_neg = threshold_count(test, config.decision_boundary)
 
     rmse = sum(pow(test_y - out, 2))
 

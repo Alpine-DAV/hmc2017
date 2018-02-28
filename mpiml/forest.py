@@ -121,7 +121,8 @@ class SubForestMixin:
 
         ## Get random X% of estimators
         # self.estimators_ = _gather_estimators(self.estimators_[:_n_estimators_for_forest_size(forest_size)])
-        self.estimators_ = _gather_estimators(self.estimators_[-1:])
+        self.estimators_ = _gather_estimators(
+            self.estimators_[:forest_size], self.send_estimator, self.receive_estimator, root=root)
         return self
 
 class RandomForestBase(sk.RandomForestRegressor):
@@ -170,7 +171,7 @@ class RandomForestBase(sk.RandomForestRegressor):
     def receive_estimator(self, peer):
         return comm.recv(source=peer)
 
-class MondrianForestBase(skg.MondrianForestRegressor):
+class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
@@ -191,13 +192,16 @@ class MondrianForestBase(skg.MondrianForestRegressor):
             verbose=verbose,
         )
         self.oob_score = oob_score
-
         self.compression_ = compression
 
         debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
         super(MondrianForestBase, self).partial_fit(X, y)
+
+        if self.oob_score:
+            self._set_oob_score(X, y)
+
 
     def _set_oob_score(self, X, y):
         """Compute out-of-bag scores"""
@@ -223,13 +227,12 @@ class MondrianForestBase(skg.MondrianForestRegressor):
             predictions[unsampled_indices, :] += p_estimator
             n_predictions[unsampled_indices, :] += 1
 
-            if p_estimator.size != 0:
-                oob_error = r2_score(y[unsampled_indices, :], p_estimator)
-                all_oob_errors.append(oob_error) # compute variance
-
+            if p_estimator.size != 0:                
+                oob_error = r2_score(y[unsampled_indices], p_estimator)
+                # all_oob_errors.append(oob_error) # compute variance
+            
                 # Set oob score of individual trees
                 estimator.oob_score_ = oob_error
-
 
         ### CODE FOR OUTPUTTING OOB ERRORS TO A CSV FILE
         # variance = np.var(np.array(all_oob_errors))
@@ -238,7 +241,6 @@ class MondrianForestBase(skg.MondrianForestRegressor):
         #     fname = "oob_error_rank0_density1.csv"
         #     with open(fname, 'ab') as f:
         #         np.savetxt(f, np.array([all_oob_errors]).T, delimiter=",")
-
 
         if (n_predictions == 0).any():
             root_info("Some inputs do not have OOB scores. "
@@ -255,9 +257,10 @@ class MondrianForestBase(skg.MondrianForestRegressor):
 
         self.oob_score_ = 0.0
 
-        for k in range(self.n_outputs_):
-            self.oob_score_ += r2_score(y[:, k],
-                                        predictions[:, k])
+        # UNCOMMENT LATER - need to fix for 1d array
+        # for k in range(self.n_outputs_):
+        #     self.oob_score_ += r2_score(y[:, k],
+        #                                 predictions[:, k])
 
         self.oob_score_ /= self.n_outputs_
 

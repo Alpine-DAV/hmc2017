@@ -38,7 +38,7 @@ min_samples_split = 1000
 # TESTING
 #===============================================================================
 kfold = 10
-decision_boundary = 4e-6
+decision_boundary = 1e-3
 np.random.seed(rand_seed)
 
 TOTAL_CYCLES = 40182
