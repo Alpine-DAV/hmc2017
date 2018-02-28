@@ -108,7 +108,7 @@ class SubForestMixin:
         ## Get random X% of estimators
         # self.estimators_ = _gather_estimators(self.estimators_[:_n_estimators_for_forest_size(forest_size)])
         self.estimators_ = _gather_estimators(
-            self.estimators_, self.send_estimator, self.receive_estimator, root=root)
+            self.estimators_[:forest_size], self.send_estimator, self.receive_estimator, root=root)
         return self
 
 class RandomForestBase(sk.RandomForestRegressor):
