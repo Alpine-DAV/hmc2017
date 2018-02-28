@@ -55,7 +55,7 @@ class TrainingResult(object):
     def __init__(self, time_load, time_train, time_reduce, time_test, fp, fn,
                  positive_train_samples, negative_train_samples,
                  positive_test_samples, negative_test_samples,
-                 rmse, runs=1):
+                 rmse, f1_score, runs=1):
 
         self.runs = runs
         self.time_load = time_load
@@ -102,6 +102,7 @@ class TrainingResult(object):
             positive_test_samples=average('positive_test_samples'),
             negative_test_samples=average('negative_test_samples'),
             rmse=average('rmse'),
+            f1_score=average('f1_score'),
             runs=self.runs + r.runs
         )
 
