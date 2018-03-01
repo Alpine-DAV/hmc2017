@@ -217,8 +217,8 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
     fp, fn = num_errors(test_y, out)
 
-    train_pos, train_neg = threshold_count(train, config.decision_boundary)
-    test_pos, test_neg = threshold_count(test, config.decision_boundary)
+    train_pos, train_neg = threshold_count(train, 1e-8)
+    test_pos, test_neg = threshold_count(test, 1e-8)
 
     rmse = sum(pow(test_y - out, 2))
 
