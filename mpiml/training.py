@@ -202,18 +202,18 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
         prd = prd[0]
 
     if running_in_mpi():
-        test = get_mpi_task_data(test)    
+        test = get_mpi_task_data(test)
 
     if isinstance(prd, sk.ClassifierMixin):
         test = discretize(test)
 
-    # Only root has the final model, so only root does the predicting
+    start_load_test = time.time()
     test_X, test_y = test.points()
-    start_test = time.time()
+    time_load += time.time() - start_load_test
 
+    start_test = time.time()
     out = prd.predict(test_X)
-    end_test = time.time()
-    time_test = end_test - start_test
+    time_test = time.time() - start_test
 
     fp, fn = num_errors(test_y, out)
 
