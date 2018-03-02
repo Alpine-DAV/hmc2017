@@ -92,7 +92,7 @@ class InMemoryDataSet(DataSet):
                self.y_[i*self.pool_size_ : (i + 1)*self.pool_size_]
 
     def num_cycles(self):
-        return ceil(float(self.X_.shape[0]) / config.pool_size)
+        return int(ceil(float(self.X_.shape[0]) / config.pool_size))
 
 class EmptyDataSet(DataSet):
     def get_cycle(self, i):
@@ -185,7 +185,7 @@ def make_sparse(ds, density):
             return self.ds_.get_cycle(i * self.stride_)
 
         def num_cycles(self):
-            return ceil(float(self.ds_.num_cycles()) / self.stride_)
+            return int(ceil(float(self.ds_.num_cycles()) / self.stride_))
 
     return SparseDataSet()
 

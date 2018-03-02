@@ -172,7 +172,7 @@ class RandomForestBase(sk.RandomForestRegressor):
     def receive_estimator(self, peer):
         return comm.recv(source=peer)
 
-class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
+class MondrianForestBase(skg.MondrianForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
@@ -280,6 +280,7 @@ class MondrianForestPickleBase(skg.MondrianForestRegressor):
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
                  verbose=0,
+                 oob_score=False,
                  compression=0):
         super(MondrianForestPickleBase, self).__init__(
             n_estimators=n_estimators,
@@ -296,7 +297,7 @@ class MondrianForestPickleBase(skg.MondrianForestRegressor):
         debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
-        super(MondrianForestBase, self).partial_fit(X, y)
+        super(MondrianForestPickleBase, self).partial_fit(X, y)
 
     def send_estimator(self, peer, est, **kwargs):
         pkl = cPickle.dumps(est, cPickle.HIGHEST_PROTOCOL)
