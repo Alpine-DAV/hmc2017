@@ -61,7 +61,7 @@ if __name__ == '__main__':
     csv = np.genfromtxt(args.input if args.input is not None else sys.stdin,
                         names=True, delimiter=',', converters={PICKLE_FLAG: bool_to_int})
 
-    max_time = 0.25#round_to_nearest(max(csv[REDUCE_TIME]), 1)
+    max_time = round_to_nearest(max(csv[REDUCE_TIME]), 1)
 
     strategies = [Strategy(g) for g in group_by([PICKLE_FLAG, COMPRESSION], csv)]
     for s in strategies:
