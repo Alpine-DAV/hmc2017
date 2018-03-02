@@ -176,7 +176,7 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
-                 min_samples_split=10000,
+                 min_samples_split=1000,
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
@@ -228,10 +228,10 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
             predictions[unsampled_indices, :] += p_estimator
             n_predictions[unsampled_indices, :] += 1
 
-            if p_estimator.size != 0:                
+            if p_estimator.size != 0:
                 oob_error = r2_score(y[unsampled_indices], p_estimator)
                 # all_oob_errors.append(oob_error) # compute variance
-            
+
                 # Set oob score of individual trees
                 estimator.oob_score_ = oob_error
 
@@ -275,7 +275,7 @@ class MondrianForestPickleBase(skg.MondrianForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
-                 min_samples_split=2,
+                 min_samples_split=1000,
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
