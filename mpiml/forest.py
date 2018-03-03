@@ -266,7 +266,12 @@ class MondrianForestBase(skg.MondrianForestRegressor):
         self.oob_score_ /= self.n_outputs_
 
     def send_estimator(self, peer, est, send_to_all=False):
-        skt.mpi_send(comm, peer, est, compression=self.compression_, send_to_all=send_to_all)
+        if send_to_all:
+            skt.mpi_send(comm, peer, est, compression=self.compression_, send_to_all=True)
+        else:
+            # HACK to not include the send_to_all parameter (even send_to_all=False) on Surface,
+            # where send_to_all is not yet recognized by skgarden
+            skt.mpi_send(comm, peer, est, compression=self.compression_)
 
     def receive_estimator(self, peer):
         return skt.mpi_recv_regressor(comm, peer, self.n_features_, self.n_outputs_)
