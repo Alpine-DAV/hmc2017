@@ -64,12 +64,13 @@ def get_mpi_task_data(ds, comm=config.comm, task=None):
 
 class TrainingResult(object):
 
-    def __init__(self, time_load, time_train, time_reduce, time_test, fp, fn,
+    def __init__(self, time_total, time_load, time_train, time_reduce, time_test, fp, fn,
                  positive_train_samples, negative_train_samples,
                  positive_test_samples, negative_test_samples,
                  rmse, runs=1):
 
         self.runs = runs
+        self.time_total = time_total
         self.time_load = time_load
         self.time_train = time_train
         self.time_reduce = time_reduce
@@ -102,6 +103,7 @@ class TrainingResult(object):
                 return (getattr(self, prop)*self.runs + getattr(r, prop)*r.runs) / (self.runs + r.runs)
 
         return TrainingResult(
+            time_total=average('time_total'),
             time_load=average('time_load'),
             time_train=average('time_train'),
             time_reduce=average('time_reduce'),
@@ -124,6 +126,7 @@ timing
     train:                      {time_train}
     reduce:                     {time_reduce}
     test:                       {time_test}
+    total:                      {time_total}
 dataset
     negative training examples: {negative_train_samples}
     positive training examples: {positive_train_samples}
@@ -137,7 +140,7 @@ performance
     RMSE:                       {rmse}
 
 (statistics averaged over {runs} runs)
-""".format(time_load=self.time_load, time_train=self.time_train,
+""".format(time_total=self.time_total, time_load=self.time_load, time_train=self.time_train,
            time_reduce=self.time_reduce, time_test=self.time_test,
            negative_train_samples=self.negative_train_samples,
            positive_train_samples=self.positive_train_samples,
@@ -151,14 +154,17 @@ performance
            runs=self.runs)
 
 def null_training_result():
-    return TrainingResult(*([None]*11), runs=0)
+    return TrainingResult(*([None]*12), runs=0)
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
-def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes=None):
+def train_and_test_k_fold(
+    ds, prd, k=10, comm=config.comm, online=False, classes=None, parallel_test=False,
+    cycles_per_barrier=10):
 
     train_and_test = lambda tr, te: train_and_test_once(
-        tr, te, prd, comm=comm, online=online, classes=classes)
+        tr, te, prd, comm=comm, online=online, classes=classes, parallel_test=parallel_test,
+        cycles_per_barrier=cycles_per_barrier)
 
     if k <= 0:
         raise ValueError("k must be positive")
@@ -175,7 +181,13 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
 
         return r
 
-def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
+def train_and_test_once(
+    train, test, prd, comm=config.comm, online=False, classes=None, parallel_test=False,
+    cycles_per_barrier=10):
+
+    # Important to do this before splitting the dataset among tasks, so we can be sure every task
+    # gets the same number of barriers
+    online_barriers = train.num_cycles() / comm.size / cycles_per_barrier
 
     # LOAD TRAIN DATA
     if running_in_mpi():
@@ -186,101 +198,144 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
- 
-    ## TRAIN
+
+    comm.barrier()
+    debug('begin training')
+    start = time.time()
 
     prd, time_train, time_load = fit(
-        prd, train, online=online, classes=classes, time_training=True, time_loading=True)
+        prd, train, online=online, classes=classes, time_training=True, time_loading=True, comm=comm,
+        online_barriers=online_barriers)
+
+    comm.barrier()
+    debug('finished training:')
+    debug('    load time: {}s', time_load)
+    debug('    train time: {}s', time_train)
 
     comm.barrier() 
 
     ## REDUCE
     if running_in_mpi():
+        debug('begin reduction')
         start_reduce = time.time()
-        prd = prd.reduce(send_to_all=False)
+
+        prd = prd.reduce(send_to_all=True)
+        if type(prd) == type([]):
+            prd = prd[0]
+
         time_reduce = time.time() - start_reduce
+        debug('finished reduction in {}s', time_reduce)
     else:
         time_reduce = 0
 
-    comm.barrier()
-
-    if type(prd) == type([]):
-        prd = prd[0]
-
-    # LOAD TEST DATA
-    if running_in_mpi():
+    if comm.rank == 0 or parallel_test:
         test = get_mpi_task_data(test)
 
-    if isinstance(prd, sk.ClassifierMixin):
-        test = discretize(test)
+        if isinstance(prd, sk.ClassifierMixin):
+            test = discretize(test)
+
+        if parallel_test: comm.barrier()
+        debug('load test')
+        start_load_test = time.time()
+        test_X, test_y = test.points()
+        if parallel_test: comm.barrier()
+        time_load += time.time() - start_load_test
+
+        if parallel_test: comm.barrier()
+        debug('begin test')
+        start_test = time.time()
+        out = prd.predict(test_X)
+        if parallel_test: comm.barrier()
+        time_test = time.time() - start_test
+
+        fp, fn = num_errors(test_y, out)
+
+        train_pos, train_neg = threshold_count(train, config.decision_boundary)
+        test_pos, test_neg = threshold_count(test, config.decision_boundary)
+
+        rmse = sum(pow(test_y - out, 2))
 
     comm.barrier()
 
-    # TEST
-    start_load_test = time.time()
-    test_X, test_y = test.points()
-    time_load += time.time() - start_load_test
+    total_time = time.time() - start
+    root_debug('finished: total time {}s', total_time)
 
-    start_test = time.time()
-    out = prd.predict(test_X)
-    time_test = time.time() - start_test
+    if comm.rank == 0 or parallel_test:
+        result = TrainingResult(
+            fp=fp, fn=fn, rmse=rmse, time_total=total_time, time_load=time_load,
+            time_train=time_train, time_reduce=time_reduce, time_test=time_test,
+            negative_train_samples=train_neg, positive_train_samples=train_pos,
+            negative_test_samples=test_neg, positive_test_samples=test_pos
+        )
 
-    fp, fn = num_errors(test_y, out)
-
-    train_pos, train_neg = threshold_count(train, 1e-8)
-    test_pos, test_neg = threshold_count(test, 1e-8)
-
-    rmse = sum(pow(test_y - out, 2))
-
-    train_results = comm.gather(TrainingResult(fp=fp, fn=fn, rmse=rmse,
-        time_load=time_load, time_train=time_train, time_reduce=time_reduce, time_test=time_test,
-        negative_train_samples=train_neg, positive_train_samples=train_pos,
-        negative_test_samples=test_neg, positive_test_samples=test_pos), root=0)
+    if parallel_test:
+        train_results = comm.gather(result, root=0)
 
     if comm.rank == 0:
-        max_train_time, max_test_time, max_load_time, max_reduce_time = get_max_time_vals(train_results)
-        train_results = reduce((lambda x, y: x+y), train_results)
-        train_results.rmse = np.sqrt(train_results.rmse)/(train_results.negative_test_samples+train_results.positive_test_samples)
-        train_results.time_train  = max_train_time
-        train_results.time_test   = max_test_time
-        train_results.time_load   = max_load_time
-        train_results.time_reduce = max_reduce_time
-        return train_results
+        if parallel_test:
+            train_results = reduce((lambda x, y: x+y), train_results)
+            result = train_results
+
+        return result
     else:
         return null_training_result()
 
 @profile('fit_prof')
-def fit(prd, ds, classes=None, online=False, time_training=False, time_loading=False):
+def fit(
+    prd, ds, classes=None, online=False, time_training=False, time_loading=False, comm=config.comm,
+    online_barriers=1000):
+
     # Reset the predictor
     prd.fit(*ds.get_cycle(0))
 
     if online:
         train_time = 0
         load_time = 0
-        for i in range(ds.num_cycles()):
+
+        absolute_barrier_cycles = np.linspace(
+            0, ds.num_cycles(), num=online_barriers+1, endpoint=True, dtype=np.int)
+        barrier_cycles = [absolute_barrier_cycles[i+1] - absolute_barrier_cycles[i] \
+                            for i in range(absolute_barrier_cycles.shape[0] - 1)]
+
+        cycle = 0
+        for num_cycles in barrier_cycles:
+            comm.barrier()
             start_load = time.time()
-            X, y = ds.get_cycle(i)
+
+            cycles = [ds.get_cycle(c) for c in range(cycle, cycle + num_cycles)]
+
+            comm.barrier()
             load_time += time.time() - start_load
 
-            if i > 0 and i % 1000 == 0:
-                root_info('training cycle {}/{}', i + 1, ds.num_cycles())
-                root_info('current stats:')
-                root_info('  I/O time: {} s', load_time)
-                root_info('  train time: {} s', train_time)
-
+            comm.barrier()
             start_train = time.time()
-            prd.partial_fit(X, y, classes=ds.classes())
+
+            for X, y in cycles:
+                prd.partial_fit(X, y, classes=ds.classes())
+
+            comm.barrier()
             train_time += time.time() - start_train
 
+            cycle += num_cycles
+
+            debug('reached barrier at cycle {}/{}', cycle, ds.num_cycles())
+            debug('current stats:')
+            debug('  I/O time: {} s', load_time)
+            debug('  train time: {} s', train_time)
+
     else:
+        comm.barrier()
         start_load = time.time()
         X, y = ds.points()
+        comm.barrier()
         load_time = time.time() - start_load
 
-        root_info('loaded dataset in {} s', load_time)
+        info('loaded dataset in {} s', load_time)
 
+        comm.barrier()
         start_train = time.time()
         prd.fit(X, y)
+        comm.barrier()
         train_time = time.time() - start_train
 
     results = [prd]

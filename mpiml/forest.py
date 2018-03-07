@@ -172,11 +172,11 @@ class RandomForestBase(sk.RandomForestRegressor):
     def receive_estimator(self, peer):
         return comm.recv(source=peer)
 
-class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
+class MondrianForestBase(skg.MondrianForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
-                 min_samples_split=10000,
+                 min_samples_split=1000,
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
@@ -228,10 +228,10 @@ class MondrianForestBase(skg.MondrianForestRegressor, SubForestMixin):
             predictions[unsampled_indices, :] += p_estimator
             n_predictions[unsampled_indices, :] += 1
 
-            if p_estimator.size != 0:                
+            if p_estimator.size != 0:
                 oob_error = r2_score(y[unsampled_indices], p_estimator)
                 # all_oob_errors.append(oob_error) # compute variance
-            
+
                 # Set oob score of individual trees
                 estimator.oob_score_ = oob_error
 
@@ -275,11 +275,12 @@ class MondrianForestPickleBase(skg.MondrianForestRegressor):
     def __init__(self,
                  n_estimators=config.NumTrees,
                  max_depth=None,
-                 min_samples_split=2,
+                 min_samples_split=1000,
                  bootstrap=False,
                  n_jobs=config.parallelism,
                  random_state=config.rand_seed,
                  verbose=0,
+                 oob_score=False,
                  compression=0):
         super(MondrianForestPickleBase, self).__init__(
             n_estimators=n_estimators,
@@ -296,7 +297,7 @@ class MondrianForestPickleBase(skg.MondrianForestRegressor):
         debug('will train {} estimators', self.n_estimators)
 
     def partial_fit(self, X, y, classes=None):
-        super(MondrianForestBase, self).partial_fit(X, y)
+        super(MondrianForestPickleBase, self).partial_fit(X, y)
 
     def send_estimator(self, peer, est, **kwargs):
         pkl = cPickle.dumps(est, cPickle.HIGHEST_PROTOCOL)

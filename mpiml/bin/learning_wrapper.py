@@ -13,7 +13,9 @@ from mpiml.utils import *
 from mpiml.config import *
 import mpiml.config as config
 
-def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size):
+def wrapper(
+    model, k, data_path, online=False, density=1.0, pool_size=pool_size, parallel_test=False,
+    cycles_per_barrier=10):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
@@ -21,7 +23,8 @@ def wrapper(model, k, data_path, online=False, density=1.0, pool_size=pool_size)
 
     root_info('{}', output_model_info(model, online=online, density=density, pool_size=pool_size))
 
-    result = train_and_test_k_fold(ds, model, k=k, online=online)
+    result = train_and_test_k_fold(
+        ds, model, k=k, online=online, parallel_test=parallel_test, cycles_per_barrier=cycles_per_barrier)
 
     root_info('PERFORMANCE\n{}', result)
 
@@ -38,6 +41,9 @@ if __name__ == '__main__':
     parser.add_argument('--online', action='store_true', help='train in online mode')
     parser.add_argument('--density', type=float, help='fraction of dataset to train on (default 1)', default=1.0)
     parser.add_argument('--pool-size', type=int, help='specify pooling values for online to be trained upon', default=None)
+    parser.add_argument('--parallel-test', action='store_true')
+    parser.add_argument('--cycles-per-barrier', type=int, default=10,
+        help='number of cycles each task should load into memory and train before synching with other tasks')
 
     args = parser.parse_args()
 
@@ -51,4 +57,7 @@ if __name__ == '__main__':
             sys.exit(1)
         else:
             wrapper(m, args.num_runs, args.data_dir,
-                online=args.online, density=args.density, pool_size=args.pool_size)
+                online=args.online, density=args.density,
+                pool_size=args.pool_size, parallel_test=args.parallel_test,
+                cycles_per_barrier=args.cycles_per_barrier
+            )
