@@ -133,8 +133,13 @@ def get_bubbleshock_by_hand(data_dir):
 
             dataset = self.reader_.readAllZonesInCycle(0, i)
 
-            X = dataset[:,0:-1]
+            X = dataset[:,0:-2]
             y = np.ravel(dataset[:,[-1]])
+            zone_scale = np.ravel(dataset[:,[-2]])
+
+            for j in range(len(y)):
+                if zone_scale[j] > 0:
+                    y[j] = y[j] / zone_scale[j]
 
             return X, y
 
@@ -502,3 +507,17 @@ def add_features(index):
       new_feature_vals.append(np_array_row)
 
     return np.concatenate(new_feature_vals, axis=0)
+
+if __name__ == '__main__':
+    data_dir = "../../../bubbleShock_byHand"
+    reader_ = get_reader(data_dir)
+
+    cycle = 40000
+    dataset = reader_.readAllZonesInCycle(0, cycle)
+    
+    fnames = reader_.getFeatureNames()
+    print fnames
+
+    zone_scale = np.ravel(dataset[:,[-1]])
+
+    np.savetxt("byhand_cycle"+str(cycle)+".csv", dataset, delimiter=",")
