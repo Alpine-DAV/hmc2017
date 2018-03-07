@@ -67,7 +67,7 @@ class TrainingResult(object):
     def __init__(self, time_load, time_train, time_reduce, time_test, fp, fn,
                  positive_train_samples, negative_train_samples,
                  positive_test_samples, negative_test_samples,
-                 rmse, f1_score, runs=1):
+                 rmse, runs=1):
 
         self.runs = runs
         self.time_load = time_load
@@ -81,7 +81,6 @@ class TrainingResult(object):
         self.positive_test_samples = positive_test_samples
         self.negative_test_samples = negative_test_samples
         self.rmse = rmse
-        self.f1_score = f1_score
 
     @property
     def accuracy(self):
@@ -114,7 +113,6 @@ class TrainingResult(object):
             positive_test_samples=average('positive_test_samples'),
             negative_test_samples=average('negative_test_samples'),
             rmse=average('rmse'),
-            f1_score=average('f1_score'),
             runs=self.runs + r.runs
         )
 
@@ -179,6 +177,7 @@ def train_and_test_k_fold(ds, prd, k=10, comm=config.comm, online=False, classes
 
 def train_and_test_once(train, test, prd, comm=config.comm, online=False, classes=None):
 
+    # LOAD TRAIN DATA
     if running_in_mpi():
         train = get_mpi_task_data(train)
 
@@ -187,26 +186,37 @@ def train_and_test_once(train, test, prd, comm=config.comm, online=False, classe
 
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
-    comm.size
+ 
+    ## TRAIN
+
     prd, time_train, time_load = fit(
         prd, train, online=online, classes=classes, time_training=True, time_loading=True)
 
+    comm.barrier() 
+
+    ## REDUCE
     if running_in_mpi():
         start_reduce = time.time()
-        prd = prd.reduce(send_to_all=True)
+        prd = prd.reduce(send_to_all=False)
         time_reduce = time.time() - start_reduce
     else:
         time_reduce = 0
 
+    comm.barrier()
+
     if type(prd) == type([]):
         prd = prd[0]
 
+    # LOAD TEST DATA
     if running_in_mpi():
         test = get_mpi_task_data(test)
 
     if isinstance(prd, sk.ClassifierMixin):
         test = discretize(test)
 
+    comm.barrier()
+
+    # TEST
     start_load_test = time.time()
     test_X, test_y = test.points()
     time_load += time.time() - start_load_test
