@@ -33,11 +33,12 @@ def num_errors(actual, predicted, threshold=config.decision_boundary):
 def get_max_time_vals(train_results):
     t_tr, t_te, t_lo, t_re = 0, 0, 0, 0
     for tres in train_results:
-        t_tr = max(t_tr, tres.time_train)
-        t_te = max(t_te, tres.time_test)
-        t_lo = max(t_lo, tres.time_load)
-        t_re = max(t_re, tres.time_reduce)
-    return t_tr, t_te, t_lo, t_re
+        t_tr += tres.time_train
+        t_te += tres.time_test
+        t_lo += tres.time_load
+        t_re += tres.time_reduce
+    n = len(train_results)
+    return t_tr/n, t_te/n, t_lo/n, t_re/n
 
 
 # A generator yielding a tuple of (training set, testing set) for each run in a k-fold cross
