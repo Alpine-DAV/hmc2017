@@ -41,7 +41,7 @@ class DataSet(object):
         return MapDataSet(self, f)
 
     def classes(self):
-        return np.unique(np.array(c.classes() for c in self.cycles()))
+        return np.unique(self.points()[1])
 
     def cycles(self):
         return (self.get_cycle(i) for i in range(self.num_cycles()))
@@ -198,11 +198,7 @@ def make_sparse(ds, density):
 def discretize(X, y):
     if y.ndim != 1:
         raise ValueError("can only discretize 1d array (got {})".format(y.ndim))
-    discretized = np.zeros(y.shape[0])
-    for element in range(y.shape[0]):
-        if y[element] != 0:
-            discretized[element] = 1
-    return X, discretized
+    return X, y > config.decision_boundary
 
 # Return a pair of the number of positive examples (class > threshold) and the number of negative
 # examples (class <= threshold)

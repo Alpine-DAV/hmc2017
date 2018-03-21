@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 __all__ = [ "nominal_value"
           , "std_dev"
@@ -15,6 +16,8 @@ __all__ = [ "nominal_value"
           , "clf"
           , "xlim"
           , "ylim"
+          , "bar"
+          , "xticks"
           ]
 
 def _is_iterable(x):
@@ -59,6 +62,13 @@ def plot_continuous(f, min, max, **kwargs):
         kwargs['zorder'] = 3
 
     plot(X, Y, **kwargs)
+
+def bar(index, nbars, heights, **kwargs):
+    width = 1.0 / (nbars + 1)
+    plt.bar(np.arange(len(heights)) + index*width, heights, width, **kwargs)
+
+def xticks(nbars, labels):
+    plt.xticks(np.arange(len(labels)) + (nbars/2)*(1.0 / (nbars + 1)), labels)
 
 legend = plt.legend
 xlabel = plt.xlabel

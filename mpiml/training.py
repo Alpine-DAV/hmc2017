@@ -2,6 +2,7 @@ from __future__ import division
 
 import numpy as np
 import sklearn.base as sk
+import sklearn.metrics as metrics
 import time
 
 import config
@@ -18,15 +19,18 @@ __all__ = [ "get_k_fold_data"
 def accuracy(actual, predicted):
     return np.sum(predicted == actual) / actual.shape[0]
 
+def root_mean_squared_error(actual, predicted):
+    return np.sqrt(metrics.mean_squared_error(actual, predicted))
+
+def chi_squared(actual, predicted):
+    # Can't have 0s in actual
+    perturb = np.vectorize(lambda x: x if x != 0 else config.decision_boundary)
+    return np.sum((predicted - actual)**2 / perturb(actual))
+
 # Compute number of false positives and false negatives in a set of predictions
 def num_errors(actual, predicted, threshold=config.decision_boundary):
-    fp = fn = 0
-    for i in range(len(actual)):
-        if actual[i] <= threshold and predicted[i] > threshold:
-            fp += 1
-        elif actual[i] > threshold and predicted[i] <= threshold:
-            fn += 1
-    return fp, fn
+    return np.sum(np.logical_and(actual <= threshold, predicted > threshold)), \
+           np.sum(np.logical_and(actual > threshold, predicted <= threshold))
 
 # Compute the max training time, testing time, load time, reduction time across
 # all processes.
@@ -68,7 +72,7 @@ class TrainingResult(object):
     def __init__(self, time_total, time_load, time_train, time_reduce, time_test, fp, fn,
                  positive_train_samples, negative_train_samples,
                  positive_test_samples, negative_test_samples,
-                 rmse, runs=1):
+                 rmse, chi2, runs=1):
 
         self.runs = runs
         self.time_total = time_total
@@ -83,6 +87,7 @@ class TrainingResult(object):
         self.positive_test_samples = positive_test_samples
         self.negative_test_samples = negative_test_samples
         self.rmse = rmse
+        self.chi2 = chi2
 
     @property
     def accuracy(self):
@@ -116,6 +121,7 @@ class TrainingResult(object):
             positive_test_samples=average('positive_test_samples'),
             negative_test_samples=average('negative_test_samples'),
             rmse=average('rmse'),
+            chi2=average('chi2'),
             runs=self.runs + r.runs
         )
 
@@ -138,6 +144,7 @@ performance
     false negatives:            {fn}
     accuracy:                   {accuracy}
     f1 score:                   {f1_score}
+    chi^2:                      {chi2}
     RMSE:                       {rmse}
 
 (statistics averaged over {runs} runs)
@@ -151,11 +158,12 @@ performance
            fn=self.fn,
            accuracy=self.accuracy,
            f1_score=self.f1_score,
+           chi2=self.chi2,
            rmse=self.rmse,
            runs=self.runs)
 
 def null_training_result():
-    return TrainingResult(*([None]*12), runs=0)
+    return TrainingResult(*([None]*13), runs=0)
 
 # Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
@@ -190,12 +198,15 @@ def train_and_test_once(
     # gets the same number of barriers
     online_barriers = train.num_cycles() / comm.size / cycles_per_barrier
 
-    # LOAD TRAIN DATA
-    if running_in_mpi():
-        train = get_mpi_task_data(train)
-
     if isinstance(prd, sk.ClassifierMixin):
         train = discretize(train)
+        test = discretize(test)
+
+        if classes is None:
+            classes = np.array([0, 1], dtype=int)
+
+    if running_in_mpi():
+        train = get_mpi_task_data(train)
 
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
@@ -213,14 +224,14 @@ def train_and_test_once(
     debug('    load time: {}s', time_load)
     debug('    train time: {}s', time_train)
 
-    comm.barrier() 
+    comm.barrier()
 
     ## REDUCE
     if running_in_mpi():
         debug('begin reduction')
         start_reduce = time.time()
 
-        prd = prd.reduce(send_to_all=True)
+        prd = prd.reduce(send_to_all=parallel_test)
         if type(prd) == type([]):
             prd = prd[0]
 
@@ -231,9 +242,6 @@ def train_and_test_once(
 
     if comm.rank == 0 or parallel_test:
         test = get_mpi_task_data(test)
-
-        if isinstance(prd, sk.ClassifierMixin):
-            test = discretize(test)
 
         if parallel_test: comm.barrier()
         debug('load test')
@@ -254,7 +262,8 @@ def train_and_test_once(
         train_pos, train_neg = threshold_count(train, config.decision_boundary)
         test_pos, test_neg = threshold_count(test, config.decision_boundary)
 
-        rmse = sum(pow(test_y - out, 2))
+        rmse = root_mean_squared_error(test_y, out)
+        chi2 = chi_squared(test_y, out)
 
     comm.barrier()
 
@@ -263,7 +272,7 @@ def train_and_test_once(
 
     if comm.rank == 0 or parallel_test:
         result = TrainingResult(
-            fp=fp, fn=fn, rmse=rmse, time_total=total_time, time_load=time_load,
+            fp=fp, fn=fn, rmse=rmse, chi2 = chi2, time_total=total_time, time_load=time_load,
             time_train=time_train, time_reduce=time_reduce, time_test=time_test,
             negative_train_samples=train_neg, positive_train_samples=train_pos,
             negative_test_samples=test_neg, positive_test_samples=test_pos
@@ -312,7 +321,7 @@ def fit(
             start_train = time.time()
 
             for X, y in cycles:
-                prd.partial_fit(X, y, classes=ds.classes())
+                prd.partial_fit(X, y, classes=classes)
 
             comm.barrier()
             train_time += time.time() - start_train

@@ -65,6 +65,12 @@ class Strategy(object):
         factor = unit_to_factor[space_unit]
         plot(self.bytes_*factor, self.t_transmit_, label='Transmission Time')
 
+    def bar_times(self, index, nbars, compression):
+        bar(index, nbars, [self.t_preprocess_[compression], self.t_transmit_[compression],
+            self.t_postprocess_[compression], self.t_total_[compression]],
+            label= 'Pickle' if self.pickle_ else 'Native')
+        xticks(nbars, ["Preprocess", "Transmit", "Postprocess", "Total"])
+
 def round_to_nearest(n, resolution):
     return (int(n / resolution) + 1) * resolution
 
@@ -117,3 +123,17 @@ if __name__ == '__main__':
         xlim(0, max_mb)
         grid()
         savefig(os.path.join(args.output, 'mt_pickle_space_time_{}.png'.format(name)), format='png')
+
+    clf()
+    s0, s1 = strategies[0], strategies[1]
+    pickle = s0 if s0.pickle_ else s1
+    native = s1 if s0.pickle_ else s0
+
+    pickle.bar_times(0, 2, 0)
+    native.bar_times(1, 2, 0)
+    legend()
+    title('Comparative Performance of Encoding Strategies')
+    ylabel('Time (s)')
+    ylim(0, round_to_nearest(pickle.t_total_[0], 5))
+    grid()
+    savefig(os.path.join(args.output, 'mt_comparative_time.png'), format='png')
