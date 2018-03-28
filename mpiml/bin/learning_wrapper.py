@@ -15,7 +15,7 @@ import mpiml.config as config
 
 def wrapper(
     model, k, data_path, online=False, density=1.0, pool_size=pool_size, parallel_test=False,
-    cycles_per_barrier=10):
+    cycles_per_barrier=10, reduce_online=False):
     """ input: type of machine learning, type of test, amount to test, training path, test path
         output: trains ML_type on training data and tests it on testing data
     """
@@ -24,7 +24,7 @@ def wrapper(
     root_info('{}', output_model_info(model, online=online, density=density, pool_size=pool_size))
 
     result = train_and_test_k_fold(
-        ds, model, k=k, online=online, parallel_test=parallel_test, cycles_per_barrier=cycles_per_barrier)
+        ds, model, k=k, online=online, parallel_test=parallel_test, cycles_per_barrier=cycles_per_barrier, reduce_online=reduce_online)
 
     root_info('PERFORMANCE\n{}', result)
 
@@ -44,6 +44,8 @@ if __name__ == '__main__':
     parser.add_argument('--parallel-test', action='store_true')
     parser.add_argument('--cycles-per-barrier', type=int, default=10,
         help='number of cycles each task should load into memory and train before synching with other tasks')
+    parser.add_argument('--reduce-online', action='store_true', help='reduce the model at each barrier during training, \
+                         producing an ensemble of partially fitted trees in the final model')
 
     args = parser.parse_args()
 
@@ -59,5 +61,5 @@ if __name__ == '__main__':
             wrapper(m, args.num_runs, args.data_dir,
                 online=args.online, density=args.density,
                 pool_size=args.pool_size, parallel_test=args.parallel_test,
-                cycles_per_barrier=args.cycles_per_barrier
+                cycles_per_barrier=args.cycles_per_barrier, reduce_online=args.reduce_online
             )

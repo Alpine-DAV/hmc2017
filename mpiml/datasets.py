@@ -20,6 +20,7 @@ __all__ = [ "get_bubbleshock"
           , "output_feature_importance"
           , "get_num_partitions"
           , "concatenate"
+          , "EmptyDataSet"
           ]
 
 def every_kth(arr, k):
@@ -27,6 +28,19 @@ def every_kth(arr, k):
 
 class DataSet(object):
 
+    @property
+    def n_features(self):
+        if hasattr(self, 'n_features_'):
+            return self.n_features_
+        else:
+            # TODO: Pretty gross, but works for the nested InMemoryDataset
+            self.n_features_ = len(self.get_cycle(0)[0][0])
+            return self.n_features_
+    
+    @n_features.setter
+    def n_features(self, value):
+        self.n_features_ = value
+    
     def map(self, f):
         class MapDataSet(DataSet):
             def __init__(self, ds, f):
@@ -49,7 +63,8 @@ class DataSet(object):
     def points(self):
         xs, ys = zip(*self.cycles())
         return np.vstack(xs), np.concatenate(ys)
-
+    
+    
     def split(self, k):
         class SplitDataSet(DataSet):
             def __init__(self, ds, start):

@@ -6,7 +6,7 @@ import sklearn.metrics as metrics
 import time
 
 import config
-from datasets import concatenate, threshold_count, discretize, prepare_dataset
+from datasets import concatenate, threshold_count, discretize, prepare_dataset, EmptyDataSet
 from utils import *
 
 __all__ = [ "get_k_fold_data"
@@ -62,10 +62,25 @@ def wrapped_concatenate(splits, start, end, total_cycles):
 
 # Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
 # function, then every sample in the dataset will be distributed to exactly one task.
-def get_mpi_task_data(ds, comm=config.comm, task=None):
+# If a different size is specified than all the processes, generate that many subsets, and then
+# assign subsets starting at the first_task.
+# If data is requested for a task that is outside the range, return an EmptyDataSet
+# Maintains the 'shape' of original dataset by recording the number of features in n_features
+def get_mpi_task_data(ds, comm=config.comm, task=None, size=None, first_task=0):
+    n_features = ds.n_features
+
+    if size == None:
+        size = comm.size
+
     if task is None:
         task = comm.rank
-    return ds.split(comm.size)[task]
+    
+    if task < first_task or task-first_task >= size:
+        empty_ds = EmptyDataSet()
+        empty_ds.n_features = n_features
+        return empty_ds
+
+    return ds.split(size)[task-first_task]
 
 class TrainingResult(object):
 
@@ -169,11 +184,11 @@ def null_training_result():
 @profile('train_and_test_k_fold_prof')
 def train_and_test_k_fold(
     ds, prd, k=10, comm=config.comm, online=False, classes=None, parallel_test=False,
-    cycles_per_barrier=10):
+    cycles_per_barrier=10, reduce_online=False):
 
     train_and_test = lambda tr, te: train_and_test_once(
         tr, te, prd, comm=comm, online=online, classes=classes, parallel_test=parallel_test,
-        cycles_per_barrier=cycles_per_barrier)
+        cycles_per_barrier=cycles_per_barrier, reduce_online=reduce_online)
 
     if k <= 0:
         raise ValueError("k must be positive")
@@ -192,7 +207,7 @@ def train_and_test_k_fold(
 
 def train_and_test_once(
     train, test, prd, comm=config.comm, online=False, classes=None, parallel_test=False,
-    cycles_per_barrier=10):
+    cycles_per_barrier=10, reduce_online=False):
 
     # Important to do this before splitting the dataset among tasks, so we can be sure every task
     # gets the same number of barriers
@@ -205,9 +220,13 @@ def train_and_test_once(
         if classes is None:
             classes = np.array([0, 1], dtype=int)
 
-    if running_in_mpi():
-        train = get_mpi_task_data(train)
+    if reduce_online:
+        train = get_mpi_task_data(train, size=comm.size-1, first_task=1)
+        if comm.rank == 0:
+            prd.n_features_ = train.n_features
 
+    elif running_in_mpi():
+        train = get_mpi_task_data(train)
     elif not isinstance(prd, sk.RegressorMixin):
         raise TypeError('expected classifier or regressor, but got {}'.format(type(ds)))
 
@@ -215,9 +234,9 @@ def train_and_test_once(
     debug('begin training')
     start = time.time()
 
-    prd, time_train, time_load = fit(
-        prd, train, online=online, classes=classes, time_training=True, time_loading=True, comm=comm,
-        online_barriers=online_barriers)
+    prd, time_train, time_load, time_online_reduce = fit(
+        prd, train, online=online, classes=classes, time_training=True, time_loading=True,
+        time_online_reduce=True, comm=comm, online_barriers=online_barriers, reduce_online=reduce_online)
 
     comm.barrier()
     debug('finished training:')
@@ -226,8 +245,13 @@ def train_and_test_once(
 
     comm.barrier()
 
+    time_reduce = 0
+    time_reduce += time_online_reduce
+
     ## REDUCE
-    if running_in_mpi():
+    # when online_reduce, all estimators_ reside in root. Using send_to_all
+    # send the estimators to the rest of the processes using reduce one final time
+    if running_in_mpi() and (not reduce_online or parallel_test):
         debug('begin reduction')
         start_reduce = time.time()
 
@@ -237,9 +261,7 @@ def train_and_test_once(
 
         time_reduce = time.time() - start_reduce
         debug('finished reduction in {}s', time_reduce)
-    else:
-        time_reduce = 0
-
+    
     if comm.rank == 0 or parallel_test:
         test = get_mpi_task_data(test)
 
@@ -292,39 +314,75 @@ def train_and_test_once(
 
 @profile('fit_prof')
 def fit(
-    prd, ds, classes=None, online=False, time_training=False, time_loading=False, comm=config.comm,
-    online_barriers=1000):
+    prd, ds, classes=None, online=False, time_training=False, time_loading=False, time_online_reduce=False,
+    comm=config.comm, online_barriers=1000, reduce_online=False):
+    # When time_online_reduce is true, and optional reduce_online is False, fit returns a 0 for time_online_reduce.
 
-    # Reset the predictor
-    prd.fit(*ds.get_cycle(0))
+    train_time = 0
+    load_time = 0
+    online_reduce_time = 0
 
     if online:
-        train_time = 0
-        load_time = 0
+        # Reset the predictor        
 
         absolute_barrier_cycles = np.linspace(
             0, ds.num_cycles(), num=online_barriers+1, endpoint=True, dtype=np.int)
         barrier_cycles = [absolute_barrier_cycles[i+1] - absolute_barrier_cycles[i] \
                             for i in range(absolute_barrier_cycles.shape[0] - 1)]
-
+        
+        # accounting for the above pre-fitting.
         cycle = 0
+        if not reduce_online:
+            prd.fit(*ds.get_cycle(0))
+            cycle += 1
+
         for num_cycles in barrier_cycles:
             comm.barrier()
-            start_load = time.time()
 
-            cycles = [ds.get_cycle(c) for c in range(cycle, cycle + num_cycles)]
+            if reduce_online and comm.rank != 0:
+                # reset the predictor
+                start_reset = time.time()
+                prd.fit(*ds.get_cycle(cycle))
+                end_reset = time.time()
+                train_time += end_reset - start_reset
+            
+            start_load = time.time()
+            if reduce_online and comm.rank != 0:
+                cycles = [ds.get_cycle(c) for c in range(cycle+1, cycle + num_cycles)]
+            elif not reduce_online:
+                cycles = [ds.get_cycle(c) for c in range(cycle, cycle + num_cycles)]
 
             comm.barrier()
             load_time += time.time() - start_load
+            if reduce_online and comm.rank == 0:
+                load_time = 0
 
             comm.barrier()
-            start_train = time.time()
 
-            for X, y in cycles:
-                prd.partial_fit(X, y, classes=classes)
+            debug('before train')
+            start_train = time.time()
+            if reduce_online and comm.rank != 0 or not reduce_online:
+                for X, y in cycles:
+                    prd.partial_fit(X, y, classes=classes)
+            debug('after train')
 
             comm.barrier()
             train_time += time.time() - start_train
+
+            if reduce_online and cycle <= 1:
+                debug('before send')
+                if comm.rank == 1:
+                    comm.send(prd.n_outputs_, dest=0, tag=1)
+                if comm.rank == 0:
+                    prd.n_outputs_ = comm.recv(source=1, tag=1)
+                debug('after send')
+                comm.barrier()
+
+            if reduce_online:
+                start_reduce = time.time()
+                prd = prd.reduce(send_to_all=False)
+                comm.barrier()
+                online_reduce_time += time.time() - start_reduce
 
             cycle += num_cycles
 
@@ -332,6 +390,11 @@ def fit(
             debug('current stats:')
             debug('  I/O time: {} s', load_time)
             debug('  train time: {} s', train_time)
+    
+        # Wipe remaining estimators in the models for cleanliness
+        if reduce_online and comm.rank != 0:
+            prd = prd.__class__()
+
 
     else:
         comm.barrier()
@@ -353,6 +416,10 @@ def fit(
         results.append(train_time)
     if time_loading:
         results.append(load_time)
+    if time_online_reduce:
+        results.append(online_reduce_time)
     if len(results) == 0:
         results = results[0]
+
+    debug('finished fit')
     return results
