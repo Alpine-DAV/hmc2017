@@ -259,8 +259,8 @@ def train_and_test_once(
 
         fp, fn = num_errors(test_y, out)
 
-        train_pos, train_neg = threshold_count(train, config.decision_boundary)
-        test_pos, test_neg = threshold_count(test, config.decision_boundary)
+        train_pos, train_neg = threshold_count(train, config.threshold)
+        test_pos, test_neg = threshold_count(test, config.threshold)
 
         rmse = root_mean_squared_error(test_y, out)
         chi2 = chi_squared(test_y, out)
