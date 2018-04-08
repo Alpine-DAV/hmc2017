@@ -39,6 +39,7 @@ min_samples_split = 1000
 #===============================================================================
 kfold = 10
 decision_boundary = 1e-3
+threshold = 0 # for sorting samples into positive/negative
 np.random.seed(rand_seed)
 
 TOTAL_CYCLES = 40182
