@@ -11,7 +11,6 @@
 # convfigures Clover with initial conditions and runtime parameters.
 
 import ascent.mpi
-import atexit
 import conduit
 from mpi4py import MPI
 from mpiml.forest import MondrianForestRegressor
@@ -27,7 +26,6 @@ def mv(src, dest):
 # We have to rename the ascent_actions.json file, or else the nested Ascent instance will pick it up
 # and call this script recursively, rather than rendering the scene we want it to render.
 mv('ascent_actions.json', '_ascent_actions.json')
-atexit.register(mv, '_ascent_actions.json', 'ascent_actions.json') # Move it back when we're done
 
 # Hack (idiom?) to initialize prd once and have it persist through each iteration
 if 'prd' not in globals():
@@ -43,7 +41,11 @@ y = data["fields"]["density"]["values"]
 if cycle < 250:
     prd.partial_fit(x, y)
 else:
-    out = prd.reduce().predict(x)
+    # Merge local models into a single global model at task 0
+    prd = prd.reduce()
+
+    # Apply the global model to the next cycle's data
+    out = prd.predict(x)
 
     # Hack to initialize ml_output and ml_diff with sane metadata
     data['fields/ml_output'] = data['fields/pressure']
@@ -89,3 +91,6 @@ else:
 
     a.execute(actions)
     a.close()
+
+# Leave the file system in the state that we found it
+mv('_ascent_actions.json', 'ascent_actions.json')
