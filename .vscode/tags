@@ -1,0 +1,472 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+BYTES	../mpiml/bin/mt_pickle_viz.py	/^BYTES = 'bytes'$/;"	kind:variable	line:16
+ByHandDataSet	../mpiml/datasets.py	/^    class ByHandDataSet(DataSet):$/;"	kind:class	line:127
+COMPRESSION	../mpiml/bin/mf_pickle_viz.py	/^COMPRESSION = 'compression'$/;"	kind:variable	line:11
+COMPRESSION	../mpiml/bin/mt_pickle_viz.py	/^COMPRESSION = 'compression'$/;"	kind:variable	line:11
+CSVOutput	../mpiml/output.py	/^class CSVOutput(object):$/;"	kind:class	line:4
+ConcatDataSet	../mpiml/datasets.py	/^        class ConcatDataSet(DataSet):$/;"	kind:class	line:68
+DENSITY	../mpiml/bin/scaleviz.py	/^DENSITY = 'density'$/;"	kind:variable	line:23
+DataSet	../mpiml/datasets.py	/^class DataSet(object):$/;"	kind:class	line:28
+EmptyDataSet	../mpiml/datasets.py	/^class EmptyDataSet(DataSet):$/;"	kind:class	line:97
+FeatureDataReader	../mpiml/DataReader/FeatureDataReader.py	/^class FeatureDataReader(object):$/;"	kind:class	line:5
+FeatureDataReader.py	../mpiml/DataReader/FeatureDataReader.py	1;"	kind:file	line:1
+ForestRegressor	../mpiml/forest.py	/^    class ForestRegressor(base, merging_mixin):$/;"	kind:class	line:333
+GaussianNB	../mpiml/nbmpi.py	/^class GaussianNB(sk.GaussianNB):$/;"	kind:class	line:25
+IGNORE_VAL	../mpiml/forest.py	/^IGNORE_VAL = 999999$/;"	kind:variable	line:20
+InMemoryDataSet	../mpiml/datasets.py	/^class InMemoryDataSet(DataSet):$/;"	kind:class	line:84
+MODEL	../mpiml/bin/scaleviz.py	/^MODEL = 'model'$/;"	kind:variable	line:18
+MapDataSet	../mpiml/datasets.py	/^        class MapDataSet(DataSet):$/;"	kind:class	line:31
+MockComm	../test/test_utils.py	/^class MockComm:$/;"	kind:class	line:58
+MondrianForestBase	../mpiml/forest.py	/^class MondrianForestBase(skg.MondrianForestRegressor):$/;"	kind:class	line:175
+MondrianForestPickleBase	../mpiml/forest.py	/^class MondrianForestPickleBase(skg.MondrianForestRegressor):$/;"	kind:class	line:279
+MondrianForestPickleRegressor	../mpiml/forest.py	/^MondrianForestPickleRegressor = _forest_regressor(MondrianForestPickleBase, SuperForestMixin)$/;"	kind:variable	line:348
+MondrianForestRegressor	../mpiml/forest.py	/^MondrianForestRegressor = _forest_regressor(MondrianForestBase, SuperForestMixin)$/;"	kind:variable	line:347
+NODES	../mpiml/bin/scaleviz.py	/^NODES = 'nodes'$/;"	kind:variable	line:22
+NUM_TASKS	../mpiml/bin/mf_pickle_viz.py	/^NUM_TASKS = 'n_tasks'$/;"	kind:variable	line:13
+NumTrees	../mpiml/DataReader/learning_example.py	/^NumTrees = 1000$/;"	kind:variable	line:41
+NumTrees	../mpiml/config.py	/^NumTrees = 50$/;"	kind:variable	line:32
+PICKLE_FLAG	../mpiml/bin/mf_pickle_viz.py	/^PICKLE_FLAG = 'pickle'$/;"	kind:variable	line:10
+PICKLE_FLAG	../mpiml/bin/mt_pickle_viz.py	/^PICKLE_FLAG = 'pickle'$/;"	kind:variable	line:10
+POSTPROCESS_TIME	../mpiml/bin/mt_pickle_viz.py	/^POSTPROCESS_TIME = 't_postprocess'$/;"	kind:variable	line:15
+PREPROCESS_TIME	../mpiml/bin/mt_pickle_viz.py	/^PREPROCESS_TIME = 't_preprocess'$/;"	kind:variable	line:13
+REDUCE_TIME	../mpiml/bin/mf_pickle_viz.py	/^REDUCE_TIME = 't_reduce'$/;"	kind:variable	line:12
+RandomForestBase	../mpiml/forest.py	/^class RandomForestBase(sk.RandomForestRegressor):$/;"	kind:class	line:129
+RandomForestRegressor	../mpiml/forest.py	/^RandomForestRegressor = _forest_regressor(RandomForestBase, SuperForestMixin)$/;"	kind:variable	line:346
+SPEEDUP	../mpiml/bin/scaleviz.py	/^SPEEDUP = 'speedup'$/;"	kind:variable	line:24
+SPEEDUP_B	../mpiml/bin/scaleviz.py	/^SPEEDUP_B = 'speedup_b'$/;"	kind:variable	line:27
+SPEEDUP_B_UNC	../mpiml/bin/scaleviz.py	/^SPEEDUP_B_UNC = 'speedup_b_unc'$/;"	kind:variable	line:28
+SPEEDUP_M	../mpiml/bin/scaleviz.py	/^SPEEDUP_M = 'speedup_m'$/;"	kind:variable	line:25
+SPEEDUP_M_UNC	../mpiml/bin/scaleviz.py	/^SPEEDUP_M_UNC = 'speedup_m_unc'$/;"	kind:variable	line:26
+SizeUpMondrianForestRegressor	../mpiml/forest.py	/^SizeUpMondrianForestRegressor = _forest_regressor(MondrianForestBase, SizeUpSuperForestMixin)$/;"	kind:variable	line:352
+SizeUpSuperForestMixin	../mpiml/forest.py	/^class SizeUpSuperForestMixin:$/;"	kind:class	line:93
+SparseDataSet	../mpiml/datasets.py	/^    class SparseDataSet(DataSet):$/;"	kind:class	line:184
+SplitDataSet	../mpiml/datasets.py	/^        class SplitDataSet(DataSet):$/;"	kind:class	line:54
+Strategy	../mpiml/bin/mf_pickle_viz.py	/^class Strategy(object):$/;"	kind:class	line:39
+Strategy	../mpiml/bin/mt_pickle_viz.py	/^class Strategy(object):$/;"	kind:class	line:43
+StrongScaling	../mpiml/bin/scaleviz.py	/^class StrongScaling(object):$/;"	kind:class	line:53
+SubForestMixin	../mpiml/forest.py	/^class SubForestMixin:$/;"	kind:class	line:104
+SuperForestMixin	../mpiml/forest.py	/^class SuperForestMixin:$/;"	kind:class	line:82
+TASKS	../mpiml/bin/scaleviz.py	/^TASKS = 'tasks'$/;"	kind:variable	line:19
+TEST_ON_FAIL_ONLY	../mpiml/DataReader/learning_example.py	/^TEST_ON_FAIL_ONLY = 1$/;"	kind:variable	line:21
+TEST_ON_FAIL_ONLY	../mpiml/config.py	/^TEST_ON_FAIL_ONLY = 1$/;"	kind:variable	line:11
+TEST_ON_FAIL_PLUS_CYCLE_MAX	../mpiml/DataReader/learning_example.py	/^TEST_ON_FAIL_PLUS_CYCLE_MAX = 3$/;"	kind:variable	line:23
+TEST_ON_FAIL_PLUS_CYCLE_MAX	../mpiml/config.py	/^TEST_ON_FAIL_PLUS_CYCLE_MAX = 3$/;"	kind:variable	line:13
+TEST_ON_FAIL_PLUS_CYCLE_ZERO	../mpiml/DataReader/learning_example.py	/^TEST_ON_FAIL_PLUS_CYCLE_ZERO = 2$/;"	kind:variable	line:22
+TEST_ON_FAIL_PLUS_CYCLE_ZERO	../mpiml/config.py	/^TEST_ON_FAIL_PLUS_CYCLE_ZERO = 2$/;"	kind:variable	line:12
+TEST_ON_TRAIN_SPEC	../mpiml/DataReader/learning_example.py	/^TEST_ON_TRAIN_SPEC = 4$/;"	kind:variable	line:24
+TEST_ON_TRAIN_SPEC	../mpiml/config.py	/^TEST_ON_TRAIN_SPEC = 4$/;"	kind:variable	line:14
+TIME_REDUCE	../mpiml/bin/scaleviz.py	/^TIME_REDUCE = 'time_reduce'$/;"	kind:variable	line:20
+TIME_TRAIN	../mpiml/bin/scaleviz.py	/^TIME_TRAIN = 'time_train'$/;"	kind:variable	line:21
+TOTAL_CYCLES	../mpiml/config.py	/^TOTAL_CYCLES = 40182$/;"	kind:variable	line:45
+TOTAL_TIME	../mpiml/bin/mt_pickle_viz.py	/^TOTAL_TIME = 't_total'$/;"	kind:variable	line:12
+TRANSMISSION_TIME	../mpiml/bin/mt_pickle_viz.py	/^TRANSMISSION_TIME = 't_transmit'$/;"	kind:variable	line:14
+TrainingResult	../mpiml/training.py	/^class TrainingResult(object):$/;"	kind:class	line:70
+WeakScaling	../mpiml/bin/scaleviz.py	/^class WeakScaling(object):$/;"	kind:class	line:123
+__add__	../mpiml/training.py	/^    def __add__(self, r):$/;"	kind:member	line:102
+__all__	../mpiml/datasets.py	/^__all__ = [ "get_bubbleshock"$/;"	kind:variable	line:13
+__all__	../mpiml/forest.py	/^__all__ = ["RandomForestRegressor"$/;"	kind:variable	line:21
+__all__	../mpiml/models.py	/^__all__ = ["get_model"$/;"	kind:variable	line:6
+__all__	../mpiml/nbmpi.py	/^__all__ = ["GaussianNB"$/;"	kind:variable	line:20
+__all__	../mpiml/plot.py	/^__all__ = [ "nominal_value"$/;"	kind:variable	line:4
+__all__	../mpiml/training.py	/^__all__ = [ "get_k_fold_data"$/;"	kind:variable	line:12
+__all__	../mpiml/utils.py	/^__all__ = [ "info"$/;"	kind:variable	line:11
+__init__	../mpiml/DataReader/FeatureDataReader.py	/^    def __init__(self, dataDir):$/;"	kind:member	line:19
+__init__	../mpiml/bin/mf_pickle_viz.py	/^    def __init__(self, data):$/;"	kind:member	line:41
+__init__	../mpiml/bin/mt_pickle_bench.py	/^    def __init__(self, compression=0):$/;"	kind:member	line:40
+__init__	../mpiml/bin/mt_pickle_bench.py	/^    def __init__(self, n_features, n_outputs, compression=1):$/;"	kind:member	line:19
+__init__	../mpiml/bin/mt_pickle_viz.py	/^    def __init__(self, data):$/;"	kind:member	line:45
+__init__	../mpiml/bin/scaleviz.py	/^    def __init__(self, data):$/;"	kind:member	line:54
+__init__	../mpiml/bin/scaleviz.py	/^    def __init__(self, time, strong_experiments):$/;"	kind:member	line:124
+__init__	../mpiml/datasets.py	/^            def __init__(self, ds, f):$/;"	kind:member	line:32
+__init__	../mpiml/datasets.py	/^            def __init__(self, ds, start):$/;"	kind:member	line:55
+__init__	../mpiml/datasets.py	/^            def __init__(self, ds1, ds2):$/;"	kind:member	line:69
+__init__	../mpiml/datasets.py	/^        def __init__(self):$/;"	kind:member	line:128
+__init__	../mpiml/datasets.py	/^        def __init__(self):$/;"	kind:member	line:185
+__init__	../mpiml/datasets.py	/^    def __init__(self, X, y, pool_size=config.pool_size):$/;"	kind:member	line:85
+__init__	../mpiml/forest.py	/^        def __init__(self, forest_size=config.NumTrees, *args, **kwargs):$/;"	kind:member	line:335
+__init__	../mpiml/forest.py	/^    def __init__(self,$/;"	kind:member	line:130
+__init__	../mpiml/forest.py	/^    def __init__(self,$/;"	kind:member	line:176
+__init__	../mpiml/forest.py	/^    def __init__(self,$/;"	kind:member	line:280
+__init__	../mpiml/nbmpi.py	/^    def __init__(self, **kwargs):$/;"	kind:member	line:26
+__init__	../mpiml/output.py	/^    def __init__(self, schema, write_schema=False, output=None, append=False):$/;"	kind:member	line:5
+__init__	../mpiml/training.py	/^    def __init__(self, time_total, time_load, time_train, time_reduce, time_test, fp, fn,$/;"	kind:member	line:72
+__init__	../test/test_utils.py	/^    def __init__(self, size):$/;"	kind:member	line:59
+__init__.py	../mpiml/DataReader/__init__.py	1;"	kind:file	line:1
+__init__.py	../mpiml/__init__.py	1;"	kind:file	line:1
+__repr__	../mpiml/bin/mt_pickle_bench.py	/^    def __repr__(self):$/;"	kind:member	line:34
+__repr__	../mpiml/bin/mt_pickle_bench.py	/^    def __repr__(self):$/;"	kind:member	line:74
+__repr__	../mpiml/nbmpi.py	/^    def __repr__(self):$/;"	kind:member	line:83
+__str__	../mpiml/training.py	/^    def __str__(self):$/;"	kind:member	line:128
+_extract_arg	../mpiml/utils.py	/^def _extract_arg(arg, default, kwargs):$/;"	kind:function	line:28
+_fit	../mpiml/bin/scaleviz.py	/^    def _fit(self):$/;"	kind:member	line:112
+_fit	../mpiml/bin/scaleviz.py	/^    def _fit(self):$/;"	kind:member	line:163
+_forest_regressor	../mpiml/forest.py	/^def _forest_regressor(base, merging_mixin):$/;"	kind:function	line:331
+_gather_estimators	../mpiml/forest.py	/^def _gather_estimators(estimators, send_to, recv_from, root=0, send_to_all=True):$/;"	kind:function	line:58
+_generate_sample_indices	../mpiml/forest.py	/^def _generate_sample_indices(random_state, n_samples):$/;"	kind:function	line:27
+_generate_unsampled_indices	../mpiml/forest.py	/^def _generate_unsampled_indices(random_state, n_samples):$/;"	kind:function	line:35
+_info	../mpiml/utils.py	/^def _info(fmt, *args, **kwargs):$/;"	kind:function	line:36
+_is_iterable	../mpiml/plot.py	/^def _is_iterable(x):$/;"	kind:function	line:23
+_map_getattr	../mpiml/plot.py	/^def _map_getattr(items, attr, default):$/;"	kind:function	line:30
+_models	../mpiml/models.py	/^_models = {}$/;"	kind:variable	line:10
+_n_estimators_for_forest_size	../mpiml/forest.py	/^def _n_estimators_for_forest_size(forest_size):$/;"	kind:function	line:47
+_profiling_enabled	../mpiml/utils.py	/^_profiling_enabled = False$/;"	kind:variable	line:71
+_register_model	../mpiml/models.py	/^def _register_model(cli_name, cls):$/;"	kind:function	line:11
+_set_oob_score	../mpiml/forest.py	/^    def _set_oob_score(self, X, y):$/;"	kind:member	line:207
+_slurm_env	../mpiml/bin/scaling.py	/^def _slurm_env(key):$/;"	kind:function	line:15
+_verbose	../mpiml/utils.py	/^_verbose = False$/;"	kind:variable	line:22
+a	../examples/clover-learning/learning.py	/^    a = ascent.mpi.Ascent()$/;"	kind:variable	line:57
+acc	../mpiml/bin/no_merging.py	/^    acc = train_and_test_k_fold_no_merge(data, target, train)$/;"	kind:variable	line:36
+accuracy	../mpiml/training.py	/^    def accuracy(self):$/;"	kind:member	line:93
+accuracy	../mpiml/training.py	/^def accuracy(actual, predicted):$/;"	kind:function	line:19
+actions	../examples/clover-learning/learning.py	/^    actions = conduit.Node()$/;"	kind:variable	line:83
+add_act	../examples/clover-learning/learning.py	/^    add_act = actions.append()$/;"	kind:variable	line:84
+add_features	../mpiml/DataReader/learning_example.py	/^def add_features(index):$/;"	kind:function	line:444
+add_features	../mpiml/datasets.py	/^def add_features(index):$/;"	kind:function	line:482
+apply	../mpiml/bin/scaleviz.py	/^    def apply(self, d):$/;"	kind:member	line:134
+apply	../mpiml/bin/scaleviz.py	/^    def apply(self, n):$/;"	kind:member	line:72
+apply_perfect	../mpiml/bin/scaleviz.py	/^    def apply_perfect(self, d):$/;"	kind:member	line:137
+apply_perfect	../mpiml/bin/scaleviz.py	/^    def apply_perfect(self, n):$/;"	kind:member	line:78
+args	../mpiml/bin/learning_wrapper.py	/^    args = parser.parse_args()$/;"	kind:variable	line:48
+args	../mpiml/bin/mf_pickle_bench.py	/^    args = parser.parse_args()$/;"	kind:variable	line:27
+args	../mpiml/bin/mt_pickle_bench.py	/^    args = parser.parse_args()$/;"	kind:variable	line:135
+args	../mpiml/bin/no_merging.py	/^    args = parse_args()$/;"	kind:variable	line:31
+args	../mpiml/bin/scaleviz.py	/^    args = parser.parse_args()$/;"	kind:variable	line:182
+args	../mpiml/bin/training_node.py	/^    args = parse_args()$/;"	kind:variable	line:172
+ascent_opts	../examples/clover-learning/learning.py	/^    ascent_opts = conduit.Node()$/;"	kind:variable	line:59
+assert_array_not_equal	../test/test_datasets.py	/^def assert_array_not_equal(x, y):$/;"	kind:function	line:5
+average	../mpiml/training.py	/^        def average(prop):$/;"	kind:function	line:103
+bar	../mpiml/plot.py	/^def bar(index, nbars, heights, **kwargs):$/;"	kind:function	line:66
+bar_times	../mpiml/bin/mt_pickle_viz.py	/^    def bar_times(self, index, nbars, compression):$/;"	kind:member	line:68
+bool_to_int	../mpiml/bin/mf_pickle_viz.py	/^def bool_to_int(b):$/;"	kind:function	line:15
+bool_to_int	../mpiml/bin/mt_pickle_viz.py	/^def bool_to_int(b):$/;"	kind:function	line:22
+calc_pi_mpi	../examples/calc_pi_mpi.py	/^def calc_pi_mpi(num_intervals):$/;"	kind:function	line:22
+calc_pi_mpi.py	../examples/calc_pi_mpi.py	1;"	kind:file	line:1
+chi_sq	../mpiml/bin/scaleviz.py	/^def chi_sq(expected, observed):$/;"	kind:function	line:30
+chi_squared	../mpiml/training.py	/^def chi_squared(actual, predicted):$/;"	kind:function	line:25
+classes	../mpiml/datasets.py	/^    def classes(self):$/;"	kind:member	line:43
+clf	../mpiml/plot.py	/^clf = plt.clf$/;"	kind:variable	line:80
+close	../mpiml/output.py	/^    def close(self):$/;"	kind:member	line:23
+comm	../examples/calc_pi_mpi.py	/^comm = MPI.COMM_WORLD$/;"	kind:variable	line:41
+comm	../mpiml/bin/no_merging.py	/^comm = MPI.COMM_WORLD$/;"	kind:variable	line:10
+comm	../mpiml/bin/training_node.py	/^comm = MPI.COMM_WORLD$/;"	kind:variable	line:17
+comm	../mpiml/config.py	/^comm = MPI.COMM_WORLD$/;"	kind:variable	line:5
+concat	../mpiml/datasets.py	/^    def concat(self, ds):$/;"	kind:member	line:67
+concatenate	../mpiml/datasets.py	/^def concatenate(datasets):$/;"	kind:function	line:104
+config.py	../mpiml/config.py	1;"	kind:file	line:1
+consumer	../mpiml/bin/mt_pickle_bench.py	/^def consumer(tree_comm, ntrees, recv_from=0):$/;"	kind:function	line:96
+consumer_rank	../mpiml/bin/mt_pickle_bench.py	/^    consumer_rank = 0$/;"	kind:variable	line:140
+csv	../mpiml/bin/scaleviz.py	/^    csv = np.genfromtxt(args.input if args.input is not None else sys.stdin,$/;"	kind:variable	line:184
+cycle	../examples/clover-learning/learning.py	/^cycle = data["state"]["cycle"]$/;"	kind:variable	line:37
+cycle	../mpiml/datasets.py	/^    cycle = 40000$/;"	kind:variable	line:511
+cycles	../mpiml/datasets.py	/^    def cycles(self):$/;"	kind:member	line:46
+cycles_per_barrier	../mpiml/bin/learning_wrapper.py	/^                cycles_per_barrier=args.cycles_per_barrier$/;"	kind:variable	line:62
+data	../examples/clover-learning/learning.py	/^data = ascent_data()$/;"	kind:variable	line:36
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.getAllFailures()$/;"	kind:variable	line:358
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.getCycleZoneIds()$/;"	kind:variable	line:352
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.getFeatureNames()$/;"	kind:variable	line:334
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.getPartitionZoneIds(part)$/;"	kind:variable	line:349
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.getRunNumbers()$/;"	kind:variable	line:355
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.readAllCyclesForZone(run, zone)$/;"	kind:variable	line:346
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.readAllZonesInCycle(run, cycle)$/;"	kind:variable	line:343
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.readPartition(run, part, cycle)$/;"	kind:variable	line:340
+data	../mpiml/DataReader/FeatureDataReader.py	/^    data = reader.readZone(run, cycle, zone)$/;"	kind:variable	line:337
+data	../mpiml/DataReader/read_failure.py	/^    data = reader.readAllCyclesForFailedZone(run,cycle,zone)$/;"	kind:variable	line:17
+data	../mpiml/DataReader/read_relax.py	/^data = reader.readAllZonesInCycle(0, int(sys.argv[2]))$/;"	kind:variable	line:24
+data_dir	../mpiml/datasets.py	/^    data_dir = "..\/..\/..\/bubbleShock_byHand"$/;"	kind:variable	line:508
+data_readers	../mpiml/DataReader/learning_example.py	/^data_readers = {}$/;"	kind:variable	line:53
+data_readers	../mpiml/datasets.py	/^data_readers = {}$/;"	kind:variable	line:214
+dataset	../mpiml/datasets.py	/^    dataset = reader_.readAllZonesInCycle(0, cycle)$/;"	kind:variable	line:512
+datasets.py	../mpiml/datasets.py	1;"	kind:file	line:1
+debug	../mpiml/utils.py	/^def debug(fmt, *args, **kwargs):$/;"	kind:function	line:48
+decay	../mpiml/DataReader/learning_example.py	/^def decay(decay_function, step, num_steps):$/;"	kind:function	line:119
+decay	../mpiml/datasets.py	/^def decay(decay_function, step, num_steps):$/;"	kind:function	line:289
+decay_window	../mpiml/DataReader/learning_example.py	/^decay_window = 100 # how many cycles back does decay function go for failed (zone,cycle)$/;"	kind:variable	line:35
+decay_window	../mpiml/config.py	/^decay_window = 100 # how many cycles back does decay function go for failed (zone,cycle)$/;"	kind:variable	line:23
+decision_boundary	../mpiml/config.py	/^decision_boundary = 1e-3$/;"	kind:variable	line:41
+density	../mpiml/bin/scaleviz.py	/^    def density(self):$/;"	kind:member	line:69
+description	../mpiml/bin/learning_wrapper.py	/^        description='Train and test a classifier using the bubbleShock dataset')$/;"	kind:variable	line:35
+description	../mpiml/bin/mf_pickle_bench.py	/^        description='Benchmark reduction of Mondrian forests')$/;"	kind:variable	line:17
+description	../mpiml/bin/mt_pickle_bench.py	/^        description='Benchmark and optionally profile pickling and communicating of Mondrian trees')$/;"	kind:variable	line:125
+discretize	../mpiml/datasets.py	/^def discretize(X, y):$/;"	kind:function	line:198
+ds	../mpiml/bin/mf_pickle_bench.py	/^    ds = prepare_dataset(args.dataset, density=args.density)$/;"	kind:variable	line:32
+ds	../mpiml/bin/mt_pickle_bench.py	/^    ds = prepare_dataset(args.dataset, density=args.density)$/;"	kind:variable	line:143
+ds_map	../mpiml/datasets.py	/^def ds_map(f):$/;"	kind:function	line:109
+enable_feature_importance	../mpiml/DataReader/learning_example.py	/^enable_feature_importance = True$/;"	kind:variable	line:26
+enable_feature_importance	../mpiml/config.py	/^enable_feature_importance = True$/;"	kind:variable	line:16
+enable_load_pickled_model	../mpiml/DataReader/learning_example.py	/^enable_load_pickled_model = False$/;"	kind:variable	line:27
+enable_load_pickled_model	../mpiml/config.py	/^enable_load_pickled_model = False$/;"	kind:variable	line:17
+enable_print_predictions	../mpiml/DataReader/learning_example.py	/^enable_print_predictions = False$/;"	kind:variable	line:29
+enable_print_predictions	../mpiml/config.py	/^enable_print_predictions = False$/;"	kind:variable	line:19
+enable_save_pickled_model	../mpiml/DataReader/learning_example.py	/^enable_save_pickled_model = False$/;"	kind:variable	line:28
+enable_save_pickled_model	../mpiml/config.py	/^enable_save_pickled_model = False$/;"	kind:variable	line:18
+end_cycle	../mpiml/DataReader/learning_example.py	/^end_cycle = -1    # stop sampling "good" zones at this cycle (-1 means train all cycles from run 0 - decay_window)$/;"	kind:variable	line:32
+end_cycle	../mpiml/config.py	/^end_cycle = -1    # stop sampling "good" zones at this cycle (-1 means train all cycles from run 0 - decay_window)$/;"	kind:variable	line:21
+estimators	../mpiml/utils.py	/^           estimators=model.estimators_)$/;"	kind:variable	line:126
+every_kth	../mpiml/datasets.py	/^def every_kth(arr, k):$/;"	kind:function	line:25
+f	../mpiml/bin/scaleviz.py	/^        def f(d, m, b):$/;"	kind:function	line:165
+f	../mpiml/bin/scaleviz.py	/^        def f(n, m, b):$/;"	kind:function	line:114
+f1_score	../mpiml/training.py	/^    def f1_score(self):$/;"	kind:member	line:97
+fails	../mpiml/DataReader/read_failure.py	/^fails = reader.getAllFailures()$/;"	kind:variable	line:13
+feature_name_cache	../mpiml/DataReader/learning_example.py	/^feature_name_cache = None$/;"	kind:variable	line:83
+fit	../mpiml/nbmpi.py	/^    def fit(self, X, y):$/;"	kind:member	line:77
+fit	../mpiml/training.py	/^def fit($/;"	kind:function	line:294
+fnames	../mpiml/datasets.py	/^    fnames = reader_.getFeatureNames()$/;"	kind:variable	line:514
+forest.py	../mpiml/forest.py	1;"	kind:file	line:1
+forest_types	../mpiml/bin/mf_pickle_bench.py	/^    forest_types = [$/;"	kind:variable	line:34
+getAllFailures	../mpiml/DataReader/FeatureDataReader.py	/^    def getAllFailures(self):$/;"	kind:member	line:272
+getCycleZoneIds	../mpiml/DataReader/FeatureDataReader.py	/^    def getCycleZoneIds(self):$/;"	kind:member	line:145
+getFeatureNames	../mpiml/DataReader/FeatureDataReader.py	/^    def getFeatureNames(self):$/;"	kind:member	line:157
+getPartitionZoneIds	../mpiml/DataReader/FeatureDataReader.py	/^    def getPartitionZoneIds(self, part):$/;"	kind:member	line:129
+getRunNumbers	../mpiml/DataReader/FeatureDataReader.py	/^    def getRunNumbers(self):$/;"	kind:member	line:257
+getZoneOffset	../mpiml/DataReader/FeatureDataReader.py	/^    def getZoneOffset(self, zone):$/;"	kind:member	line:234
+get_bubbleshock	../mpiml/datasets.py	/^def get_bubbleshock(data_dir='bubbleShock', pool_size=config.pool_size):$/;"	kind:function	line:151
+get_bubbleshock_by_hand	../mpiml/datasets.py	/^def get_bubbleshock_by_hand(data_dir):$/;"	kind:function	line:126
+get_cli_name	../mpiml/models.py	/^def get_cli_name(id_or_instance):$/;"	kind:function	line:34
+get_cycle	../mpiml/datasets.py	/^            def get_cycle(self, i):$/;"	kind:member	line:36
+get_cycle	../mpiml/datasets.py	/^            def get_cycle(self, i):$/;"	kind:member	line:59
+get_cycle	../mpiml/datasets.py	/^            def get_cycle(self, i):$/;"	kind:member	line:73
+get_cycle	../mpiml/datasets.py	/^        def get_cycle(self, i):$/;"	kind:member	line:131
+get_cycle	../mpiml/datasets.py	/^        def get_cycle(self, i):$/;"	kind:member	line:189
+get_cycle	../mpiml/datasets.py	/^    def get_cycle(self, i):$/;"	kind:member	line:90
+get_cycle	../mpiml/datasets.py	/^    def get_cycle(self, i):$/;"	kind:member	line:98
+get_failures	../mpiml/DataReader/learning_example.py	/^def get_failures(data_dir):$/;"	kind:function	line:129
+get_failures	../mpiml/datasets.py	/^def get_failures(data_dir):$/;"	kind:function	line:299
+get_feature_names	../mpiml/DataReader/learning_example.py	/^def get_feature_names(data_dir):$/;"	kind:function	line:84
+get_k_fold_data	../mpiml/training.py	/^def get_k_fold_data(ds, k=10):$/;"	kind:function	line:50
+get_key	../mpiml/bin/mf_pickle_viz.py	/^    def get_key(row):$/;"	kind:function	line:27
+get_learning_data	../mpiml/DataReader/learning_example.py	/^def get_learning_data(data_dir, start_cycle, end_cycle, sample_freq, decay_window, num_failures=-1):$/;"	kind:function	line:175
+get_learning_data	../mpiml/datasets.py	/^def get_learning_data(data_dir, start_cycle, end_cycle, sample_freq, decay_window, num_failures=-1):$/;"	kind:function	line:344
+get_learning_data_for_run	../mpiml/DataReader/learning_example.py	/^def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, decay_window, run_for_good_zones, num_failures=-1):$/;"	kind:function	line:191
+get_learning_data_for_run	../mpiml/datasets.py	/^def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, decay_window, run_for_good_zones, num_failures=-1):$/;"	kind:function	line:360
+get_learning_data_with_index_for_cycle_range	../mpiml/DataReader/learning_example.py	/^def get_learning_data_with_index_for_cycle_range(data_dir, cycles, run):$/;"	kind:function	line:100
+get_learning_data_with_index_for_cycle_range	../mpiml/datasets.py	/^def get_learning_data_with_index_for_cycle_range(data_dir, cycles, run):$/;"	kind:function	line:270
+get_max_time_vals	../mpiml/training.py	/^def get_max_time_vals(train_results):$/;"	kind:function	line:37
+get_model	../mpiml/models.py	/^def get_model(cli_name, **kwargs):$/;"	kind:function	line:25
+get_model_id	../mpiml/models.py	/^def get_model_id(cli_name):$/;"	kind:function	line:31
+get_mpi_task_data	../mpiml/training.py	/^def get_mpi_task_data(ds, comm=config.comm, task=None):$/;"	kind:function	line:65
+get_num_partitions	../mpiml/DataReader/learning_example.py	/^def get_num_partitions(data_dir):$/;"	kind:function	line:75
+get_num_partitions	../mpiml/datasets.py	/^def get_num_partitions(data_dir):$/;"	kind:function	line:253
+get_reader	../mpiml/DataReader/learning_example.py	/^def get_reader(data_dir):$/;"	kind:function	line:54
+get_reader	../mpiml/datasets.py	/^def get_reader(data_dir):$/;"	kind:function	line:215
+get_sample	../mpiml/bin/training_node.py	/^def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):$/;"	kind:function	line:27
+grid	../mpiml/plot.py	/^grid = plt.grid$/;"	kind:variable	line:78
+group_by	../mpiml/bin/mf_pickle_viz.py	/^def group_by(key, rows):$/;"	kind:function	line:23
+group_by	../mpiml/bin/mt_pickle_viz.py	/^def group_by(key, rows):$/;"	kind:function	line:30
+group_by	../mpiml/bin/scaleviz.py	/^def group_by(key, rows):$/;"	kind:function	line:33
+has_error_bars	../mpiml/plot.py	/^def has_error_bars(X):$/;"	kind:function	line:42
+help	../mpiml/bin/learning_wrapper.py	/^        help='number of cycles each task should load into memory and train before synching with other tasks')$/;"	kind:variable	line:46
+help	../mpiml/bin/mf_pickle_bench.py	/^        help='include the schema as the first line of output')$/;"	kind:variable	line:24
+help	../mpiml/bin/mt_pickle_bench.py	/^        help='include the schema as the first line of output')$/;"	kind:variable	line:132
+index	../mpiml/DataReader/read_relax.py	/^    index = names.index('relaxDistance')$/;"	kind:variable	line:18
+info	../mpiml/utils.py	/^def info(fmt, *args, **kwargs):$/;"	kind:function	line:39
+invert	../mpiml/bin/scaleviz.py	/^    def invert(self, t):$/;"	kind:member	line:75
+kfold	../mpiml/config.py	/^kfold = 10$/;"	kind:variable	line:40
+learning.py	../examples/clover-learning/learning.py	1;"	kind:file	line:1
+learning_data_cache	../mpiml/DataReader/learning_example.py	/^learning_data_cache = {}$/;"	kind:variable	line:51
+learning_data_cache	../mpiml/datasets.py	/^learning_data_cache = {}$/;"	kind:variable	line:213
+learning_example.py	../mpiml/DataReader/learning_example.py	1;"	kind:file	line:1
+learning_wrapper.py	../mpiml/bin/learning_wrapper.py	1;"	kind:file	line:1
+legend	../mpiml/plot.py	/^legend = plt.legend$/;"	kind:variable	line:73
+load_learning_data	../mpiml/DataReader/learning_example.py	/^load_learning_data = False  # if true, load pre-created learning data$/;"	kind:variable	line:36
+load_learning_data	../mpiml/config.py	/^load_learning_data = False  # if true, load pre-created learning data$/;"	kind:variable	line:24
+m	../mpiml/bin/learning_wrapper.py	/^        m = get_model(model, bootstrap=True, oob_score=True, min_samples_split=config.min_samples_split)$/;"	kind:variable	line:54
+main	../mpiml/DataReader/learning_example.py	/^def main():$/;"	kind:function	line:472
+make_sparse	../mpiml/datasets.py	/^def make_sparse(ds, density):$/;"	kind:function	line:180
+map	../mpiml/datasets.py	/^    def map(self, f):$/;"	kind:member	line:30
+mapper	../mpiml/datasets.py	/^    def mapper(ds, *args, **kwargs):$/;"	kind:function	line:111
+mf_pickle_bench.py	../mpiml/bin/mf_pickle_bench.py	1;"	kind:file	line:1
+mf_pickle_viz.py	../mpiml/bin/mf_pickle_viz.py	1;"	kind:file	line:1
+min_samples_split	../mpiml/config.py	/^min_samples_split = 1000$/;"	kind:variable	line:35
+model	../mpiml/bin/scaleviz.py	/^    def model(self):$/;"	kind:member	line:82
+model	../mpiml/bin/training_node.py	/^        model = models[args.model]()$/;"	kind:variable	line:178
+model_names	../mpiml/models.py	/^def model_names():$/;"	kind:function	line:22
+models.py	../mpiml/models.py	1;"	kind:file	line:1
+mt_pickle_bench.py	../mpiml/bin/mt_pickle_bench.py	1;"	kind:file	line:1
+mt_pickle_viz.py	../mpiml/bin/mt_pickle_viz.py	1;"	kind:file	line:1
+mv	../examples/clover-learning/learning.py	/^def mv(src, dest):$/;"	kind:function	line:22
+n_estimators	../mpiml/forest.py	/^    def n_estimators(self, forest_size):$/;"	kind:member	line:106
+n_estimators	../mpiml/forest.py	/^    def n_estimators(self, forest_size):$/;"	kind:member	line:84
+n_estimators	../mpiml/forest.py	/^    def n_estimators(self, forest_size):$/;"	kind:member	line:95
+n_outputs	../mpiml/bin/mt_pickle_bench.py	/^    n_outputs = 1$/;"	kind:variable	line:145
+names	../mpiml/DataReader/read_relax.py	/^names = reader.getFeatureNames()$/;"	kind:variable	line:14
+native_tree_comm	../mpiml/bin/mt_pickle_bench.py	/^class native_tree_comm(object):$/;"	kind:class	line:17
+nbmpi.py	../mpiml/nbmpi.py	1;"	kind:file	line:1
+no_merging.py	../mpiml/bin/no_merging.py	1;"	kind:file	line:1
+nominal_value	../mpiml/plot.py	/^def nominal_value(x):$/;"	kind:function	line:36
+nrows	../mpiml/bin/training_node.py	/^    nrows = 0$/;"	kind:variable	line:202
+null_training_result	../mpiml/training.py	/^def null_training_result():$/;"	kind:function	line:165
+num_cycles	../mpiml/datasets.py	/^            def num_cycles(self):$/;"	kind:member	line:39
+num_cycles	../mpiml/datasets.py	/^            def num_cycles(self):$/;"	kind:member	line:62
+num_cycles	../mpiml/datasets.py	/^            def num_cycles(self):$/;"	kind:member	line:79
+num_cycles	../mpiml/datasets.py	/^        def num_cycles(self):$/;"	kind:member	line:146
+num_cycles	../mpiml/datasets.py	/^        def num_cycles(self):$/;"	kind:member	line:192
+num_cycles	../mpiml/datasets.py	/^    def num_cycles(self):$/;"	kind:member	line:101
+num_cycles	../mpiml/datasets.py	/^    def num_cycles(self):$/;"	kind:member	line:94
+num_errors	../mpiml/training.py	/^def num_errors(actual, predicted, threshold=config.decision_boundary):$/;"	kind:function	line:31
+num_intervals	../examples/calc_pi_mpi.py	/^num_intervals = 15000$/;"	kind:variable	line:45
+online_fmt	../mpiml/bin/training_node.py	/^            online_fmt = ', pooling: ' + str(args.online_pool)$/;"	kind:variable	line:210
+online_fmt	../mpiml/bin/training_node.py	/^        online_fmt = ''$/;"	kind:variable	line:206
+oob_score_	../mpiml/utils.py	/^           oob_score_ = model.oob_score_ if hasattr(model,'oob_score_') else False,$/;"	kind:variable	line:125
+out	../examples/clover-learning/learning.py	/^    out = prd.reduce().predict(x)$/;"	kind:variable	line:46
+output.py	../mpiml/output.py	1;"	kind:file	line:1
+output_feature_importance	../mpiml/DataReader/learning_example.py	/^def output_feature_importance(rand_forest, data_dir):$/;"	kind:function	line:307
+output_feature_importance	../mpiml/datasets.py	/^def output_feature_importance(result, data_dir):$/;"	kind:function	line:232
+output_model_info	../mpiml/utils.py	/^def output_model_info(model, online, density, pool_size=None):$/;"	kind:function	line:96
+parallelism	../mpiml/DataReader/learning_example.py	/^parallelism = -1 # note: -1 = number of cores on the system$/;"	kind:variable	line:44
+parallelism	../mpiml/config.py	/^parallelism = 1 # note: -1 = number of cores on the system$/;"	kind:variable	line:33
+parse_args	../mpiml/bin/no_merging.py	/^def parse_args():$/;"	kind:function	line:23
+parse_args	../mpiml/bin/training_node.py	/^def parse_args():$/;"	kind:function	line:133
+parse_range	../mpiml/bin/training_node.py	/^def parse_range(expr, default_step=0.01):$/;"	kind:function	line:121
+parser	../mpiml/bin/learning_wrapper.py	/^    parser = argparse.ArgumentParser($/;"	kind:variable	line:34
+parser	../mpiml/bin/mf_pickle_bench.py	/^    parser = argparse.ArgumentParser($/;"	kind:variable	line:16
+parser	../mpiml/bin/mt_pickle_bench.py	/^    parser = argparse.ArgumentParser($/;"	kind:variable	line:124
+parser	../mpiml/bin/scaleviz.py	/^    parser = argparse.ArgumentParser(description='Visualize data generated by scaling.py')$/;"	kind:variable	line:177
+partial_fit	../mpiml/forest.py	/^    def partial_fit(self, X, y, classes=None):$/;"	kind:member	line:165
+partial_fit	../mpiml/forest.py	/^    def partial_fit(self, X, y, classes=None):$/;"	kind:member	line:200
+partial_fit	../mpiml/forest.py	/^    def partial_fit(self, X, y, classes=None):$/;"	kind:member	line:304
+partial_fit	../mpiml/nbmpi.py	/^    def partial_fit(self, X, y, classes=None):$/;"	kind:member	line:80
+pcast_negative	../mpiml/bin/training_node.py	/^    pcast_negative = parse_range(args.pcast_negative)$/;"	kind:variable	line:185
+pcast_positive	../mpiml/bin/training_node.py	/^    pcast_positive = parse_range(args.pcast_positive)$/;"	kind:variable	line:184
+pi	../examples/calc_pi_mpi.py	/^pi = calc_pi_mpi(num_intervals)$/;"	kind:variable	line:47
+pickle_tree_comm	../mpiml/bin/mt_pickle_bench.py	/^class pickle_tree_comm(object):$/;"	kind:class	line:38
+pkeep_negative	../mpiml/bin/training_node.py	/^    pkeep_negative = parse_range(args.pkeep_negative)$/;"	kind:variable	line:187
+pkeep_positive	../mpiml/bin/training_node.py	/^    pkeep_positive = parse_range(args.pkeep_positive)$/;"	kind:variable	line:186
+plot	../mpiml/plot.py	/^def plot(X, Y, line_format='-', **kwargs):$/;"	kind:function	line:45
+plot.py	../mpiml/plot.py	1;"	kind:file	line:1
+plot_continuous	../mpiml/plot.py	/^def plot_continuous(f, min, max, **kwargs):$/;"	kind:function	line:55
+plot_space_against_compression	../mpiml/bin/mt_pickle_viz.py	/^    def plot_space_against_compression(self, unit='MB'):$/;"	kind:member	line:60
+plot_time_against_compression	../mpiml/bin/mt_pickle_viz.py	/^    def plot_time_against_compression(self):$/;"	kind:member	line:54
+plot_time_against_n_tasks	../mpiml/bin/mf_pickle_viz.py	/^    def plot_time_against_n_tasks(self):$/;"	kind:member	line:47
+plot_transmission_time_against_space	../mpiml/bin/mt_pickle_viz.py	/^    def plot_transmission_time_against_space(self, space_unit='MB'):$/;"	kind:member	line:64
+points	../mpiml/datasets.py	/^    def points(self):$/;"	kind:member	line:49
+pool_size	../mpiml/config.py	/^pool_size = 1000$/;"	kind:variable	line:34
+prepare_dataset	../mpiml/datasets.py	/^def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size):$/;"	kind:function	line:164
+probable	../mpiml/bin/training_node.py	/^def probable(p):$/;"	kind:function	line:24
+producer	../mpiml/bin/mt_pickle_bench.py	/^def producer(tree_comm, trees, send_to=1):$/;"	kind:function	line:89
+producer_rank	../mpiml/bin/mt_pickle_bench.py	/^    producer_rank = 1$/;"	kind:variable	line:141
+prof_decorator	../mpiml/utils.py	/^    def prof_decorator(f):$/;"	kind:function	line:73
+profile	../mpiml/utils.py	/^def profile(filename=None, comm=MPI.COMM_WORLD):$/;"	kind:function	line:72
+r	../mpiml/bin/mf_pickle_bench.py	/^            r = train_and_test_k_fold(ds, forest(compression=compression), k=args.num_forests)$/;"	kind:variable	line:45
+rand_seed	../mpiml/DataReader/learning_example.py	/^rand_seed = None$/;"	kind:variable	line:42
+rand_seed	../mpiml/config.py	/^rand_seed = 0$/;"	kind:variable	line:31
+readAllCyclesForFailedZone	../mpiml/DataReader/FeatureDataReader.py	/^    def readAllCyclesForFailedZone(self,run,fail_cycle,zone):$/;"	kind:member	line:303
+readAllCyclesForZone	../mpiml/DataReader/FeatureDataReader.py	/^    def readAllCyclesForZone(self, run, zone):$/;"	kind:member	line:87
+readAllZonesInCycle	../mpiml/DataReader/FeatureDataReader.py	/^    def readAllZonesInCycle(self, run, cycle):$/;"	kind:member	line:114
+readFileIndex	../mpiml/DataReader/FeatureDataReader.py	/^    def readFileIndex(self, run, part):$/;"	kind:member	line:170
+readMetaData	../mpiml/DataReader/FeatureDataReader.py	/^    def readMetaData(self, part):$/;"	kind:member	line:196
+readPartition	../mpiml/DataReader/FeatureDataReader.py	/^    def readPartition(self, run, part, cycle):$/;"	kind:member	line:63
+readZone	../mpiml/DataReader/FeatureDataReader.py	/^    def readZone(self, run, cycle, zone):$/;"	kind:member	line:39
+read_failure.py	../mpiml/DataReader/read_failure.py	1;"	kind:file	line:1
+read_relax.py	../mpiml/DataReader/read_relax.py	1;"	kind:file	line:1
+reader	../mpiml/DataReader/FeatureDataReader.py	/^    reader = FeatureDataReader(sys.argv[1])$/;"	kind:variable	line:331
+reader	../mpiml/DataReader/read_failure.py	/^reader = FeatureDataReader(sys.argv[1])$/;"	kind:variable	line:12
+reader	../mpiml/DataReader/read_relax.py	/^reader = FeatureDataReader(sys.argv[1])$/;"	kind:variable	line:12
+reader_	../mpiml/datasets.py	/^    reader_ = get_reader(data_dir)$/;"	kind:variable	line:509
+receive_estimator	../mpiml/forest.py	/^    def receive_estimator(self, peer):$/;"	kind:member	line:172
+receive_estimator	../mpiml/forest.py	/^    def receive_estimator(self, peer):$/;"	kind:member	line:276
+receive_estimator	../mpiml/forest.py	/^    def receive_estimator(self, peer):$/;"	kind:member	line:317
+recv	../mpiml/bin/mt_pickle_bench.py	/^    def recv(self, comm, src):$/;"	kind:member	line:30
+recv	../mpiml/bin/mt_pickle_bench.py	/^    def recv(self, comm, src):$/;"	kind:member	line:59
+recv_tree	../mpiml/bin/mt_pickle_bench.py	/^def recv_tree(comm, tree_com, src):$/;"	kind:function	line:81
+reduce	../mpiml/forest.py	/^        def reduce(self, root=0, send_to_all=False):$/;"	kind:member	line:340
+reduce	../mpiml/forest.py	/^    def reduce(self, forest_size, root, send_to_all=False):$/;"	kind:member	line:110
+reduce	../mpiml/forest.py	/^    def reduce(self, forest_size, root, send_to_all=False):$/;"	kind:member	line:87
+reduce	../mpiml/forest.py	/^    def reduce(self, forest_size, root, send_to_all=False):$/;"	kind:member	line:98
+reduce	../mpiml/nbmpi.py	/^    def reduce(self, send_to_all=False):$/;"	kind:member	line:32
+relax	../mpiml/DataReader/read_relax.py	/^relax = data[:,index]$/;"	kind:variable	line:26
+res	../mpiml/bin/training_node.py	/^        res = train_and_test_k_fold($/;"	kind:variable	line:215
+rids	../mpiml/DataReader/read_relax.py	/^rids = zids[zones[0]]$/;"	kind:variable	line:29
+root_debug	../mpiml/utils.py	/^def root_debug(fmt, *args, **kwargs):$/;"	kind:function	line:62
+root_info	../mpiml/utils.py	/^def root_info(fmt, *args, **kwargs):$/;"	kind:function	line:52
+root_mean_squared_error	../mpiml/training.py	/^def root_mean_squared_error(actual, predicted):$/;"	kind:function	line:22
+round_to_nearest	../mpiml/bin/mf_pickle_viz.py	/^def round_to_nearest(n, resolution):$/;"	kind:function	line:50
+round_to_nearest	../mpiml/bin/mt_pickle_viz.py	/^def round_to_nearest(n, resolution):$/;"	kind:function	line:74
+running_in_mpi	../mpiml/utils.py	/^def running_in_mpi():$/;"	kind:function	line:67
+sample_freq	../mpiml/DataReader/learning_example.py	/^sample_freq = 1000 # how frequently to sample "good" zones$/;"	kind:variable	line:33
+sample_freq	../mpiml/config.py	/^sample_freq = 1000 # how frequently to sample "good" zones$/;"	kind:variable	line:22
+save_plot	../mpiml/bin/scaleviz.py	/^    def save_plot(self, output):$/;"	kind:member	line:140
+save_plot	../mpiml/bin/scaleviz.py	/^    def save_plot(self, output):$/;"	kind:member	line:88
+savefig	../mpiml/plot.py	/^savefig = plt.savefig$/;"	kind:variable	line:79
+scalarize	../mpiml/bin/scaleviz.py	/^def scalarize(arr):$/;"	kind:function	line:46
+scaleviz.py	../mpiml/bin/scaleviz.py	1;"	kind:file	line:1
+scaling.py	../mpiml/bin/scaling.py	1;"	kind:file	line:1
+scenes	../examples/clover-learning/learning.py	/^    scenes = conduit.Node()$/;"	kind:variable	line:66
+schema	../mpiml/bin/mf_pickle_bench.py	/^    schema = ['pickle', 'n_tasks', 'compression', 'n_forests', 't_reduce']$/;"	kind:variable	line:39
+schema	../mpiml/bin/mt_pickle_bench.py	/^    schema = ['pickle', 'compression', 'n_trees', 'n_features', 'n_outputs', 'n_samples', 't_total',$/;"	kind:variable	line:155
+send	../mpiml/bin/mt_pickle_bench.py	/^    def send(self, comm, dst, tree):$/;"	kind:member	line:26
+send	../mpiml/bin/mt_pickle_bench.py	/^    def send(self, comm, dst, tree):$/;"	kind:member	line:45
+send_estimator	../mpiml/forest.py	/^    def send_estimator(self, peer, est, **kwargs):$/;"	kind:member	line:169
+send_estimator	../mpiml/forest.py	/^    def send_estimator(self, peer, est, **kwargs):$/;"	kind:member	line:307
+send_estimator	../mpiml/forest.py	/^    def send_estimator(self, peer, est, send_to_all=False):$/;"	kind:member	line:268
+send_tree	../mpiml/bin/mt_pickle_bench.py	/^def send_tree(comm, tree_comm, dst, tree):$/;"	kind:function	line:77
+sf_fmt	../mpiml/bin/training_node.py	/^            sf_fmt = ', super forest'$/;"	kind:variable	line:208
+sf_fmt	../mpiml/bin/training_node.py	/^        sf_fmt   = ''$/;"	kind:variable	line:205
+shuffle_data	../mpiml/datasets.py	/^def shuffle_data(X, y, seed=0):$/;"	kind:function	line:118
+split	../mpiml/datasets.py	/^    def split(self, k):$/;"	kind:member	line:53
+splits	../mpiml/bin/mt_pickle_bench.py	/^        for train_index, test_index in splitter.split(X)]$/;"	kind:variable	line:150
+splitter	../mpiml/bin/mt_pickle_bench.py	/^    splitter = ShuffleSplit(n_splits=args.num_trees)$/;"	kind:variable	line:148
+start_cycle	../mpiml/DataReader/learning_example.py	/^start_cycle = 0   # start sampling "good" zones at this cycle$/;"	kind:variable	line:30
+start_cycle	../mpiml/config.py	/^start_cycle = 0   # start sampling "good" zones at this cycle$/;"	kind:variable	line:20
+std_dev	../mpiml/plot.py	/^def std_dev(x):$/;"	kind:function	line:39
+strategies	../mpiml/bin/mt_pickle_bench.py	/^        strategies = [ ('t', pickle_tree_comm(compression=compression))$/;"	kind:variable	line:162
+suptitle	../mpiml/plot.py	/^suptitle = plt.suptitle$/;"	kind:variable	line:77
+t	../mpiml/bin/mt_pickle_bench.py	/^                    t = mtree.MondrianTreeRegressor()$/;"	kind:variable	line:187
+target	../mpiml/bin/training_node.py	/^    target = discretize(target)$/;"	kind:variable	line:199
+tasks_per_node	../mpiml/bin/scaleviz.py	/^    def tasks_per_node(self):$/;"	kind:member	line:85
+test_accuracy	../test/test_utils.py	/^def test_accuracy():$/;"	kind:function	line:5
+test_datasets.py	../test/test_datasets.py	1;"	kind:file	line:1
+test_discretize	../test/test_datasets.py	/^def test_discretize():$/;"	kind:function	line:24
+test_get_kfold_data	../test/test_utils.py	/^def test_get_kfold_data():$/;"	kind:function	line:32
+test_get_kfold_data_doesnt_divide	../test/test_utils.py	/^def test_get_kfold_data_doesnt_divide():$/;"	kind:function	line:41
+test_get_mpi_task_data	../test/test_utils.py	/^def test_get_mpi_task_data():$/;"	kind:function	line:63
+test_get_mpi_task_data_doesnt_divide	../test/test_utils.py	/^def test_get_mpi_task_data_doesnt_divide():$/;"	kind:function	line:73
+test_num_classes_half_threshold	../test/test_utils.py	/^def test_num_classes_half_threshold():$/;"	kind:function	line:27
+test_num_classes_zero_nonzero	../test/test_utils.py	/^def test_num_classes_zero_nonzero():$/;"	kind:function	line:22
+test_num_errors_half_threshhold	../test/test_utils.py	/^def test_num_errors_half_threshhold():$/;"	kind:function	line:16
+test_num_errors_zero_nonzero	../test/test_utils.py	/^def test_num_errors_zero_nonzero():$/;"	kind:function	line:10
+test_shuffle_data	../test/test_datasets.py	/^def test_shuffle_data():$/;"	kind:function	line:8
+test_time	../mpiml/bin/training_node.py	/^                        test_time=res['time_test'], **locals()))$/;"	kind:variable	line:222
+test_utils.py	../test/test_utils.py	1;"	kind:file	line:1
+threshold	../mpiml/config.py	/^threshold = 0 # for sorting samples into positive\/negative$/;"	kind:variable	line:42
+threshold_count	../mpiml/datasets.py	/^def threshold_count(ds, thresh):$/;"	kind:function	line:205
+title	../mpiml/plot.py	/^title = plt.title$/;"	kind:variable	line:76
+toggle_profiling	../mpiml/utils.py	/^def toggle_profiling(enabled=True):$/;"	kind:function	line:92
+toggle_verbose	../mpiml/utils.py	/^def toggle_verbose(v=True):$/;"	kind:function	line:24
+total_estimators	../mpiml/utils.py	/^           total_estimators=len(model.estimators_),$/;"	kind:variable	line:124
+total_rows	../mpiml/bin/training_node.py	/^    total_rows = len(pcast_positive) * len(pcast_negative) * len(pkeep_positive) * len(pkeep_negative)$/;"	kind:variable	line:203
+train	../mpiml/bin/no_merging.py	/^def train(X, y, **kwargs):$/;"	kind:function	line:13
+train	../mpiml/bin/training_node.py	/^def train(X, y, clf, recipients='all', **kwargs):$/;"	kind:function	line:98
+train_and_test_k_fold	../mpiml/training.py	/^def train_and_test_k_fold($/;"	kind:function	line:170
+train_and_test_once	../mpiml/training.py	/^def train_and_test_once($/;"	kind:function	line:193
+train_at_root	../mpiml/bin/training_node.py	/^def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,$/;"	kind:function	line:41
+train_many_test_many	../mpiml/DataReader/learning_example.py	/^def train_many_test_many(train_data_paths, test_data_paths, test_data_spec):$/;"	kind:function	line:322
+train_on_all	../mpiml/bin/training_node.py	/^def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,$/;"	kind:function	line:69
+training.py	../mpiml/training.py	1;"	kind:file	line:1
+training_node.py	../mpiml/bin/training_node.py	1;"	kind:file	line:1
+tree_comms	../mpiml/bin/mt_pickle_bench.py	/^                 [pickle_tree_comm(compression=c) for c in range(10)]$/;"	kind:variable	line:153
+trees	../mpiml/bin/mt_pickle_bench.py	/^                trees = []$/;"	kind:variable	line:185
+unit_to_factor	../mpiml/bin/mt_pickle_viz.py	/^unit_to_factor = {$/;"	kind:variable	line:18
+unzip	../mpiml/bin/training_node.py	/^def unzip(xys):$/;"	kind:function	line:19
+utils.py	../mpiml/utils.py	1;"	kind:file	line:1
+vals	../mpiml/DataReader/read_relax.py	/^vals = data[zones[0],:]$/;"	kind:variable	line:30
+wrap_f	../mpiml/utils.py	/^        def wrap_f(*args, **kwargs):$/;"	kind:function	line:74
+wrapped_concatenate	../mpiml/training.py	/^def wrapped_concatenate(splits, start, end, total_cycles):$/;"	kind:function	line:57
+wrapper	../mpiml/bin/learning_wrapper.py	/^def wrapper($/;"	kind:function	line:16
+writer	../mpiml/bin/mf_pickle_bench.py	/^        writer = CSVOutput(schema, output=args.output, write_schema=args.schema, append=args.append)$/;"	kind:variable	line:41
+writer	../mpiml/bin/mt_pickle_bench.py	/^        writer = CSVOutput(schema, output=args.output, write_schema=args.schema, append=args.append)$/;"	kind:variable	line:158
+writerow	../mpiml/output.py	/^    def writerow(self, **cols):$/;"	kind:member	line:17
+x	../examples/clover-learning/learning.py	/^x = data["fields"]["energy"]["values"].reshape(-1, 1)$/;"	kind:variable	line:40
+xlabel	../mpiml/plot.py	/^xlabel = plt.xlabel$/;"	kind:variable	line:74
+xlim	../mpiml/plot.py	/^xlim = plt.xlim$/;"	kind:variable	line:81
+xticks	../mpiml/plot.py	/^def xticks(nbars, labels):$/;"	kind:function	line:70
+y	../examples/clover-learning/learning.py	/^y = data["fields"]["density"]["values"]$/;"	kind:variable	line:41
+ylabel	../mpiml/plot.py	/^ylabel = plt.ylabel$/;"	kind:variable	line:75
+ylim	../mpiml/plot.py	/^ylim = plt.ylim$/;"	kind:variable	line:82
+zids	../mpiml/DataReader/read_relax.py	/^zids = reader.getCycleZoneIds()$/;"	kind:variable	line:23
+zone_scale	../mpiml/datasets.py	/^    zone_scale = np.ravel(dataset[:,[-1]])$/;"	kind:variable	line:517
+zones	../mpiml/DataReader/read_relax.py	/^zones = np.where(relax > 0)$/;"	kind:variable	line:27
