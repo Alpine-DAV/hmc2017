@@ -16,7 +16,8 @@ import mpiml.config as config
 def wrapper(
     model, k, data_path, online=False, density=1.0, pool_size=pool_size, parallel_test=False,
     cycles_per_barrier=10):
-    """ input: type of machine learning, type of test, amount to test, training path, test path
+    """ input: type of ML model, number of k-fold splits, path to dataset, online, percentage of dataset,
+               pool size, whether to test in parallel, number of cycles per barrier
         output: trains ML_type on training data and tests it on testing data
     """
     ds = prepare_dataset(data_path, density=density, pool_size=pool_size)
