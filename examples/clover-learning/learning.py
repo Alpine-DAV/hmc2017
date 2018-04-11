@@ -11,6 +11,7 @@
 # convfigures Clover with initial conditions and runtime parameters.
 
 import ascent.mpi
+import atexit
 import conduit
 from mpi4py import MPI
 from mpiml.forest import MondrianForestRegressor
@@ -47,12 +48,14 @@ else:
     # Apply the global model to the next cycle's data
     out = prd.predict(x)
 
-    # Hack to initialize ml_output and ml_diff with sane metadata
-    data['fields/ml_output'] = data['fields/pressure']
-    data['fields/ml_diff'] = data['fields/pressure']
-
     # Annotate the mesh with the results of our prediction
+    data['fields/ml_output/association'] = 'element'
+    data['fields/ml_output/topology'] = 'mesh'
     data['fields/ml_output/values'] = out
+
+    # Annotate the mesh with the difference between the real values and our predictions
+    data['fields/ml_diff/association'] = 'element'
+    data['fields/ml_diff/topology'] = 'mesh'
     data['fields/ml_diff/values'] = out - y
 
     # Create a nested instance of ascent and configure it to render some pictures
