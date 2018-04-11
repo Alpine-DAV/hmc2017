@@ -15,26 +15,28 @@ __all__ = [ "get_k_fold_data"
           , "fit"
           ]
 
-# Compute the accuracy of a set of predictions against the ground truth values.
 def accuracy(actual, predicted):
+    """Compute the accuracy of a set of predictions against the ground truth values."""
     return np.sum(predicted == actual) / actual.shape[0]
 
 def root_mean_squared_error(actual, predicted):
     return np.sqrt(metrics.mean_squared_error(actual, predicted))
 
 def chi_squared(actual, predicted):
-    # Can't have 0s in actual
+    """Cannot have 0s in actual"""
     perturb = np.vectorize(lambda x: x if x != 0 else config.decision_boundary)
     return np.sum((predicted - actual)**2 / perturb(actual))
 
-# Compute number of false positives and false negatives in a set of predictions
 def num_errors(actual, predicted, threshold=config.decision_boundary):
+    """Compute number of false positives and false negatives in a set of predictions"""
     return np.sum(np.logical_and(actual <= threshold, predicted > threshold)), \
            np.sum(np.logical_and(actual > threshold, predicted <= threshold))
 
-# Compute the max training time, testing time, load time, reduction time across
-# all processes.
 def get_max_time_vals(train_results):
+    """
+    Compute the max training time, testing time, load time, reduction time across
+    all processes.
+    """
     t_tr, t_te, t_lo, t_re = 0, 0, 0, 0
     for tres in train_results:
         t_tr += tres.time_train
@@ -45,24 +47,30 @@ def get_max_time_vals(train_results):
     return t_tr/n, t_te/n, t_lo/n, t_re/n
 
 
-# A generator yielding a tuple of (training set, testing set) for each run in a k-fold cross
-# validation experiment. By default, k=10.
 def get_k_fold_data(ds, k=10):
+    """
+    A generator yielding a tuple of (training set, testing set) for each run in a k-fold cross
+    validation experiment. By default, k=10.
+    """
     splits = ds.split(k)
     for i in range(k):
         yield (concatenate(splits[j] for j in range(k) if j != i), splits[i])
 
-# Concatenate datasets at the beginning of the split if the k-folding pattern results in train or test
-# set containing the end and beginning StrictDataSets
 def wrapped_concatenate(splits, start, end, total_cycles):
+    """
+    Concatenate datasets at the beginning of the split if the k-folding pattern results in train or test
+    set containing the end and beginning StrictDataSets
+    """
     rng = range(start, min(end, total_cycles))
     if end > total_cycles:
         rng.extend(range(0, end%total_cycles))
     return concatenate(splits[j] for j in rng)
 
-# Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
-# function, then every sample in the dataset will be distributed to exactly one task.
 def get_mpi_task_data(ds, comm=config.comm, task=None):
+    """
+    Get a subset of a dataset for the current task. If each task in an MPI communicator calls this
+    function, then every sample in the dataset will be distributed to exactly one task.
+    """
     if task is None:
         task = comm.rank
     return ds.split(comm.size)[task]
@@ -165,12 +173,14 @@ performance
 def null_training_result():
     return TrainingResult(*([None]*13), runs=0)
 
-# Train and test a model using k-fold cross validation (default is 10-fold).
 @profile('train_and_test_k_fold_prof')
 def train_and_test_k_fold(
     ds, prd, k=10, comm=config.comm, online=False, classes=None, parallel_test=False,
     cycles_per_barrier=10):
-
+    """
+    Train and test a model using k-fold cross validation (default is 10-fold).
+    Generate train and test sets for each run and then call train_and_test_once.
+    """
     train_and_test = lambda tr, te: train_and_test_once(
         tr, te, prd, comm=comm, online=online, classes=classes, parallel_test=parallel_test,
         cycles_per_barrier=cycles_per_barrier)
@@ -193,9 +203,12 @@ def train_and_test_k_fold(
 def train_and_test_once(
     train, test, prd, comm=config.comm, online=False, classes=None, parallel_test=False,
     cycles_per_barrier=10):
-
+    """
+    train_and_test_once trains a model on train, and then tests on test. It then returns a
+    TrainingResult of the run
+    """
     # Important to do this before splitting the dataset among tasks, so we can be sure every task
-    # gets the same number of barriers
+    # gets the same number of barriers 
     online_barriers = train.num_cycles() / comm.size / cycles_per_barrier
 
     if isinstance(prd, sk.ClassifierMixin):
@@ -294,7 +307,10 @@ def train_and_test_once(
 def fit(
     prd, ds, classes=None, online=False, time_training=False, time_loading=False, comm=config.comm,
     online_barriers=1000):
-
+    """
+    Perform a fit, pausing to synchronize nodes with calls (default 1000) barrier.
+    Return the requested timing information of fit with the resulting model, prd.
+    """
     # Reset the predictor
     prd.fit(*ds.get_cycle(0))
 
@@ -315,7 +331,7 @@ def fit(
             cycles = [ds.get_cycle(c) for c in range(cycle, cycle + num_cycles)]
 
             comm.barrier()
-            load_time += time.time() - start_load
+            load_time += time.timeof training and testing() - start_load
 
             comm.barrier()
             start_train = time.time()

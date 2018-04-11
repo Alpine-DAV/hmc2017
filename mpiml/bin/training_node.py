@@ -17,6 +17,9 @@ from mpiml.config import models
 comm = MPI.COMM_WORLD
 
 def unzip(xys):
+    """
+    utility to unzip a list of 2-ary tuples
+    """
     xs = [x for (x, _) in xys]
     ys = [y for (_, y) in xys]
     return xs, ys
@@ -25,6 +28,14 @@ def probable(p):
     return random.uniform(0, 1) <= p
 
 def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):
+    """
+    get_sample takes the data and returns a new (X',y') pair corresponding to data filtered
+    to contain approximately:
+    
+    no. positive samples: pkeep_positive * # positive samples in (X,y)
+    no. negative samples: pkeep_negative * # negative samples in (X,y)
+
+    """
     should_keep = lambda x, y: probable(pkeep_positive) \
                     if eval(criterion) \
                     else probable(pkeep_negative)
@@ -41,6 +52,10 @@ def get_sample(X, y, criterion, pkeep_positive, pkeep_negative):
 def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,
                   pcast_negative=0, pkeep_positive=1, pkeep_negative=1, online=False, online_pool=1,
                   classes=None, **kwargs):
+    """
+    train_at_root trains a single model on the broadcasted samples and the root process' local samples.
+    It performs no reduction with other local models.
+    """
     classes = np.unique(y) if classes is None else classes
     root_debug('training with parameters:\n'
               '  criterion={}\n'
@@ -53,7 +68,7 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcas
               pcast_negative,
               pkeep_positive,
               pkeep_negative)
-
+              
     if comm.rank == root:
         p_pos, p_neg = pkeep_positive, pkeep_negative
     else:
@@ -69,18 +84,22 @@ def train_at_root(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcas
 def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast_positive=1,
                  pcast_negative=0, pkeep_positive=1, pkeep_negative=1, online=False, online_pool=1,
                  classes=None, **kwargs):
+    """
+    train_on_all trains a local mode on the broadcasted samples and the process' local samples,
+    and then reduces the local models to a global model available to the root process.
+    """
     classes = np.unique(y) if classes is None else classes
     root_debug('training with parameters:\n'
-              '  criterion={}\n'
-              '  pcast_positive={}\n'
-              '  pcast_negative={}\n'
-              '  pkeep_positive={}\n'
-              '  pkeep_negative={}\n',
-              criterion,
-              pcast_positive,
-              pcast_negative,
-              pkeep_positive,
-              pkeep_negative)
+               '  criterion={}\n'
+               '  pcast_positive={}\n'
+               '  pcast_negative={}\n'
+               '  pkeep_positive={}\n'
+               '  pkeep_negative={}\n',
+               criterion,
+               pcast_positive,
+               pcast_negative,
+               pkeep_positive,
+               pkeep_negative)
 
     cast_X, cast_y = get_sample(X, y, criterion, pcast_positive, pcast_negative)
     keep_X, keep_y = get_sample(X, y, criterion, pkeep_positive, pkeep_negative)
@@ -94,14 +113,17 @@ def train_on_all(clf, X, y, root=0, comm=MPI.COMM_WORLD, criterion='True', pcast
     clf = fit(clf, np.concatenate(all_X), np.concatenate(all_y),
         online=online, online_pool=online_pool, classes=classes)
     return clf.reduce()
-
+ 
 def train(X, y, clf, recipients='all', **kwargs):
+    """
+    wrapper to direct calls to appropriate training method (root versus all)
+    """
     kwargs.update(model=model)
+
 
     if not running_in_mpi():
         clf.fit(X, y)
         return clf
-
     if recipients == "all":
         return train_on_all(clf, X, y, **kwargs)
     elif recipients == "root":
@@ -110,15 +132,17 @@ def train(X, y, clf, recipients='all', **kwargs):
         root_info('Invalid value "{}" for recipients: expected "all" or "root"', recipients)
         sys.exit(1)
 
-# Users can specify a range of parameter values to investigate using the CLI. This function parses
-# a parameter range expression and returns a list of values to try. Valid expression formats are:
-#
-# n         (just test a single value)
-# l:h       (test values from l to h at intervals of default_step)
-# l:s:h     (test values from l to h at intervals of s)
-#
-# The program will run one 10-fold cross validation trial for each combination of paramter values.
 def parse_range(expr, default_step=0.01):
+    """
+    Users can specify a range of parameter values to investigate using the CLI. This function parses
+    a parameter range expression and returns a list of values to try. Valid expression formats are:
+
+    n         (just test a single value)
+    l:h       (test values from l to h at intervals of default_step)
+    l:s:h     (test values from l to h at intervals of s)
+
+    The program will run 10-fold cross validation trial for each combination of paramter values.
+    """
     parts = [float(part) for part in expr.split(':')]
     if len(parts) == 1:
         return [parts[0]]
