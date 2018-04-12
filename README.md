@@ -5,13 +5,13 @@ This is the repository for the 2017-2018 LLNL Harvey Mudd Clinic Project. Its pu
 ## Running the code
 
 1. Install Python 2.7:
-  * https://conda.io/docs/user-guide/install/download.html
+https://conda.io/docs/user-guide/install/download.html
 
 2. Download the following fork of scikit-garden, featuring a Mondrian Forest implementation:
 ```
-   git clone https://github.com/jbearer/scikit-garden.git
-   cd scikit-garden
-   python setup.py install
+git clone https://github.com/jbearer/scikit-garden.git
+cd scikit-garden
+python setup.py install
 ```
 
 3. Install MPI4Py:
