@@ -86,7 +86,7 @@ def _gather_estimators(estimators, send_to, recv_from, root=0, send_to_all=True)
     return estimators
 
 class SuperForestMixin:
-
+    
     def n_estimators(self, forest_size):
         return _n_estimators_for_forest_size(forest_size)
 
