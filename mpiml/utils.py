@@ -37,6 +37,8 @@ def _info(fmt, *args, **kwargs):
     print(fmt.format(*args, **kwargs), file=sys.stderr)
 
 def info(fmt, *args, **kwargs):
+    """ Prints out formatted string along with MPI rank
+    """
     comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
     if type(fmt) == str:
         fmt = 'rank {}: ' + fmt
@@ -46,10 +48,14 @@ def info(fmt, *args, **kwargs):
     _info(fmt, comm.rank, *args, **kwargs)
 
 def debug(fmt, *args, **kwargs):
+    """ Prints out formatted string with MPI rank if verbose tag
+    """
     if _verbose:
         info(fmt, *args, **kwargs)
 
 def root_info(fmt, *args, **kwargs):
+    """ Prints out formatted string on MPI rank=0
+    """
     comm = _extract_arg('comm', MPI.COMM_WORLD, kwargs)
     root = _extract_arg('root', 0, kwargs)
     if comm.rank != root:
@@ -63,13 +69,16 @@ def root_debug(fmt, *args, **kwargs):
     if _verbose:
         root_info(fmt, *args, **kwargs)
 
-# Determine if we are running as an MPI process
 def running_in_mpi():
+    """ Returns whether we are running as an MPI process
+    """
     return 'MPICH_INTERFACE_HOSTNAME' in os.environ or \
            'MPIRUN_ID' in os.environ
 
 _profiling_enabled = False
 def profile(filename=None, comm=MPI.COMM_WORLD):
+    """ Functions decorated with profile will generate profiling report
+    """
     def prof_decorator(f):
         def wrap_f(*args, **kwargs):
             if not _profiling_enabled:
@@ -94,6 +103,8 @@ def toggle_profiling(enabled=True):
     _profiling_enabled = enabled
 
 def output_model_info(model, online, density, pool_size=None):
+    """ Prints out summary of the model and parameters
+    """
     output_str = \
 """
 ---------------------------
