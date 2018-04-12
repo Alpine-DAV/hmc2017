@@ -5,18 +5,18 @@ This is the repository for the 2017-2018 LLNL Harvey Mudd Clinic Project. Its pu
 # Running the code
 
 1. Install Python 2.7:
-..* https://conda.io/docs/user-guide/install/download.html
+  * https://conda.io/docs/user-guide/install/download.html
 
 2. Download the following fork of scikit-garden, featuring a Mondrian Forest implementation:
-..* ```git clone https://github.com/jbearer/scikit-garden.git
+  * ```git clone https://github.com/jbearer/scikit-garden.git
     cd scikit-garden
     python setup.py install```
 
 3. Install MPI4Py:
-..* https://mpi4py.readthedocs.io/en/stable/install.html#using-pip-or-easy-install
+  * https://mpi4py.readthedocs.io/en/stable/install.html#using-pip-or-easy-install
 
 4. Run the following to see if everything is functional 
-..* `mpiexec -n 8 python mpiml/bin/learning_wrapper.py [optional arguments] path/to/dataset model-abbreviation`
+  * `mpiexec -n 8 python mpiml/bin/learning_wrapper.py [optional arguments] path/to/dataset model-abbreviation`
 
 # Contributors
 Katelyn Barnes, Jeb Bearer, Evan Chrisinger and Amy Huang 
