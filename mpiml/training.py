@@ -331,7 +331,7 @@ def fit(
             cycles = [ds.get_cycle(c) for c in range(cycle, cycle + num_cycles)]
 
             comm.barrier()
-            load_time += time.timeof training and testing() - start_load
+            load_time += time.time() - start_load
 
             comm.barrier()
             start_train = time.time()

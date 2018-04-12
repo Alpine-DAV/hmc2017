@@ -42,9 +42,11 @@ def _generate_unsampled_indices(random_state, n_samples):
 
     return unsampled_indices
 
-# Return the number of estimators that the calling task should train if the superforest should
-# contain the given number
 def _n_estimators_for_forest_size(forest_size):
+    """
+    Return the number of estimators that the calling task should train if the superforest should
+    contain the given number
+    """
     if running_in_mpi():
         if forest_size < comm.size:
             raise ValueError(
@@ -56,6 +58,10 @@ def _n_estimators_for_forest_size(forest_size):
         return forest_size
 
 def _gather_estimators(estimators, send_to, recv_from, root=0, send_to_all=True):
+    """
+    Gathers the estimators of all processes either at the root process, or if send_to_all
+    is set to true, gathers all of the estimators at every process.
+    """
     if send_to_all:
         for proc in range(comm.size):
             n_estimators = comm.bcast(len(estimators), root=proc)

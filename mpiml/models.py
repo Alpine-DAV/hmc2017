@@ -3,11 +3,16 @@ from __future__ import print_function
 from forest import *
 from nbmpi import GaussianNB
 
+"""
+Utilitities to match models to easily written strings in a shell.
+"""
+
 __all__ = ["get_model"
           ,"model_names"
           ]
 
 _models = {}
+
 def _register_model(cli_name, cls):
     if cli_name in _models:
         print('attempted to register duplicate model "{}"'.format(cli_name), file=sys.stderr)

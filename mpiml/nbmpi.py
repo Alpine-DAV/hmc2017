@@ -20,22 +20,28 @@ from utils import *
 __all__ = ["GaussianNB"
           ]
 
-# Gaussian naive Bayes classifier. This implementation is heavily based off of sckit learn's
-# version. However, we provide an additional method, reduce, for use with MPI.
 class GaussianNB(sk.GaussianNB):
+    """
+    Gaussian naive Bayes classifier. This implementation is heavily based off of sckit learn's
+    version. However, we provide an additional method, reduce, for use with MPI.
+    """
+
     def __init__(self, **kwargs):
         super(GaussianNB, self).__init__()
 
-    # When running in MPI, coordinate with other tasks to combine each task's local model into a
-    # global model. The global model is returned. Each process's local model is unchanged. Note: the
-    # return value is only meaningful for root (rank == 0)
     def reduce(self, send_to_all=False):
+        """
+        When running in MPI, coordinate with other tasks to combine each task's local model into a
+        global model. The global model is returned. Each process's local model is unchanged. Note: the
+        return value is only meaningful for root (rank == 0)
+        """
+
         # Variables which will collect the global results
         n = np.copy(self.class_count_)
         mu = np.copy(self.theta_)
         var = np.copy(self.sigma_)
 
-        # tree-reduce the global count, mean, and variance to the root process
+        # tree-wise-reduce the global count, mean, and variance to the root process
         node_diff = 1
         while(node_diff < comm.size):
             if(comm.rank % (node_diff*2) == 0 and comm.rank+node_diff < comm.size):
