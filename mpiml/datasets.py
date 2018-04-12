@@ -22,12 +22,29 @@ __all__ = [ "get_bubbleshock"
           , "concatenate"
           ]
 
-def every_kth(arr, k):
-    return [arr[start::k] for start in range(k)]
-
 class DataSet(object):
+    """
+    Abstract representation of a data set.
+
+    This class exists to allow implementations which load data lazily from disk, allowing us to use
+    datasets which do not fit in memory. To support this, the abstraction breaks the dataset into a
+    series of chunks called "cycles". For example, one cycle may correspond to a single timestep of
+    a simulation. Cycles can then be loaded from disk one at a time and independently from one
+    another.
+
+    This class functions as an abstract base class. Derived classes should implement num_cycles,
+    which takes no arguments and returns the total number of cycles, and get_cycle, which takes an
+    integer in [0, num_cycles()) and returns an (X, y) pair where X is an array of feature vectors
+    and y is an array of labels.
+    """
 
     def map(self, f):
+        """
+        Transform a dataset by applying the given function to each cycle. The function should take
+        two arguments: the first is an array of feature vectors, and then second is an array of
+        labels. Returns a new DataSet object.
+        """
+
         class MapDataSet(DataSet):
             def __init__(self, ds, f):
                 self.ds_ = ds
@@ -41,9 +58,15 @@ class DataSet(object):
         return MapDataSet(self, f)
 
     def classes(self):
+        """
+        Return an array of unique labels from the dataset.
+        """
         return np.unique(self.points()[1])
 
     def cycles(self):
+        """
+        Return a generator which yields, in order, each cycle in the dataset.
+        """
         return (self.get_cycle(i) for i in range(self.num_cycles()))
 
     def points(self):
@@ -51,6 +74,10 @@ class DataSet(object):
         return np.vstack(xs), np.concatenate(ys)
 
     def split(self, k):
+        """
+        Split a dataset into k disjoint subsets. Returns an array of DataSet objects.
+        """
+
         class SplitDataSet(DataSet):
             def __init__(self, ds, start):
                 self.ds_ = ds
@@ -65,6 +92,9 @@ class DataSet(object):
         return [SplitDataSet(self, start) for start in range(k)]
 
     def concat(self, ds):
+        """
+        Append the samples in this dataset and the samples in ds into a new DataSet object.
+        """
         class ConcatDataSet(DataSet):
             def __init__(self, ds1, ds2):
                 self.ds1_ = ds1
@@ -82,7 +112,18 @@ class DataSet(object):
         return ConcatDataSet(self, ds)
 
 class InMemoryDataSet(DataSet):
+    """
+    Implementation of the DataSet interface which stores the entire dataset in memory.
+    """
+
     def __init__(self, X, y, pool_size=config.pool_size):
+        """
+        Initialize an InMemoryDataSet with given data.
+
+        X: array of feature vectors
+        y: array of labels
+        pool_size: number of samples to be "pooled together" in each cycle
+        """
         self.X_ = X
         self.y_ = y
         self.pool_size_ = pool_size
@@ -95,6 +136,11 @@ class InMemoryDataSet(DataSet):
         return int(ceil(float(self.X_.shape[0]) / config.pool_size))
 
 class EmptyDataSet(DataSet):
+    """
+    Implementation of the DataSet interface which represents a dataset with no samples. Useful as a
+    base case for combining many datasets.
+    """
+
     def get_cycle(self, i):
         raise ValueError('cannot get cycle from empty dataset')
 
@@ -102,20 +148,28 @@ class EmptyDataSet(DataSet):
         return 0
 
 def concatenate(datasets):
-    # def Concat
+    """
+    Concatenate an iterable of DataSet objects, returning a single new DataSet.
+    """
     return reduce(lambda x, y: x.concat(y), datasets, EmptyDataSet())
 
-# Turn a function that transforms X and y vectors into a function that transforms a DataSet
 def ds_map(f):
+    """
+    Decorator which turns a function that transforms X and y vectors into a function that transforms
+    a DataSet using the DataSet.map interface.
+    """
+
     @wraps(f)
     def mapper(ds, *args, **kwargs):
         return ds.map(lambda X, y: f(X, y, *args, **kwargs))
     return mapper
 
-# Reorder a dataset to remove patterns between adjacent samples. The random state is seeded with a
-# constant before-hand, so the results will not vary between runs.
 @ds_map
 def shuffle_data(X, y, seed=0):
+    """
+    Randomly reorder a dataset to remove patterns between adjacent samples.
+    """
+
     np.random.seed(0)
     seed = np.random.get_state()
     np.random.shuffle(X)
@@ -124,6 +178,12 @@ def shuffle_data(X, y, seed=0):
     return X, y
 
 def get_bubbleshock_by_hand(data_dir):
+    """
+    Return a DataSet object representing the Bubble Shock By Hand dataset, which should be stored in
+    the file system at the given directory. The resulting dataset loads cycles lazily from disk, so
+    the entire dataset need not fit in memory at once.
+    """
+
     class ByHandDataSet(DataSet):
         def __init__(self):
             self.reader_ = get_reader(data_dir)
@@ -149,6 +209,13 @@ def get_bubbleshock_by_hand(data_dir):
     return ByHandDataSet()
 
 def get_bubbleshock(data_dir='bubbleShock', pool_size=config.pool_size):
+    """
+    Return a DataSet object representing the Bubble Shock dataset, which should be stored in the
+    file system at the given directory. Since the Bubble Shock dataset is relatively small, this
+    function uses the InMemoryDataSet class to represent the dataset. The pool_size parameter
+    corresponds to the pool_size parameter of the InMemoryDataSet constructor.
+    """
+
     dataset = None
     start = time.time()
     dataset = get_learning_data(data_dir, config.start_cycle, config.end_cycle, config.sample_freq, config.decay_window)
@@ -160,16 +227,33 @@ def get_bubbleshock(data_dir='bubbleShock', pool_size=config.pool_size):
 
     return InMemoryDataSet(X, y, pool_size=pool_size)
 
-# Load the requested example dataset and randomly reorder it so that it is not grouped by class
 def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_size):
-    global _dataset
-    _dataset = dataset
-    if hasattr(sk, 'load_{}'.format(dataset)):
+    """
+    Load a desired DataSet and prepare it for learning. Preparation may involve, for example,
+    shuffling or discretizing the dataset.
+
+    The dataset parameter is a string specifying the dataset. It can be the name of one of the
+    scikit-learn example datasets, or a path to bubble shock or bubble shock by hand. We use a hacky
+    heuristic to differentiate between the latter two: a path is considered to point to the by hand
+    dataset if it contains the string "byHand".
+
+    If discrete is True, the labels in the dataset will be discretized to 0 or 1 to make the dataset
+    suitable for a classification problem, as if by calling discretize.
+
+    Density should be a float between 0 and 1 inclusive representing a fraction of the dataset to
+    return, as if by applying make_sparse to the dataset. This is useful for constructing learning
+    problems of various sizes.
+
+    pool_size will be passed to InMemoryDataSet if the resulting dataset uses that implementation of
+    the DataSet interface.
+    """
+
+    if hasattr(sk, 'load_{}'.format(dataset)): # Does it look like a sklearn example dataset?
         dataset = getattr(sk, 'load_{}'.format(dataset))()
         ds = shuffle_data(InMemoryDataSet(dataset.data, dataset.target, pool_size=config.pool_size))
-    elif 'byHand' in dataset:
+    elif 'byHand' in dataset: # Does it look like bubble shock by hand? TODO make this more robust
         ds = get_bubbleshock_by_hand(dataset)
-    else:
+    else: # Assume it's bubble shock
         ds = shuffle_data(get_bubbleshock(data_dir=dataset, pool_size=config.pool_size))
 
     if discrete:
@@ -178,6 +262,10 @@ def prepare_dataset(dataset, discrete=False, density=1.0, pool_size=config.pool_
     return make_sparse(ds, density)
 
 def make_sparse(ds, density):
+    """
+    Return a new DataSet which represents a subset of the given dataset, whose size is a fraction
+    density of the original dataset.
+    """
     if density == None or 1.0 - density < 0.001:
         return ds
 
@@ -196,13 +284,20 @@ def make_sparse(ds, density):
 
 @ds_map
 def discretize(X, y):
+    """
+    Map the labels in a dataset to 0 or 1 based on comparison with config.decision_boundary. In
+    effect, this function turns a regression problem into a binary classification problem.
+    """
     if y.ndim != 1:
         raise ValueError("can only discretize 1d array (got {})".format(y.ndim))
     return X, y > config.decision_boundary
 
-# Return a pair of the number of positive examples (class > threshold) and the number of negative
-# examples (class <= threshold)
 def threshold_count(ds, thresh):
+    """
+    Return a pair of the number of positive examples (class > threshold) and the number of negative
+    examples (class <= threshold) in the given dataset.
+    """
+
     npos = 0
     nneg = 0
     for _, y in ds.cycles():
@@ -213,6 +308,10 @@ def threshold_count(ds, thresh):
 learning_data_cache = {}
 data_readers = {}
 def get_reader(data_dir):
+    """
+    Get a DataReader object which extracts features and labels from the dataset stored in the given
+    directory. Uses a global cache to avoid creating redundant readers.
+    """
 
     global data_readers
 
@@ -226,10 +325,11 @@ def get_reader(data_dir):
 
     return reader
 
-#
-# Print feature importance for a random forest model.
-#
 def output_feature_importance(result, data_dir):
+    """
+    Print feature importance for a random forest model.
+    """
+
     rand_forest = result['clf']
     if rand_forest:
         importances = rand_forest.feature_importances_
@@ -247,11 +347,11 @@ def output_feature_importance(result, data_dir):
             result += "FEATURE\t%d\t%d\t%s\t%f" % ((f + 1), feature_index, feature_name, importances[feature_index])
             result += "\n"
         return result
-#
-# Looks at directory structure and returns the number of partition index files.
-#
-def get_num_partitions(data_dir):
 
+def get_num_partitions(data_dir):
+    """
+    Looks at directory structure and returns the number of partition index files.
+    """
     files = glob.glob("%s/indexes/indexes_p*_r000.txt" % data_dir)
     return len(files)
 
@@ -260,14 +360,15 @@ def get_num_partitions(data_dir):
 # Private stuff
 #===============================================================================
 
-#
-# Returns a pair (index,data) where:
-#  - index is a list of N (cycle,zone_id) pairs
-#  - data is a 2d numpy array of (N instances x F features)
-#
-# cycles - list of cycles to include
-#
 def get_learning_data_with_index_for_cycle_range(data_dir, cycles, run):
+    """
+    Returns a pair (index,data) where:
+     - index is a list of N (cycle,zone_id) pairs
+     - data is a 2d numpy array of (N instances x F features)
+
+    cycles - list of cycles to include
+    """
+
     reader = get_reader(data_dir)
 
     index_list = []
@@ -282,21 +383,21 @@ def get_learning_data_with_index_for_cycle_range(data_dir, cycles, run):
 
     return (index_list, np.concatenate(data_list, axis=0))
 
-
-#
-# Take last_weight and decay according to some decay function.
-#
 def decay(decay_function, step, num_steps):
-
+    """
+    Take last_weight and decay according to some decay function.
+    """
     if decay_function=='linear':
         return 1.0-step*(1.0/num_steps)
 
-#
-# return [failures, failed_cycles] where:
-#
-# failures is a list of (part, run, cycle, zone) tuples
-# failued_cycles is a list containing only the cycles
 def get_failures(data_dir):
+    """
+    return [failures, failed_cycles] where:
+
+    failures is a list of (part, run, cycle, zone) tuples
+    failued_cycles is a list containing only the cycles
+    """
+
     # read failure data
     filenames = []
     partitions = range(get_num_partitions(data_dir))
@@ -336,28 +437,29 @@ def get_failures(data_dir):
 
     return [failures, failed_cycles]
 
-#
-# Create a 2d numpy array of (instance x features)
-#
-# Good zones come from run 0. To specify a different run, use get_learning_data_for_run.
-#
 def get_learning_data(data_dir, start_cycle, end_cycle, sample_freq, decay_window, num_failures=-1):
+    """
+    Create a 2d numpy array of (instance x features)
+
+    Good zones come from run 0. To specify a different run, use get_learning_data_for_run.
+    """
     (index,data) = get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, decay_window, 0, num_failures)
     return data
 
-#
-# Returns a pair (index,data) where:
-#  - index is a list of N (cycle,zone_id) pairs
-#  - data is a 2d numpy array of (N instances x F features)
-#
-# Fetch data from cycle 0 and then every 'sample_freq' cycles until end
-# of simulation.
-#
-# Also fetch failed zone data for all applicable cycles.
-#
-# sample_freq - frequency for sampling cycles (0 mean don't include any "good" examples)
-#
 def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, decay_window, run_for_good_zones, num_failures=-1):
+    """
+    Returns a pair (index,data) where:
+     - index is a list of N (cycle,zone_id) pairs
+     - data is a 2d numpy array of (N instances x F features)
+
+    Fetch data from cycle 0 and then every 'sample_freq' cycles until end
+    of simulation.
+
+    Also fetch failed zone data for all applicable cycles.
+
+    sample_freq - frequency for sampling cycles (0 mean don't include any "good" examples)
+    """
+
     reader = get_reader(data_dir)
 
     # cache learning data in memory to improve run time
@@ -470,16 +572,16 @@ def get_learning_data_for_run(data_dir, start_cycle, end_cycle, sample_freq, dec
 
     return return_val
 
-#
-# Input:
-# - index is a list of N (cycle,zone_id) pairs
-#
-# Output:
-# - N x F numpy array where:
-#   - F is the number of new features added.
-#   - Array element (n,f) is the value of feature f for the nth (cycle, zone_id) pair in index.
-#
 def add_features(index):
+    """
+    Input:
+    - index is a list of N (cycle,zone_id) pairs
+
+    Output:
+    - N x F numpy array where:
+      - F is the number of new features added.
+      - Array element (n,f) is the value of feature f for the nth (cycle, zone_id) pair in index.
+    """
 
     new_feature_vals = []
 
@@ -503,17 +605,3 @@ def add_features(index):
       new_feature_vals.append(np_array_row)
 
     return np.concatenate(new_feature_vals, axis=0)
-
-if __name__ == '__main__':
-    data_dir = "../../../bubbleShock_byHand"
-    reader_ = get_reader(data_dir)
-
-    cycle = 40000
-    dataset = reader_.readAllZonesInCycle(0, cycle)
-    
-    fnames = reader_.getFeatureNames()
-    print fnames
-
-    zone_scale = np.ravel(dataset[:,[-1]])
-
-    np.savetxt("byhand_cycle"+str(cycle)+".csv", dataset, delimiter=",")
