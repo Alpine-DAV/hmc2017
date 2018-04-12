@@ -1,5 +1,27 @@
 #! /usr/bin/env python2
 
+# Benchmark testing performance of encoding, transmission, and decoding of Mondrian decision trees
+# using Pickle and native encodings.
+#
+# The experiment performed is as follows:
+# task 0 trains and encodes a series of trees, sending them one by one to task 1
+# task 1 receives the trees from task 0 and decodes them
+# Both tasks apply their trees to testing data, and the user can inspect the output to verify that
+# they are the same; that is, the encoding-decoding process does not change the models.
+#
+# The output is a CSV with the following schema:
+# pickle: t if the row contains data for a Pickle encoding, f for native encoding
+# compression: level of compression used for encoding, integer in [0, 9]
+# n_trees: number of trees communicated
+# n_features: number of features in the training dataset
+# n_outputs: number of outputs in the training dataset (usually 1)
+# n_samples: number of samples in the training dataset
+# t_total: total end-to-end time in seconds spend encoding, transmitting, and decoding trees 
+# t_preprocess: total time in seconds spent encoding trees
+# t_transmit: total time in seconds spent transmitting encodings
+# t_postprocess: total time in seconds spent decoding trees
+# bytes: total bytes transmitted
+
 import argparse
 import cPickle
 import numpy as np

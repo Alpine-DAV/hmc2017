@@ -1,5 +1,7 @@
 #! /usr/bin/env python2
 
+# Visualization tool for results of mt_pickle_bench.py
+
 import argparse
 import numpy as np
 import os

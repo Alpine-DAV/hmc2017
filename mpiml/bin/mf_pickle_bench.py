@@ -1,5 +1,20 @@
 #!/usr/bin/env python2
 
+# Benchmark testing performance of Mondrian superforest merging use the native encoding versus the
+# Pickle encoding.
+#
+# The experiment consists simply of training and merging a number of Mondrian forests while
+# measuring the merging time. The experiment should be run multiple times with varying
+# numbers of MPI tasks. This script only runs the experiment once. Use mf_pickle_bench.sh
+# to run this script multiple times with variously sized communicators.
+#
+#The output is a CSV with the following schema:
+# pickle: t if the row contains data for a Pickle encoding, f for native encoding
+# n_tasks: number of MPI tasks used in the trial
+# compression: level of compression used during encoding (integer in [0, 9])
+# n_forests: number of forests in the trial
+# t_reduce: total time in seconds spent reducing
+
 import argparse
 
 from mpiml.config import comm
